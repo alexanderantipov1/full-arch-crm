@@ -385,6 +385,39 @@ export const careReports = pgTable("care_reports", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+// Code Cross-Reference (CDT → CPT/ICD-10)
+export const codeCrossReference = pgTable("code_cross_reference", {
+  id: serial("id").primaryKey(),
+  cdtCode: text("cdt_code").notNull(),
+  cdtDescription: text("cdt_description").notNull(),
+  cptCode: text("cpt_code"),
+  cptDescription: text("cpt_description"),
+  icd10Codes: text("icd10_codes").array(),
+  icd10Descriptions: text("icd10_descriptions").array(),
+  medicalNecessityRequired: boolean("medical_necessity_required").default(true),
+  medicalNecessityCriteria: text("medical_necessity_criteria"),
+  averageFee: decimal("average_fee", { precision: 10, scale: 2 }),
+  averageReimbursement: decimal("average_reimbursement", { precision: 10, scale: 2 }),
+  approvalRate: decimal("approval_rate", { precision: 5, scale: 2 }),
+  procedureCategory: text("procedure_category"),
+  notes: text("notes"),
+});
+
+// Fee Schedules
+export const feeSchedules = pgTable("fee_schedules", {
+  id: serial("id").primaryKey(),
+  payerName: text("payer_name").notNull(),
+  payerType: text("payer_type").notNull(),
+  cdtCode: text("cdt_code"),
+  cptCode: text("cpt_code"),
+  allowedAmount: decimal("allowed_amount", { precision: 10, scale: 2 }),
+  percentOfCharge: decimal("percent_of_charge", { precision: 5, scale: 2 }),
+  effectiveDate: date("effective_date"),
+  expirationDate: date("expiration_date"),
+  region: text("region"),
+  notes: text("notes"),
+});
+
 // Billing/Claims
 export const billingClaims = pgTable("billing_claims", {
   id: serial("id").primaryKey(),
@@ -448,6 +481,8 @@ export const insertMedicalConsultSchema = createInsertSchema(medicalConsults).om
 export const insertFullArchExamSchema = createInsertSchema(fullArchExams).omit({ id: true, createdAt: true });
 export const insertFollowUpSchema = createInsertSchema(followUps).omit({ id: true, createdAt: true });
 export const insertCareReportSchema = createInsertSchema(careReports).omit({ id: true, createdAt: true });
+export const insertCodeCrossReferenceSchema = createInsertSchema(codeCrossReference).omit({ id: true });
+export const insertFeeScheduleSchema = createInsertSchema(feeSchedules).omit({ id: true });
 
 // Types
 export type Patient = typeof patients.$inferSelect;
@@ -486,3 +521,7 @@ export type FollowUp = typeof followUps.$inferSelect;
 export type InsertFollowUp = z.infer<typeof insertFollowUpSchema>;
 export type CareReport = typeof careReports.$inferSelect;
 export type InsertCareReport = z.infer<typeof insertCareReportSchema>;
+export type CodeCrossReference = typeof codeCrossReference.$inferSelect;
+export type InsertCodeCrossReference = z.infer<typeof insertCodeCrossReferenceSchema>;
+export type FeeSchedule = typeof feeSchedules.$inferSelect;
+export type InsertFeeSchedule = z.infer<typeof insertFeeScheduleSchema>;

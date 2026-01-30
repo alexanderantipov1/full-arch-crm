@@ -11,6 +11,7 @@ import {
   DollarSign,
   Building2,
   LogOut,
+  FileCode,
 } from "lucide-react";
 import {
   Sidebar,
@@ -42,6 +43,7 @@ const clinicalItems = [
 
 const adminItems = [
   { title: "Billing & Claims", url: "/billing", icon: DollarSign },
+  { title: "Coding Engine", url: "/coding", icon: FileCode },
   { title: "Referring Providers", url: "/providers", icon: Building2 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];

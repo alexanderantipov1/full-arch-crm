@@ -21,6 +21,8 @@ import {
   insertFollowUpSchema,
   insertCareReportSchema,
   insertReferringProviderSchema,
+  insertCodeCrossReferenceSchema,
+  insertFeeScheduleSchema,
 } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -854,6 +856,133 @@ The appeal should:
     } catch (error) {
       console.error("Error generating appeal letter:", error);
       res.status(500).json({ message: "Failed to generate appeal letter" });
+    }
+  });
+
+  // ============ CODING ENGINE ============
+  app.get("/api/coding/cross-references", isAuthenticated, async (req, res) => {
+    try {
+      const codes = await storage.getCodeCrossReferences();
+      res.json(codes);
+    } catch (error) {
+      console.error("Error fetching code cross-references:", error);
+      res.status(500).json({ message: "Failed to fetch code cross-references" });
+    }
+  });
+
+  app.get("/api/coding/cross-references/:cdtCode", isAuthenticated, async (req, res) => {
+    try {
+      const cdtCode = req.params.cdtCode;
+      const code = await storage.getCodeCrossReferenceByCDT(cdtCode);
+      if (!code) {
+        return res.status(404).json({ message: "Code not found" });
+      }
+      res.json(code);
+    } catch (error) {
+      console.error("Error fetching code cross-reference:", error);
+      res.status(500).json({ message: "Failed to fetch code cross-reference" });
+    }
+  });
+
+  app.post("/api/coding/cross-references", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertCodeCrossReferenceSchema.parse(req.body);
+      const code = await storage.createCodeCrossReference(data);
+      res.status(201).json(code);
+    } catch (error: any) {
+      console.error("Error creating code cross-reference:", error);
+      res.status(400).json({ message: error.message || "Failed to create code cross-reference" });
+    }
+  });
+
+  app.get("/api/coding/fee-schedules", isAuthenticated, async (req, res) => {
+    try {
+      const payerName = req.query.payer as string | undefined;
+      const schedules = await storage.getFeeSchedules(payerName);
+      res.json(schedules);
+    } catch (error) {
+      console.error("Error fetching fee schedules:", error);
+      res.status(500).json({ message: "Failed to fetch fee schedules" });
+    }
+  });
+
+  app.post("/api/coding/fee-schedules", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertFeeScheduleSchema.parse(req.body);
+      const schedule = await storage.createFeeSchedule(data);
+      res.status(201).json(schedule);
+    } catch (error: any) {
+      console.error("Error creating fee schedule:", error);
+      res.status(400).json({ message: error.message || "Failed to create fee schedule" });
+    }
+  });
+
+  // AI-assisted code suggestion
+  app.post("/api/coding/suggest", isAuthenticated, async (req, res) => {
+    try {
+      const { diagnosis, procedures, clinicalNotes } = req.body;
+      
+      if (!diagnosis || typeof diagnosis !== "string" || diagnosis.trim() === "") {
+        return res.status(400).json({ message: "Diagnosis is required" });
+      }
+      if (!procedures || typeof procedures !== "string" || procedures.trim() === "") {
+        return res.status(400).json({ message: "Procedures is required" });
+      }
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-5.2",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert dental billing coder specializing in full arch dental implants. Your role is to suggest the most appropriate CDT codes, CPT codes (for medical insurance cross-coding), and ICD-10 diagnosis codes that maximize insurance approval rates while maintaining compliance.
+
+For full arch dental implants, focus on:
+- Medical necessity documentation (functional impairment, nutritional concerns, airway issues)
+- Appropriate modifier usage (RT/LT for laterality, 22 for complexity)
+- Supporting diagnoses that strengthen medical necessity
+
+Common CDT codes for full arch:
+- D6010: Surgical placement of implant body
+- D6056: Prefabricated abutment
+- D6114: Implant/abutment supported fixed denture for completely edentulous arch
+- D7210: Extraction with flap elevation
+- D7953: Bone replacement graft
+
+Common ICD-10 codes for medical necessity:
+- K08.1: Complete loss of teeth (edentulism)
+- K08.109: Complete loss of teeth, unspecified cause
+- K08.419: Partial loss of teeth, unspecified cause
+- R63.3: Feeding difficulties and mismanagement (nutritional impact)
+- G47.33: Obstructive sleep apnea (if applicable)
+- E11.x: Type 2 diabetes mellitus (if applicable for bone healing)
+
+Return your response as JSON with this structure:
+{
+  "suggestedCDT": [{"code": "D6010", "description": "...", "fee": 2200}],
+  "suggestedCPT": [{"code": "21248", "description": "...", "medicalCrossCode": true}],
+  "suggestedICD10": [{"code": "K08.1", "description": "...", "priority": 1}],
+  "medicalNecessityNotes": "...",
+  "confidenceScore": 95,
+  "warnings": []
+}`
+          },
+          {
+            role: "user",
+            content: `Suggest appropriate billing codes for:
+Diagnosis: ${diagnosis || "Not specified"}
+Procedures: ${procedures || "Not specified"}
+Clinical Notes: ${clinicalNotes || "Not provided"}`
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 1500
+      });
+
+      const suggestions = JSON.parse(response.choices[0]?.message?.content || "{}");
+      res.json(suggestions);
+    } catch (error) {
+      console.error("Error generating code suggestions:", error);
+      res.status(500).json({ message: "Failed to generate code suggestions" });
     }
   });
 

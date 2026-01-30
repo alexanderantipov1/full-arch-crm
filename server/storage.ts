@@ -20,6 +20,8 @@ import {
   fullArchExams,
   followUps,
   careReports,
+  codeCrossReference,
+  feeSchedules,
   users,
   type Patient,
   type InsertPatient,
@@ -57,6 +59,10 @@ import {
   type InsertFollowUp,
   type CareReport,
   type InsertCareReport,
+  type CodeCrossReference,
+  type InsertCodeCrossReference,
+  type FeeSchedule,
+  type InsertFeeSchedule,
   type User,
   type UpsertUser,
 } from "@shared/schema";
@@ -165,6 +171,13 @@ export interface IStorage {
   getReferringProvider(id: number): Promise<ReferringProvider | undefined>;
   createReferringProvider(data: InsertReferringProvider): Promise<ReferringProvider>;
   updateReferringProvider(id: number, data: Partial<InsertReferringProvider>): Promise<ReferringProvider | undefined>;
+  
+  // Coding Engine
+  getCodeCrossReferences(): Promise<CodeCrossReference[]>;
+  getCodeCrossReferenceByCDT(cdtCode: string): Promise<CodeCrossReference | undefined>;
+  createCodeCrossReference(data: InsertCodeCrossReference): Promise<CodeCrossReference>;
+  getFeeSchedules(payerName?: string): Promise<FeeSchedule[]>;
+  createFeeSchedule(data: InsertFeeSchedule): Promise<FeeSchedule>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -634,6 +647,33 @@ export class DatabaseStorage implements IStorage {
   async updateReferringProvider(id: number, data: Partial<InsertReferringProvider>): Promise<ReferringProvider | undefined> {
     const [provider] = await db.update(referringProviders).set(data).where(eq(referringProviders.id, id)).returning();
     return provider;
+  }
+
+  // Coding Engine
+  async getCodeCrossReferences(): Promise<CodeCrossReference[]> {
+    return db.select().from(codeCrossReference).orderBy(codeCrossReference.cdtCode);
+  }
+
+  async getCodeCrossReferenceByCDT(cdtCode: string): Promise<CodeCrossReference | undefined> {
+    const [code] = await db.select().from(codeCrossReference).where(eq(codeCrossReference.cdtCode, cdtCode));
+    return code;
+  }
+
+  async createCodeCrossReference(data: InsertCodeCrossReference): Promise<CodeCrossReference> {
+    const [code] = await db.insert(codeCrossReference).values(data).returning();
+    return code;
+  }
+
+  async getFeeSchedules(payerName?: string): Promise<FeeSchedule[]> {
+    if (payerName) {
+      return db.select().from(feeSchedules).where(eq(feeSchedules.payerName, payerName));
+    }
+    return db.select().from(feeSchedules).orderBy(feeSchedules.payerName);
+  }
+
+  async createFeeSchedule(data: InsertFeeSchedule): Promise<FeeSchedule> {
+    const [schedule] = await db.insert(feeSchedules).values(data).returning();
+    return schedule;
   }
 }
 

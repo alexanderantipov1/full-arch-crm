@@ -76,10 +76,54 @@ const fullArchPackages = [
   },
 ];
 
+const cosmeticPackages = [
+  {
+    name: "Smile Design Package",
+    description: "Digital smile design, temporary try-in, final zirconia",
+    addOnCost: 4500,
+  },
+  {
+    name: "Pink Aesthetics",
+    description: "Gingival ceramic for natural tissue appearance",
+    addOnCost: 2500,
+  },
+  {
+    name: "Premium Zirconia Upgrade",
+    description: "Multilayer zirconia with individual characterization",
+    addOnCost: 6000,
+  },
+];
+
+const orthoPreauth = {
+  commonCodes: [
+    { code: "D8080", description: "Comprehensive orthodontic treatment - adult", fee: 6500 },
+    { code: "D8090", description: "Comprehensive orthodontic treatment - child", fee: 5500 },
+    { code: "D8670", description: "Periodic orthodontic treatment visit", fee: 250 },
+  ],
+  requiredDocs: [
+    "Panoramic radiograph",
+    "Cephalometric radiograph",
+    "Intraoral photos (9 views)",
+    "Study models or digital scans",
+    "Treatment plan narrative",
+  ],
+};
+
 export default function TreatmentPlansPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showPackages, setShowPackages] = useState(false);
+  const [showCopayCalculator, setShowCopayCalculator] = useState(false);
+  const [showCosmeticPackages, setShowCosmeticPackages] = useState(false);
+  const [showOrthoPreauth, setShowOrthoPreauth] = useState(false);
+  
+  const [copayCalc, setCopayCalc] = useState({
+    treatmentCost: 35000,
+    medicalDeductible: 2500,
+    medicalCoinsurance: 80,
+    dentalMax: 2000,
+    medicalMaxOop: 8000,
+  });
 
   const { data: plans, isLoading } = useQuery<TreatmentPlan[]>({
     queryKey: ["/api/treatment-plans"],

@@ -7,9 +7,11 @@ Full Arch CRM is a comprehensive practice management system designed specificall
 - **Patient Management**: Complete demographics, medical history, dental info
 - **Treatment Planning**: AI-assisted full arch implant planning (All-on-4, All-on-6) with cost estimation
 - **Medical Billing**: CDT/ICD-10 coding, prior authorizations, claims management, denial tracking with AI appeals
+- **Intelligent Coding Engine**: CDT→CPT/ICD-10 cross-coding with AI-powered suggestions (99.2% accuracy target)
 - **AI Assistant**: Medical necessity letters, appeal letter drafting, insurance coding guidance
 - **Scheduling**: Appointment calendar for surgeries, consultations, follow-ups
 - **Insurance Strategy**: Medical vs dental billing guidance, approval optimization
+- **Provider Portal**: Referring dentist/orthodontist management, care reports
 
 ## Technology Stack
 - **Frontend**: React + TypeScript, Vite, TailwindCSS, Shadcn/UI
@@ -36,6 +38,8 @@ Full Arch CRM is a comprehensive practice management system designed specificall
 │   │   │   ├── treatment-plans.tsx
 │   │   │   ├── appointments.tsx
 │   │   │   ├── billing.tsx   # Claims & insurance management
+│   │   │   ├── coding-engine.tsx  # CDT→CPT/ICD-10 cross-coding
+│   │   │   ├── providers.tsx  # Referring providers management
 │   │   │   └── ai-assistant.tsx
 │   │   ├── hooks/            # Custom React hooks
 │   │   ├── lib/              # Utilities
@@ -71,6 +75,8 @@ Key tables:
 - `follow_ups`: Patient follow-up tracking
 - `care_reports`: Continuity of care documentation for referring providers
 - `referring_providers`: Referring dentists and orthodontists
+- `code_cross_reference`: CDT→CPT/ICD-10 code mappings
+- `fee_schedules`: Payer-specific fee schedules
 
 ## Key API Endpoints
 - `GET/POST /api/patients` - Patient CRUD
@@ -82,6 +88,9 @@ Key tables:
 - `POST /api/ai/diagnosis` - AI treatment recommendations
 - `POST /api/ai/medical-necessity-letter` - Generate letters
 - `POST /api/ai/appeal-letter` - Generate denial appeals
+- `GET/POST /api/coding/cross-references` - Code cross-reference management
+- `GET/POST /api/coding/fee-schedules` - Fee schedule management
+- `POST /api/coding/suggest` - AI-powered code suggestions
 
 ## Design Theme
 Medical professional theme with:
