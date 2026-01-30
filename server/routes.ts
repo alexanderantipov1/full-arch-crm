@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replit_integrations/auth/replitAuth";
+import { registerAuthRoutes } from "./replit_integrations/auth/routes";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import OpenAI from "openai";
 import {
@@ -36,6 +37,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Setup auth
   await setupAuth(app);
+  registerAuthRoutes(app);
 
   // Register chat routes for AI
   registerChatRoutes(app);
