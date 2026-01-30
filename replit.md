@@ -57,12 +57,20 @@ Key tables:
 - `patients`: Core patient demographics
 - `medical_history`: Medical conditions, allergies, medications
 - `dental_info`: Dental history, missing teeth, existing implants
+- `facial_evaluation`: Arnett & Gunson protocol data, airway assessment
+- `cephalometrics`: Cephalometric measurements (SNA, SNB, ANB, FMA, etc.)
 - `insurance`: Medical/dental coverage
 - `treatment_plans`: Full arch treatment plans with procedures and costs
+- `prior_authorizations`: Prior auth workflow with peer-to-peer tracking
+- `full_arch_exams`: Comprehensive full arch implant evaluations
+- `medical_consults`: Medical clearance and consultation requests
 - `appointments`: Scheduling
 - `billing_claims`: Insurance claims with CDT/ICD codes
 - `clinical_notes`: Clinical documentation
 - `surgery_reports`: Op reports
+- `follow_ups`: Patient follow-up tracking
+- `care_reports`: Continuity of care documentation for referring providers
+- `referring_providers`: Referring dentists and orthodontists
 
 ## Key API Endpoints
 - `GET/POST /api/patients` - Patient CRUD

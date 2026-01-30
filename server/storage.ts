@@ -14,6 +14,12 @@ import {
   appointments,
   surgeryReports,
   billingClaims,
+  cephalometrics,
+  priorAuthorizations,
+  medicalConsults,
+  fullArchExams,
+  followUps,
+  careReports,
   users,
   type Patient,
   type InsertPatient,
@@ -39,6 +45,18 @@ import {
   type InsertSurgeryReport,
   type BillingClaim,
   type InsertBillingClaim,
+  type Cephalometric,
+  type InsertCephalometric,
+  type PriorAuthorization,
+  type InsertPriorAuthorization,
+  type MedicalConsult,
+  type InsertMedicalConsult,
+  type FullArchExam,
+  type InsertFullArchExam,
+  type FollowUp,
+  type InsertFollowUp,
+  type CareReport,
+  type InsertCareReport,
   type User,
   type UpsertUser,
 } from "@shared/schema";
@@ -112,6 +130,41 @@ export interface IStorage {
     deniedClaims: number;
     averageReimbursement: number;
   }>;
+
+  // Cephalometrics
+  getPatientCephalometrics(patientId: number): Promise<Cephalometric[]>;
+  createCephalometric(data: InsertCephalometric): Promise<Cephalometric>;
+
+  // Prior Authorizations
+  getPriorAuthorizations(filters?: { patientId?: number; status?: string }): Promise<PriorAuthorization[]>;
+  getPriorAuthorization(id: number): Promise<PriorAuthorization | undefined>;
+  createPriorAuthorization(data: InsertPriorAuthorization): Promise<PriorAuthorization>;
+  updatePriorAuthorization(id: number, data: Partial<InsertPriorAuthorization>): Promise<PriorAuthorization | undefined>;
+
+  // Medical Consults
+  getMedicalConsults(patientId: number): Promise<MedicalConsult[]>;
+  createMedicalConsult(data: InsertMedicalConsult): Promise<MedicalConsult>;
+  updateMedicalConsult(id: number, data: Partial<InsertMedicalConsult>): Promise<MedicalConsult | undefined>;
+
+  // Full Arch Exams
+  getPatientFullArchExams(patientId: number): Promise<FullArchExam[]>;
+  createFullArchExam(data: InsertFullArchExam): Promise<FullArchExam>;
+  updateFullArchExam(id: number, data: Partial<InsertFullArchExam>): Promise<FullArchExam | undefined>;
+
+  // Follow-ups
+  getFollowUps(filters?: { patientId?: number; status?: string }): Promise<FollowUp[]>;
+  createFollowUp(data: InsertFollowUp): Promise<FollowUp>;
+  updateFollowUp(id: number, data: Partial<InsertFollowUp>): Promise<FollowUp | undefined>;
+
+  // Care Reports
+  getCareReports(patientId: number): Promise<CareReport[]>;
+  createCareReport(data: InsertCareReport): Promise<CareReport>;
+
+  // Referring Providers
+  getReferringProviders(): Promise<ReferringProvider[]>;
+  getReferringProvider(id: number): Promise<ReferringProvider | undefined>;
+  createReferringProvider(data: InsertReferringProvider): Promise<ReferringProvider>;
+  updateReferringProvider(id: number, data: Partial<InsertReferringProvider>): Promise<ReferringProvider | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -444,6 +497,137 @@ export class DatabaseStorage implements IStorage {
       deniedClaims: Number(deniedCount?.count) || 0,
       averageReimbursement: avgReimb,
     };
+  }
+
+  // Cephalometrics
+  async getPatientCephalometrics(patientId: number): Promise<Cephalometric[]> {
+    return db.select().from(cephalometrics).where(eq(cephalometrics.patientId, patientId)).orderBy(desc(cephalometrics.createdAt));
+  }
+
+  async createCephalometric(data: InsertCephalometric): Promise<Cephalometric> {
+    const [ceph] = await db.insert(cephalometrics).values(data).returning();
+    return ceph;
+  }
+
+  // Prior Authorizations
+  async getPriorAuthorizations(filters?: { patientId?: number; status?: string }): Promise<PriorAuthorization[]> {
+    const conditions = [];
+    if (filters?.patientId) {
+      conditions.push(eq(priorAuthorizations.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(priorAuthorizations.status, filters.status));
+    }
+
+    if (conditions.length > 0) {
+      return db.select().from(priorAuthorizations).where(and(...conditions)).orderBy(desc(priorAuthorizations.createdAt));
+    }
+    return db.select().from(priorAuthorizations).orderBy(desc(priorAuthorizations.createdAt));
+  }
+
+  async getPriorAuthorization(id: number): Promise<PriorAuthorization | undefined> {
+    const [auth] = await db.select().from(priorAuthorizations).where(eq(priorAuthorizations.id, id));
+    return auth;
+  }
+
+  async createPriorAuthorization(data: InsertPriorAuthorization): Promise<PriorAuthorization> {
+    const [auth] = await db.insert(priorAuthorizations).values(data).returning();
+    return auth;
+  }
+
+  async updatePriorAuthorization(id: number, data: Partial<InsertPriorAuthorization>): Promise<PriorAuthorization | undefined> {
+    const [auth] = await db
+      .update(priorAuthorizations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(priorAuthorizations.id, id))
+      .returning();
+    return auth;
+  }
+
+  // Medical Consults
+  async getMedicalConsults(patientId: number): Promise<MedicalConsult[]> {
+    return db.select().from(medicalConsults).where(eq(medicalConsults.patientId, patientId)).orderBy(desc(medicalConsults.createdAt));
+  }
+
+  async createMedicalConsult(data: InsertMedicalConsult): Promise<MedicalConsult> {
+    const [consult] = await db.insert(medicalConsults).values(data).returning();
+    return consult;
+  }
+
+  async updateMedicalConsult(id: number, data: Partial<InsertMedicalConsult>): Promise<MedicalConsult | undefined> {
+    const [consult] = await db.update(medicalConsults).set(data).where(eq(medicalConsults.id, id)).returning();
+    return consult;
+  }
+
+  // Full Arch Exams
+  async getPatientFullArchExams(patientId: number): Promise<FullArchExam[]> {
+    return db.select().from(fullArchExams).where(eq(fullArchExams.patientId, patientId)).orderBy(desc(fullArchExams.createdAt));
+  }
+
+  async createFullArchExam(data: InsertFullArchExam): Promise<FullArchExam> {
+    const [exam] = await db.insert(fullArchExams).values(data).returning();
+    return exam;
+  }
+
+  async updateFullArchExam(id: number, data: Partial<InsertFullArchExam>): Promise<FullArchExam | undefined> {
+    const [exam] = await db.update(fullArchExams).set(data).where(eq(fullArchExams.id, id)).returning();
+    return exam;
+  }
+
+  // Follow-ups
+  async getFollowUps(filters?: { patientId?: number; status?: string }): Promise<FollowUp[]> {
+    const conditions = [];
+    if (filters?.patientId) {
+      conditions.push(eq(followUps.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(followUps.status, filters.status));
+    }
+
+    if (conditions.length > 0) {
+      return db.select().from(followUps).where(and(...conditions)).orderBy(desc(followUps.createdAt));
+    }
+    return db.select().from(followUps).orderBy(desc(followUps.createdAt));
+  }
+
+  async createFollowUp(data: InsertFollowUp): Promise<FollowUp> {
+    const [fu] = await db.insert(followUps).values(data).returning();
+    return fu;
+  }
+
+  async updateFollowUp(id: number, data: Partial<InsertFollowUp>): Promise<FollowUp | undefined> {
+    const [fu] = await db.update(followUps).set(data).where(eq(followUps.id, id)).returning();
+    return fu;
+  }
+
+  // Care Reports
+  async getCareReports(patientId: number): Promise<CareReport[]> {
+    return db.select().from(careReports).where(eq(careReports.patientId, patientId)).orderBy(desc(careReports.createdAt));
+  }
+
+  async createCareReport(data: InsertCareReport): Promise<CareReport> {
+    const [report] = await db.insert(careReports).values(data).returning();
+    return report;
+  }
+
+  // Referring Providers
+  async getReferringProviders(): Promise<ReferringProvider[]> {
+    return db.select().from(referringProviders).orderBy(referringProviders.lastName);
+  }
+
+  async getReferringProvider(id: number): Promise<ReferringProvider | undefined> {
+    const [provider] = await db.select().from(referringProviders).where(eq(referringProviders.id, id));
+    return provider;
+  }
+
+  async createReferringProvider(data: InsertReferringProvider): Promise<ReferringProvider> {
+    const [provider] = await db.insert(referringProviders).values(data).returning();
+    return provider;
+  }
+
+  async updateReferringProvider(id: number, data: Partial<InsertReferringProvider>): Promise<ReferringProvider | undefined> {
+    const [provider] = await db.update(referringProviders).set(data).where(eq(referringProviders.id, id)).returning();
+    return provider;
   }
 }
 

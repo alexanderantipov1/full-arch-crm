@@ -48,6 +48,8 @@ const features = [
 
 const benefits = [
   "Full arch implant treatment planning (All-on-4, All-on-6)",
+  "Arnett & Gunson protocols for facial/airway evaluation",
+  "Cephalometric analysis and interpretation",
   "Medical necessity letter generation with AI",
   "Automated insurance pre-authorization workflow",
   "Denial management with AI-powered appeals",

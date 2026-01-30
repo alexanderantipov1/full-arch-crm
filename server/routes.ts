@@ -14,6 +14,13 @@ import {
   insertAppointmentSchema,
   insertClinicalNoteSchema,
   insertBillingClaimSchema,
+  insertCephalometricSchema,
+  insertPriorAuthorizationSchema,
+  insertMedicalConsultSchema,
+  insertFullArchExamSchema,
+  insertFollowUpSchema,
+  insertCareReportSchema,
+  insertReferringProviderSchema,
 } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -398,6 +405,271 @@ export async function registerRoutes(
     }
   });
 
+  // ============ PRIOR AUTHORIZATIONS ============
+  app.get("/api/prior-authorizations", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = req.query.patientId ? parseInt(String(req.query.patientId)) : undefined;
+      const status = req.query.status ? String(req.query.status) : undefined;
+      const auths = await storage.getPriorAuthorizations({ patientId, status });
+      res.json(auths);
+    } catch (error) {
+      console.error("Error fetching prior authorizations:", error);
+      res.status(500).json({ message: "Failed to fetch prior authorizations" });
+    }
+  });
+
+  app.get("/api/prior-authorizations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const auth = await storage.getPriorAuthorization(id);
+      if (!auth) {
+        return res.status(404).json({ message: "Prior authorization not found" });
+      }
+      res.json(auth);
+    } catch (error) {
+      console.error("Error fetching prior authorization:", error);
+      res.status(500).json({ message: "Failed to fetch prior authorization" });
+    }
+  });
+
+  app.post("/api/prior-authorizations", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertPriorAuthorizationSchema.parse(req.body);
+      const auth = await storage.createPriorAuthorization(data);
+      res.status(201).json(auth);
+    } catch (error: any) {
+      console.error("Error creating prior authorization:", error);
+      res.status(400).json({ message: error.message || "Failed to create prior authorization" });
+    }
+  });
+
+  app.patch("/api/prior-authorizations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = insertPriorAuthorizationSchema.partial().parse(req.body);
+      const auth = await storage.updatePriorAuthorization(id, data);
+      if (!auth) {
+        return res.status(404).json({ message: "Prior authorization not found" });
+      }
+      res.json(auth);
+    } catch (error: any) {
+      console.error("Error updating prior authorization:", error);
+      res.status(400).json({ message: error.message || "Failed to update prior authorization" });
+    }
+  });
+
+  // ============ CEPHALOMETRICS ============
+  app.get("/api/patients/:patientId/cephalometrics", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const cephs = await storage.getPatientCephalometrics(patientId);
+      res.json(cephs);
+    } catch (error) {
+      console.error("Error fetching cephalometrics:", error);
+      res.status(500).json({ message: "Failed to fetch cephalometrics" });
+    }
+  });
+
+  app.post("/api/cephalometrics", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertCephalometricSchema.parse(req.body);
+      const ceph = await storage.createCephalometric(data);
+      res.status(201).json(ceph);
+    } catch (error: any) {
+      console.error("Error creating cephalometric:", error);
+      res.status(400).json({ message: error.message || "Failed to create cephalometric" });
+    }
+  });
+
+  // ============ MEDICAL CONSULTS ============
+  app.get("/api/patients/:patientId/consults", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const consults = await storage.getMedicalConsults(patientId);
+      res.json(consults);
+    } catch (error) {
+      console.error("Error fetching medical consults:", error);
+      res.status(500).json({ message: "Failed to fetch medical consults" });
+    }
+  });
+
+  app.post("/api/consults", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertMedicalConsultSchema.parse(req.body);
+      const consult = await storage.createMedicalConsult(data);
+      res.status(201).json(consult);
+    } catch (error: any) {
+      console.error("Error creating medical consult:", error);
+      res.status(400).json({ message: error.message || "Failed to create medical consult" });
+    }
+  });
+
+  app.patch("/api/consults/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = insertMedicalConsultSchema.partial().parse(req.body);
+      const consult = await storage.updateMedicalConsult(id, data);
+      if (!consult) {
+        return res.status(404).json({ message: "Medical consult not found" });
+      }
+      res.json(consult);
+    } catch (error: any) {
+      console.error("Error updating medical consult:", error);
+      res.status(400).json({ message: error.message || "Failed to update medical consult" });
+    }
+  });
+
+  // ============ FULL ARCH EXAMS ============
+  app.get("/api/patients/:patientId/full-arch-exams", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const exams = await storage.getPatientFullArchExams(patientId);
+      res.json(exams);
+    } catch (error) {
+      console.error("Error fetching full arch exams:", error);
+      res.status(500).json({ message: "Failed to fetch full arch exams" });
+    }
+  });
+
+  app.post("/api/full-arch-exams", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertFullArchExamSchema.parse(req.body);
+      const exam = await storage.createFullArchExam(data);
+      res.status(201).json(exam);
+    } catch (error: any) {
+      console.error("Error creating full arch exam:", error);
+      res.status(400).json({ message: error.message || "Failed to create full arch exam" });
+    }
+  });
+
+  app.patch("/api/full-arch-exams/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = insertFullArchExamSchema.partial().parse(req.body);
+      const exam = await storage.updateFullArchExam(id, data);
+      if (!exam) {
+        return res.status(404).json({ message: "Full arch exam not found" });
+      }
+      res.json(exam);
+    } catch (error: any) {
+      console.error("Error updating full arch exam:", error);
+      res.status(400).json({ message: error.message || "Failed to update full arch exam" });
+    }
+  });
+
+  // ============ FOLLOW-UPS ============
+  app.get("/api/follow-ups", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = req.query.patientId ? parseInt(String(req.query.patientId)) : undefined;
+      const status = req.query.status ? String(req.query.status) : undefined;
+      const followUps = await storage.getFollowUps({ patientId, status });
+      res.json(followUps);
+    } catch (error) {
+      console.error("Error fetching follow-ups:", error);
+      res.status(500).json({ message: "Failed to fetch follow-ups" });
+    }
+  });
+
+  app.post("/api/follow-ups", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertFollowUpSchema.parse(req.body);
+      const followUp = await storage.createFollowUp(data);
+      res.status(201).json(followUp);
+    } catch (error: any) {
+      console.error("Error creating follow-up:", error);
+      res.status(400).json({ message: error.message || "Failed to create follow-up" });
+    }
+  });
+
+  app.patch("/api/follow-ups/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = insertFollowUpSchema.partial().parse(req.body);
+      const followUp = await storage.updateFollowUp(id, data);
+      if (!followUp) {
+        return res.status(404).json({ message: "Follow-up not found" });
+      }
+      res.json(followUp);
+    } catch (error: any) {
+      console.error("Error updating follow-up:", error);
+      res.status(400).json({ message: error.message || "Failed to update follow-up" });
+    }
+  });
+
+  // ============ CARE REPORTS ============
+  app.get("/api/patients/:patientId/care-reports", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const reports = await storage.getCareReports(patientId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching care reports:", error);
+      res.status(500).json({ message: "Failed to fetch care reports" });
+    }
+  });
+
+  app.post("/api/care-reports", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertCareReportSchema.parse(req.body);
+      const report = await storage.createCareReport(data);
+      res.status(201).json(report);
+    } catch (error: any) {
+      console.error("Error creating care report:", error);
+      res.status(400).json({ message: error.message || "Failed to create care report" });
+    }
+  });
+
+  // ============ REFERRING PROVIDERS ============
+  app.get("/api/referring-providers", isAuthenticated, async (req, res) => {
+    try {
+      const providers = await storage.getReferringProviders();
+      res.json(providers);
+    } catch (error) {
+      console.error("Error fetching referring providers:", error);
+      res.status(500).json({ message: "Failed to fetch referring providers" });
+    }
+  });
+
+  app.get("/api/referring-providers/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const provider = await storage.getReferringProvider(id);
+      if (!provider) {
+        return res.status(404).json({ message: "Referring provider not found" });
+      }
+      res.json(provider);
+    } catch (error) {
+      console.error("Error fetching referring provider:", error);
+      res.status(500).json({ message: "Failed to fetch referring provider" });
+    }
+  });
+
+  app.post("/api/referring-providers", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertReferringProviderSchema.parse(req.body);
+      const provider = await storage.createReferringProvider(data);
+      res.status(201).json(provider);
+    } catch (error: any) {
+      console.error("Error creating referring provider:", error);
+      res.status(400).json({ message: error.message || "Failed to create referring provider" });
+    }
+  });
+
+  app.patch("/api/referring-providers/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = insertReferringProviderSchema.partial().parse(req.body);
+      const provider = await storage.updateReferringProvider(id, data);
+      if (!provider) {
+        return res.status(404).json({ message: "Referring provider not found" });
+      }
+      res.json(provider);
+    } catch (error: any) {
+      console.error("Error updating referring provider:", error);
+      res.status(400).json({ message: error.message || "Failed to update referring provider" });
+    }
+  });
+
   // ============ AI ASSISTANT ============
   app.post("/api/ai/chat", isAuthenticated, async (req, res) => {
     try {
@@ -407,7 +679,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Content is required" });
       }
 
-      const systemPrompt = `You are an expert dental implant assistant specializing in full arch dental implants (All-on-4, All-on-6) and oral surgery. You help dental practices maximize insurance approvals and streamline billing. You assist with:
+      const systemPrompt = `You are an expert dental implant assistant specializing in full arch dental implants (All-on-4, All-on-6), oral surgery, and comprehensive facial/airway evaluation. You help dental practices maximize insurance approvals and streamline billing. You assist with:
 
 1. Treatment Planning: Provide guidance on case assessment for full arch implants, implant positioning, bone grafting needs, and prosthetic options (hybrid, zirconia, PMMA).
 
@@ -424,6 +696,7 @@ export async function registerRoutes(
    - K08.101-K08.109: Loss due to trauma, periodontal disease, caries
    - M26.5: Dentofacial functional abnormalities
    - R63.3: Feeding difficulties (nutritional impact)
+   - G47.33: Obstructive sleep apnea (for airway cases)
 
 3. Prior Authorization: Assist with submitting prior authorizations, including documentation requirements and clinical evidence needed for approval.
 
@@ -432,6 +705,19 @@ export async function registerRoutes(
 5. Denial Appeals: Guide practices through the appeals process with evidence-based arguments, citing peer-reviewed literature and clinical guidelines.
 
 6. Insurance Strategy: Advise on whether to bill medical vs dental insurance, dual coverage strategies, and when medical insurance is more likely to approve full arch cases (trauma, cancer reconstruction, severe atrophy).
+
+7. Arnett & Gunson Protocols: Provide guidance on facial evaluation protocols including:
+   - Facial profile analysis (convex, straight, concave)
+   - Soft tissue evaluation and lip competence
+   - Airway assessment and Mallampati scoring
+   - Bite classification and occlusion analysis
+   - Cephalometric landmarks and measurements (SNA, SNB, ANB, FMA)
+
+8. Cephalometric Analysis: Help interpret cephalometric measurements for treatment planning, including skeletal classification, growth patterns, and surgical planning considerations.
+
+9. Airway Evaluation: Assist with airway assessment including tongue position, tonsil size, neck circumference, and sleep apnea considerations that may affect treatment planning.
+
+10. Medical Consultation Requests: Generate appropriate preoperative medical clearance requests with necessary labs and specialist consultations.
 
 Always provide accurate, professional guidance. When discussing billing codes or insurance, note that practices should verify with their specific payers.`;
 

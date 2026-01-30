@@ -230,6 +230,161 @@ export const surgeryReports = pgTable("surgery_reports", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+// Cephalometric Analysis
+export const cephalometrics = pgTable("cephalometrics", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  analysisDate: date("analysis_date").notNull(),
+  sna: decimal("sna", { precision: 5, scale: 2 }),
+  snb: decimal("snb", { precision: 5, scale: 2 }),
+  anb: decimal("anb", { precision: 5, scale: 2 }),
+  fma: decimal("fma", { precision: 5, scale: 2 }),
+  impa: decimal("impa", { precision: 5, scale: 2 }),
+  upperLipToEPlane: decimal("upper_lip_e_plane", { precision: 5, scale: 2 }),
+  lowerLipToEPlane: decimal("lower_lip_e_plane", { precision: 5, scale: 2 }),
+  nasalTipProjection: decimal("nasal_tip_projection", { precision: 5, scale: 2 }),
+  upperIncisorToNADegrees: decimal("upper_incisor_na_deg", { precision: 5, scale: 2 }),
+  lowerIncisorToNBDegrees: decimal("lower_incisor_nb_deg", { precision: 5, scale: 2 }),
+  softTissueAnalysis: text("soft_tissue_analysis"),
+  skeletalClassification: text("skeletal_classification"),
+  growthPattern: text("growth_pattern"),
+  interpretation: text("interpretation"),
+  imageUrl: text("image_url"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Prior Authorization Workflow
+export const priorAuthorizations = pgTable("prior_authorizations", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  treatmentPlanId: integer("treatment_plan_id").references(() => treatmentPlans.id),
+  insuranceId: integer("insurance_id").references(() => insurance.id),
+  authType: text("auth_type").notNull(),
+  status: text("status").notNull().default("pending"),
+  submissionDate: date("submission_date"),
+  responseDate: date("response_date"),
+  expirationDate: date("expiration_date"),
+  authNumber: text("auth_number"),
+  requestedProcedures: jsonb("requested_procedures"),
+  approvedProcedures: jsonb("approved_procedures"),
+  denialReason: text("denial_reason"),
+  medicalNecessityLetter: text("medical_necessity_letter"),
+  supportingDocuments: text("supporting_documents").array(),
+  peerToPeerRequired: boolean("peer_to_peer_required").default(false),
+  peerToPeerDate: timestamp("peer_to_peer_date"),
+  peerToPeerNotes: text("peer_to_peer_notes"),
+  peerToPeerOutcome: text("peer_to_peer_outcome"),
+  appealCount: integer("appeal_count").default(0),
+  lastAppealDate: date("last_appeal_date"),
+  appealLetter: text("appeal_letter"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Medical Consultation Requests
+export const medicalConsults = pgTable("medical_consults", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  consultType: text("consult_type").notNull(),
+  specialty: text("specialty").notNull(),
+  urgency: text("urgency").notNull().default("routine"),
+  status: text("status").notNull().default("pending"),
+  requestDate: date("request_date").notNull(),
+  scheduledDate: date("scheduled_date"),
+  completedDate: date("completed_date"),
+  referringPhysician: text("referring_physician"),
+  consultingPhysician: text("consulting_physician"),
+  reason: text("reason").notNull(),
+  clinicalQuestion: text("clinical_question"),
+  requiredLabs: text("required_labs").array(),
+  labResults: jsonb("lab_results"),
+  findings: text("findings"),
+  recommendations: text("recommendations"),
+  clearanceStatus: text("clearance_status"),
+  clearanceNotes: text("clearance_notes"),
+  surgeryDate: date("surgery_date"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Comprehensive Full Arch Exam
+export const fullArchExams = pgTable("full_arch_exams", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  examDate: date("exam_date").notNull(),
+  examiner: text("examiner"),
+  chiefComplaint: text("chief_complaint"),
+  presentIllness: text("present_illness"),
+  edentulousArch: text("edentulous_arch"),
+  existingProsthesis: text("existing_prosthesis"),
+  prosthesisCondition: text("prosthesis_condition"),
+  boneQuality: text("bone_quality"),
+  boneQuantity: text("bone_quantity"),
+  sinusProximity: text("sinus_proximity"),
+  nerveCanalProximity: text("nerve_canal_proximity"),
+  softTissueAssessment: text("soft_tissue_assessment"),
+  keratinizedTissue: text("keratinized_tissue"),
+  occlusionAssessment: text("occlusion_assessment"),
+  verticalDimension: text("vertical_dimension"),
+  interarchSpace: text("interarch_space"),
+  estheticAssessment: text("esthetic_assessment"),
+  smileLine: text("smile_line"),
+  lipSupport: text("lip_support"),
+  phoneticsAssessment: text("phonetics_assessment"),
+  nutritionalStatus: text("nutritional_status"),
+  functionalLimitations: text("functional_limitations"),
+  patientExpectations: text("patient_expectations"),
+  treatmentGoals: text("treatment_goals"),
+  recommendedApproach: text("recommended_approach"),
+  implantCount: integer("implant_count"),
+  prostheticType: text("prosthetic_type"),
+  graftingNeeded: boolean("grafting_needed").default(false),
+  graftingType: text("grafting_type"),
+  cbctFindings: text("cbct_findings"),
+  panorexFindings: text("panorex_findings"),
+  photographyComplete: boolean("photography_complete").default(false),
+  impressionsComplete: boolean("impressions_complete").default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Follow-up Tracking
+export const followUps = pgTable("follow_ups", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  treatmentPlanId: integer("treatment_plan_id").references(() => treatmentPlans.id),
+  followUpType: text("follow_up_type").notNull(),
+  dueDate: date("due_date").notNull(),
+  completedDate: date("completed_date"),
+  status: text("status").notNull().default("pending"),
+  priority: text("priority").notNull().default("normal"),
+  assignedTo: text("assigned_to"),
+  notes: text("notes"),
+  outcome: text("outcome"),
+  nextAction: text("next_action"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Continuity of Care Reports
+export const careReports = pgTable("care_reports", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  recipientProviderId: integer("recipient_provider_id").references(() => referringProviders.id),
+  reportType: text("report_type").notNull(),
+  reportDate: date("report_date").notNull(),
+  sentDate: date("sent_date"),
+  sentMethod: text("sent_method"),
+  summary: text("summary"),
+  treatmentProvided: text("treatment_provided"),
+  currentStatus: text("current_status"),
+  recommendedFollowUp: text("recommended_follow_up"),
+  attachments: text("attachments").array(),
+  acknowledged: boolean("acknowledged").default(false),
+  acknowledgedDate: date("acknowledged_date"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
 // Billing/Claims
 export const billingClaims = pgTable("billing_claims", {
   id: serial("id").primaryKey(),
@@ -258,6 +413,7 @@ export const patientsRelations = relations(patients, ({ many }) => ({
   medicalHistory: many(medicalHistory),
   dentalInfo: many(dentalInfo),
   facialEvaluation: many(facialEvaluation),
+  cephalometrics: many(cephalometrics),
   insurance: many(insurance),
   referrals: many(patientReferrals),
   notes: many(clinicalNotes),
@@ -266,6 +422,11 @@ export const patientsRelations = relations(patients, ({ many }) => ({
   appointments: many(appointments),
   surgeryReports: many(surgeryReports),
   billingClaims: many(billingClaims),
+  priorAuthorizations: many(priorAuthorizations),
+  medicalConsults: many(medicalConsults),
+  fullArchExams: many(fullArchExams),
+  followUps: many(followUps),
+  careReports: many(careReports),
 }));
 
 // Insert Schemas
@@ -281,6 +442,12 @@ export const insertTreatmentPlanSchema = createInsertSchema(treatmentPlans).omit
 export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true, createdAt: true });
 export const insertSurgeryReportSchema = createInsertSchema(surgeryReports).omit({ id: true, createdAt: true });
 export const insertBillingClaimSchema = createInsertSchema(billingClaims).omit({ id: true, createdAt: true });
+export const insertCephalometricSchema = createInsertSchema(cephalometrics).omit({ id: true, createdAt: true });
+export const insertPriorAuthorizationSchema = createInsertSchema(priorAuthorizations).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertMedicalConsultSchema = createInsertSchema(medicalConsults).omit({ id: true, createdAt: true });
+export const insertFullArchExamSchema = createInsertSchema(fullArchExams).omit({ id: true, createdAt: true });
+export const insertFollowUpSchema = createInsertSchema(followUps).omit({ id: true, createdAt: true });
+export const insertCareReportSchema = createInsertSchema(careReports).omit({ id: true, createdAt: true });
 
 // Types
 export type Patient = typeof patients.$inferSelect;
@@ -307,3 +474,15 @@ export type SurgeryReport = typeof surgeryReports.$inferSelect;
 export type InsertSurgeryReport = z.infer<typeof insertSurgeryReportSchema>;
 export type BillingClaim = typeof billingClaims.$inferSelect;
 export type InsertBillingClaim = z.infer<typeof insertBillingClaimSchema>;
+export type Cephalometric = typeof cephalometrics.$inferSelect;
+export type InsertCephalometric = z.infer<typeof insertCephalometricSchema>;
+export type PriorAuthorization = typeof priorAuthorizations.$inferSelect;
+export type InsertPriorAuthorization = z.infer<typeof insertPriorAuthorizationSchema>;
+export type MedicalConsult = typeof medicalConsults.$inferSelect;
+export type InsertMedicalConsult = z.infer<typeof insertMedicalConsultSchema>;
+export type FullArchExam = typeof fullArchExams.$inferSelect;
+export type InsertFullArchExam = z.infer<typeof insertFullArchExamSchema>;
+export type FollowUp = typeof followUps.$inferSelect;
+export type InsertFollowUp = z.infer<typeof insertFollowUpSchema>;
+export type CareReport = typeof careReports.$inferSelect;
+export type InsertCareReport = z.infer<typeof insertCareReportSchema>;

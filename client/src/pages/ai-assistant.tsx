@@ -267,7 +267,15 @@ export default function AIAssistantPage() {
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <span>Full arch implant expertise</span>
+                <span>Arnett-Gunson protocols</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <span>Cephalometric analysis</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <span>Airway evaluation</span>
               </div>
             </CardContent>
           </Card>
