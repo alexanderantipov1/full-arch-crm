@@ -24,16 +24,25 @@ import {
   Shield,
   AlertTriangle,
   Activity,
+  Ruler,
+  UserCheck,
+  FileCheck,
+  RefreshCw,
+  Wind,
 } from "lucide-react";
 import { format } from "date-fns";
-import type { Patient, MedicalHistory, DentalInfo, Insurance, TreatmentPlan, Appointment } from "@shared/schema";
+import type { Patient, MedicalHistory, DentalInfo, Insurance, TreatmentPlan, Appointment, FacialEvaluation, Cephalometric, MedicalConsult, FullArchExam } from "@shared/schema";
 
 interface PatientDetailData extends Patient {
   medicalHistory?: MedicalHistory;
   dentalInfo?: DentalInfo;
+  facialEvaluation?: FacialEvaluation;
   insurance?: Insurance[];
   treatmentPlans?: TreatmentPlan[];
   appointments?: Appointment[];
+  cephalometrics?: Cephalometric[];
+  medicalConsults?: MedicalConsult[];
+  fullArchExams?: FullArchExam[];
 }
 
 export default function PatientDetailPage() {
@@ -161,10 +170,11 @@ export default function PatientDetailPage() {
       </Card>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
           <TabsTrigger value="medical" data-testid="tab-medical">Medical History</TabsTrigger>
           <TabsTrigger value="dental" data-testid="tab-dental">Dental Info</TabsTrigger>
+          <TabsTrigger value="clinical" data-testid="tab-clinical">Clinical Exams</TabsTrigger>
           <TabsTrigger value="insurance" data-testid="tab-insurance">Insurance</TabsTrigger>
           <TabsTrigger value="treatment" data-testid="tab-treatment">Treatment Plans</TabsTrigger>
           <TabsTrigger value="billing" data-testid="tab-billing">Billing</TabsTrigger>
@@ -434,6 +444,209 @@ export default function PatientDetailPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="clinical" className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Arnett-Gunson Facial Evaluation
+                  </CardTitle>
+                  <CardDescription>Comprehensive facial profile analysis</CardDescription>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Exam
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {patient.facialEvaluation ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Profile Type</p>
+                        <p className="font-medium capitalize">{patient.facialEvaluation.facialProfile || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Lip Position</p>
+                        <p className="font-medium">{patient.facialEvaluation.lipPosition || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Bite Classification</p>
+                        <p className="font-medium">{patient.facialEvaluation.biteClassification || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Mallampati Score</p>
+                        <Badge variant={patient.facialEvaluation.mallampatiScore && parseInt(patient.facialEvaluation.mallampatiScore) >= 3 ? "destructive" : "secondary"}>
+                          Class {patient.facialEvaluation.mallampatiScore || "N/A"}
+                        </Badge>
+                      </div>
+                    </div>
+                    {patient.facialEvaluation.airwayAssessment && (
+                      <div>
+                        <p className="text-muted-foreground text-sm mb-1">Airway Assessment</p>
+                        <p className="text-sm">{patient.facialEvaluation.airwayAssessment}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <User className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
+                    <p className="text-sm text-muted-foreground">No facial evaluation on file</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Ruler className="h-5 w-5" />
+                    Cephalometric Analysis
+                  </CardTitle>
+                  <CardDescription>Skeletal measurements and analysis</CardDescription>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Analysis
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {patient.cephalometrics && patient.cephalometrics.length > 0 ? (
+                  <div className="space-y-3">
+                    {patient.cephalometrics.slice(0, 2).map((ceph) => (
+                      <div key={ceph.id} className="rounded-lg border p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium">
+                            {format(new Date(ceph.analysisDate || new Date()), "MMM d, yyyy")}
+                          </p>
+                          <Badge variant="outline">{ceph.skeletalClassification || "Unclassified"}</Badge>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 text-xs">
+                          <div>
+                            <p className="text-muted-foreground">SNA</p>
+                            <p className="font-medium">{ceph.sna || "-"}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">SNB</p>
+                            <p className="font-medium">{ceph.snb || "-"}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">ANB</p>
+                            <p className="font-medium">{ceph.anb || "-"}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">FMA</p>
+                            <p className="font-medium">{ceph.fma || "-"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Ruler className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
+                    <p className="text-sm text-muted-foreground">No cephalometric data on file</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Wind className="h-5 w-5" />
+                    Full Arch Evaluations
+                  </CardTitle>
+                  <CardDescription>Comprehensive implant evaluations</CardDescription>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Exam
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {patient.fullArchExams && patient.fullArchExams.length > 0 ? (
+                  <div className="space-y-3">
+                    {patient.fullArchExams.slice(0, 2).map((exam) => (
+                      <div key={exam.id} className="rounded-lg border p-3 hover-elevate">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-medium">Full Arch Evaluation</p>
+                          <Badge>{exam.edentulousArch || "Full Arch"}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(exam.examDate), "MMM d, yyyy")}
+                        </p>
+                        {exam.boneQuality && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Bone Quality: {exam.boneQuality}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Wind className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
+                    <p className="text-sm text-muted-foreground">No full arch exams on file</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <UserCheck className="h-5 w-5" />
+                    Medical Consultations
+                  </CardTitle>
+                  <CardDescription>Preoperative clearances and specialist consults</CardDescription>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Request Consult
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {patient.medicalConsults && patient.medicalConsults.length > 0 ? (
+                  <div className="space-y-3">
+                    {patient.medicalConsults.slice(0, 3).map((consult) => (
+                      <div key={consult.id} className="rounded-lg border p-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="font-medium text-sm">{consult.consultType}</p>
+                          <Badge variant={
+                            consult.status === "completed" ? "default" :
+                            consult.status === "pending" ? "secondary" : "outline"
+                          }>
+                            {consult.status}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{consult.consultingPhysician || "Pending assignment"}</p>
+                        {consult.requestDate && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Requested: {format(new Date(consult.requestDate), "MMM d, yyyy")}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <UserCheck className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
+                    <p className="text-sm text-muted-foreground">No medical consultations on file</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="insurance" className="space-y-4">

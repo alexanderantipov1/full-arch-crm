@@ -209,6 +209,9 @@ export class DatabaseStorage implements IStorage {
     const patientInsurance = await db.select().from(insurance).where(eq(insurance.patientId, id));
     const patientPlans = await db.select().from(treatmentPlans).where(eq(treatmentPlans.patientId, id)).orderBy(desc(treatmentPlans.createdAt));
     const patientAppointments = await db.select().from(appointments).where(eq(appointments.patientId, id)).orderBy(desc(appointments.startTime));
+    const patientCephalometrics = await db.select().from(cephalometrics).where(eq(cephalometrics.patientId, id)).orderBy(desc(cephalometrics.createdAt));
+    const patientConsults = await db.select().from(medicalConsults).where(eq(medicalConsults.patientId, id)).orderBy(desc(medicalConsults.createdAt));
+    const patientFullArchExams = await db.select().from(fullArchExams).where(eq(fullArchExams.patientId, id)).orderBy(desc(fullArchExams.createdAt));
 
     return {
       ...patient,
@@ -218,6 +221,9 @@ export class DatabaseStorage implements IStorage {
       insurance: patientInsurance,
       treatmentPlans: patientPlans,
       appointments: patientAppointments,
+      cephalometrics: patientCephalometrics,
+      medicalConsults: patientConsults,
+      fullArchExams: patientFullArchExams,
     };
   }
 
