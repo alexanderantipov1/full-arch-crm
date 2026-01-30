@@ -1,7 +1,7 @@
-# ImplantCRM - HIPAA-Compliant Patient CRM for Dental Implant Practices
+# Full Arch CRM - HIPAA-Compliant Patient CRM for Dental Implant Practices
 
 ## Overview
-ImplantCRM is a comprehensive practice management system designed specifically for dental implant practices, with a strong focus on **medical billing for full arch dental implants** (All-on-4, All-on-6) - the highest-ticket dental procedures.
+Full Arch CRM is a comprehensive practice management system designed specifically for dental implant practices, with a strong focus on **medical billing for full arch dental implants** (All-on-4, All-on-6) - the highest-ticket dental procedures.
 
 ## Core Features
 - **Patient Management**: Complete demographics, medical history, dental info

@@ -64,7 +64,7 @@ export default function Landing() {
             <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Stethoscope className="h-5 w-5" />
             </div>
-            <span className="text-xl font-semibold">ImplantCRM</span>
+            <span className="text-xl font-semibold">Full Arch CRM</span>
           </div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
@@ -169,7 +169,7 @@ export default function Landing() {
           <div className="container mx-auto px-4 text-center">
             <h2 className="mb-4 text-3xl font-bold">Ready to Transform Your Practice?</h2>
             <p className="mx-auto mb-8 max-w-xl opacity-90">
-              Join dental implant practices that trust ImplantCRM for their patient management needs.
+              Join dental implant practices that trust Full Arch CRM for their patient management needs.
             </p>
             <Button
               size="lg"
@@ -191,9 +191,9 @@ export default function Landing() {
         <div className="container mx-auto flex flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground sm:flex-row">
           <div className="flex items-center gap-2">
             <Stethoscope className="h-4 w-4" />
-            <span>ImplantCRM</span>
+            <span>Full Arch CRM</span>
           </div>
-          <p>&copy; {new Date().getFullYear()} ImplantCRM. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Full Arch CRM. All rights reserved.</p>
         </div>
       </footer>
     </div>

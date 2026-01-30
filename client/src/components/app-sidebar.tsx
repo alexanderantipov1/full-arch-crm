@@ -63,7 +63,7 @@ export function AppSidebar() {
             <Stethoscope className="h-5 w-5" />
           </div>
           <div className="flex flex-col">
-            <span className="font-semibold text-sidebar-foreground">ImplantCRM</span>
+            <span className="font-semibold text-sidebar-foreground">Full Arch CRM</span>
             <span className="text-xs text-muted-foreground">Practice Management</span>
           </div>
         </div>
