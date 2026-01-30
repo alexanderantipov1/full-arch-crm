@@ -19,6 +19,7 @@ import PatientDetailPage from "@/pages/patient-detail";
 import TreatmentPlansPage from "@/pages/treatment-plans";
 import AppointmentsPage from "@/pages/appointments";
 import BillingPage from "@/pages/billing";
+import ProvidersPage from "@/pages/providers";
 import AIAssistantPage from "@/pages/ai-assistant";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -73,6 +74,7 @@ function Router() {
         <Route path="/treatment-plans" component={TreatmentPlansPage} />
         <Route path="/appointments" component={AppointmentsPage} />
         <Route path="/billing" component={BillingPage} />
+        <Route path="/providers" component={ProvidersPage} />
         <Route path="/ai-assistant" component={AIAssistantPage} />
         <Route component={NotFound} />
       </Switch>
