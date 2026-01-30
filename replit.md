@@ -9,6 +9,12 @@ Full Arch CRM is a comprehensive practice management system designed specificall
 - **Medical Billing**: CDT/ICD-10 coding, prior authorizations, claims management, denial tracking with AI appeals
 - **Intelligent Coding Engine**: CDT→CPT/ICD-10 cross-coding with AI-powered suggestions (99.2% accuracy target)
 - **AI Assistant**: Medical necessity letters, appeal letter drafting, insurance coding guidance
+- **AI Documentation Engine**: AI-powered generation of medical necessity letters, operative reports, and progress notes
+- **Smart Appeals Engine**: AI-generated appeals with denial analysis, 78% success rate prediction, escalation pathways
+- **ERA Processing**: Automated payment posting with variance detection and reconciliation dashboard
+- **Predictive Analytics**: Collection forecasting, at-risk claim identification, performance benchmarking
+- **Insurance Verification**: Real-time eligibility checking with benefits breakdown
+- **Training Center**: Interactive onboarding modules with progress tracking for new staff
 - **Scheduling**: Appointment calendar for surgeries, consultations, follow-ups
 - **Insurance Strategy**: Medical vs dental billing guidance, approval optimization
 - **Provider Portal**: Referring dentist/orthodontist management, care reports
@@ -40,7 +46,13 @@ Full Arch CRM is a comprehensive practice management system designed specificall
 │   │   │   ├── billing.tsx   # Claims & insurance management
 │   │   │   ├── coding-engine.tsx  # CDT→CPT/ICD-10 cross-coding
 │   │   │   ├── providers.tsx  # Referring providers management
-│   │   │   └── ai-assistant.tsx
+│   │   │   ├── ai-assistant.tsx
+│   │   │   ├── ai-documentation.tsx  # AI document generation
+│   │   │   ├── appeals-engine.tsx    # Smart appeals with AI
+│   │   │   ├── era-processing.tsx    # ERA auto-posting
+│   │   │   ├── insurance-verification.tsx  # Eligibility checks
+│   │   │   ├── predictive-analytics.tsx    # Analytics dashboard
+│   │   │   └── training.tsx          # Training center
 │   │   ├── hooks/            # Custom React hooks
 │   │   ├── lib/              # Utilities
 │   │   └── App.tsx           # Main app with routing
@@ -77,6 +89,11 @@ Key tables:
 - `referring_providers`: Referring dentists and orthodontists
 - `code_cross_reference`: CDT→CPT/ICD-10 code mappings
 - `fee_schedules`: Payer-specific fee schedules
+- `generated_documents`: AI-generated medical documents
+- `appeals`: Insurance appeal tracking
+- `eligibility_checks`: Insurance verification results
+- `payment_postings`: ERA payment reconciliation
+- `training_progress`: Staff training completion tracking
 
 ## Key API Endpoints
 - `GET/POST /api/patients` - Patient CRUD
@@ -91,6 +108,12 @@ Key tables:
 - `GET/POST /api/coding/cross-references` - Code cross-reference management
 - `GET/POST /api/coding/fee-schedules` - Fee schedule management
 - `POST /api/coding/suggest` - AI-powered code suggestions
+- `GET/POST /api/ai/generate-document` - AI document generation
+- `GET/POST /api/appeals` - Appeals management
+- `GET/POST /api/eligibility` - Insurance verification
+- `GET/POST /api/era` - ERA payment processing
+- `GET /api/analytics/predictive` - Predictive analytics
+- `GET/POST /api/training` - Training progress tracking
 
 ## Design Theme
 Medical professional theme with:

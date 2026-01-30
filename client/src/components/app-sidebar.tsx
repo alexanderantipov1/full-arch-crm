@@ -14,6 +14,12 @@ import {
   FileCode,
   Calculator,
   BarChart3,
+  Sparkles,
+  Gavel,
+  Receipt,
+  Shield,
+  TrendingUp,
+  GraduationCap,
 } from "lucide-react";
 import {
   Sidebar,
@@ -40,14 +46,20 @@ const mainNavItems = [
 const clinicalItems = [
   { title: "Clinical Notes", url: "/notes", icon: FileText },
   { title: "AI Assistant", url: "/ai-assistant", icon: MessageSquare },
+  { title: "AI Documentation", url: "/ai-documentation", icon: Sparkles },
   { title: "Exams & Evaluations", url: "/evaluations", icon: Stethoscope },
 ];
 
 const adminItems = [
   { title: "Billing & Claims", url: "/billing", icon: DollarSign },
   { title: "Coding Engine", url: "/coding", icon: FileCode },
+  { title: "ERA Processing", url: "/era-processing", icon: Receipt },
+  { title: "Appeals Engine", url: "/appeals", icon: Gavel },
+  { title: "Eligibility Check", url: "/eligibility", icon: Shield },
   { title: "Cost Calculator", url: "/calculator", icon: Calculator },
   { title: "Revenue Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Predictive Analytics", url: "/predictive", icon: TrendingUp },
+  { title: "Training Center", url: "/training", icon: GraduationCap },
   { title: "Referring Providers", url: "/providers", icon: Building2 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];

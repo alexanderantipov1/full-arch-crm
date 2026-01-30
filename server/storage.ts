@@ -22,6 +22,11 @@ import {
   careReports,
   codeCrossReference,
   feeSchedules,
+  generatedDocuments,
+  appeals,
+  eligibilityChecks,
+  paymentPostings,
+  trainingProgress,
   users,
   type Patient,
   type InsertPatient,
@@ -63,6 +68,16 @@ import {
   type InsertCodeCrossReference,
   type FeeSchedule,
   type InsertFeeSchedule,
+  type GeneratedDocument,
+  type InsertGeneratedDocument,
+  type Appeal,
+  type InsertAppeal,
+  type EligibilityCheck,
+  type InsertEligibilityCheck,
+  type PaymentPosting,
+  type InsertPaymentPosting,
+  type TrainingProgress,
+  type InsertTrainingProgress,
   type User,
   type UpsertUser,
 } from "@shared/schema";
@@ -178,6 +193,32 @@ export interface IStorage {
   createCodeCrossReference(data: InsertCodeCrossReference): Promise<CodeCrossReference>;
   getFeeSchedules(payerName?: string): Promise<FeeSchedule[]>;
   createFeeSchedule(data: InsertFeeSchedule): Promise<FeeSchedule>;
+
+  // Generated Documents
+  getRecentGeneratedDocuments(limit: number): Promise<GeneratedDocument[]>;
+  createGeneratedDocument(data: InsertGeneratedDocument): Promise<GeneratedDocument>;
+
+  // Appeals
+  getAppeals(): Promise<Appeal[]>;
+  createAppeal(data: InsertAppeal): Promise<Appeal>;
+  updateAppeal(id: number, data: Partial<InsertAppeal>): Promise<Appeal | undefined>;
+
+  // Eligibility Checks
+  getEligibilityChecks(): Promise<EligibilityCheck[]>;
+  createEligibilityCheck(data: InsertEligibilityCheck): Promise<EligibilityCheck>;
+
+  // Payment Postings
+  getPaymentPostings(): Promise<PaymentPosting[]>;
+  createPaymentPosting(data: InsertPaymentPosting): Promise<PaymentPosting>;
+  updatePaymentPosting(id: number, data: Partial<InsertPaymentPosting>): Promise<PaymentPosting | undefined>;
+
+  // Training Progress
+  getTrainingProgress(userId: string): Promise<TrainingProgress[]>;
+  createTrainingProgress(data: InsertTrainingProgress): Promise<TrainingProgress>;
+
+  // Additional helpers
+  getInsurance(patientId: number): Promise<Insurance[]>;
+  getTreatmentPlansByPatient(patientId: number): Promise<TreatmentPlan[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -674,6 +715,75 @@ export class DatabaseStorage implements IStorage {
   async createFeeSchedule(data: InsertFeeSchedule): Promise<FeeSchedule> {
     const [schedule] = await db.insert(feeSchedules).values(data).returning();
     return schedule;
+  }
+
+  // Generated Documents
+  async getRecentGeneratedDocuments(limit: number): Promise<GeneratedDocument[]> {
+    return db.select().from(generatedDocuments).orderBy(desc(generatedDocuments.createdAt)).limit(limit);
+  }
+
+  async createGeneratedDocument(data: InsertGeneratedDocument): Promise<GeneratedDocument> {
+    const [doc] = await db.insert(generatedDocuments).values(data).returning();
+    return doc;
+  }
+
+  // Appeals
+  async getAppeals(): Promise<Appeal[]> {
+    return db.select().from(appeals).orderBy(desc(appeals.createdAt));
+  }
+
+  async createAppeal(data: InsertAppeal): Promise<Appeal> {
+    const [appeal] = await db.insert(appeals).values(data).returning();
+    return appeal;
+  }
+
+  async updateAppeal(id: number, data: Partial<InsertAppeal>): Promise<Appeal | undefined> {
+    const [appeal] = await db.update(appeals).set({ ...data, updatedAt: new Date() }).where(eq(appeals.id, id)).returning();
+    return appeal;
+  }
+
+  // Eligibility Checks
+  async getEligibilityChecks(): Promise<EligibilityCheck[]> {
+    return db.select().from(eligibilityChecks).orderBy(desc(eligibilityChecks.checkDate));
+  }
+
+  async createEligibilityCheck(data: InsertEligibilityCheck): Promise<EligibilityCheck> {
+    const [check] = await db.insert(eligibilityChecks).values(data).returning();
+    return check;
+  }
+
+  // Payment Postings
+  async getPaymentPostings(): Promise<PaymentPosting[]> {
+    return db.select().from(paymentPostings).orderBy(desc(paymentPostings.createdAt));
+  }
+
+  async createPaymentPosting(data: InsertPaymentPosting): Promise<PaymentPosting> {
+    const [posting] = await db.insert(paymentPostings).values(data).returning();
+    return posting;
+  }
+
+  async updatePaymentPosting(id: number, data: Partial<InsertPaymentPosting>): Promise<PaymentPosting | undefined> {
+    const [posting] = await db.update(paymentPostings).set(data).where(eq(paymentPostings.id, id)).returning();
+    return posting;
+  }
+
+  // Training Progress
+  async getTrainingProgress(userId: string): Promise<TrainingProgress[]> {
+    return db.select().from(trainingProgress).where(eq(trainingProgress.userId, userId));
+  }
+
+  async createTrainingProgress(data: InsertTrainingProgress): Promise<TrainingProgress> {
+    const [progress] = await db.insert(trainingProgress).values(data).returning();
+    return progress;
+  }
+
+  // Additional helpers
+  async getInsurance(patientId: number): Promise<Insurance[]> {
+    return db.select().from(insurance).where(eq(insurance.patientId, patientId));
+  }
+
+  async getTreatmentPlansByPatient(patientId: number): Promise<TreatmentPlan[]> {
+    return db.select().from(treatmentPlans).where(eq(treatmentPlans.patientId, patientId));
   }
 }
 

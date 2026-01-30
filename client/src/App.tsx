@@ -24,6 +24,12 @@ import CodingEnginePage from "@/pages/coding-engine";
 import CalculatorPage from "@/pages/calculator";
 import AnalyticsPage from "@/pages/analytics";
 import AIAssistantPage from "@/pages/ai-assistant";
+import AIDocumentationPage from "@/pages/ai-documentation";
+import AppealsEnginePage from "@/pages/appeals-engine";
+import ERAProcessingPage from "@/pages/era-processing";
+import InsuranceVerificationPage from "@/pages/insurance-verification";
+import PredictiveAnalyticsPage from "@/pages/predictive-analytics";
+import TrainingPage from "@/pages/training";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -82,6 +88,12 @@ function Router() {
         <Route path="/calculator" component={CalculatorPage} />
         <Route path="/analytics" component={AnalyticsPage} />
         <Route path="/ai-assistant" component={AIAssistantPage} />
+        <Route path="/ai-documentation" component={AIDocumentationPage} />
+        <Route path="/appeals" component={AppealsEnginePage} />
+        <Route path="/era-processing" component={ERAProcessingPage} />
+        <Route path="/eligibility" component={InsuranceVerificationPage} />
+        <Route path="/predictive" component={PredictiveAnalyticsPage} />
+        <Route path="/training" component={TrainingPage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>

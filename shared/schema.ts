@@ -484,6 +484,91 @@ export const insertCareReportSchema = createInsertSchema(careReports).omit({ id:
 export const insertCodeCrossReferenceSchema = createInsertSchema(codeCrossReference).omit({ id: true });
 export const insertFeeScheduleSchema = createInsertSchema(feeSchedules).omit({ id: true });
 
+// AI Generated Documents
+export const generatedDocuments = pgTable("generated_documents", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  documentType: text("document_type").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Appeals
+export const appeals = pgTable("appeals", {
+  id: serial("id").primaryKey(),
+  claimId: integer("claim_id").references(() => billingClaims.id),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  denialReason: text("denial_reason").notNull(),
+  denialCode: text("denial_code"),
+  appealLevel: integer("appeal_level").default(1).notNull(),
+  appealType: text("appeal_type").notNull(),
+  status: text("status").default("draft").notNull(),
+  appealLetter: text("appeal_letter"),
+  supportingDocs: text("supporting_docs").array(),
+  submittedDate: date("submitted_date"),
+  responseDate: date("response_date"),
+  outcome: text("outcome"),
+  successProbability: integer("success_probability"),
+  aiRecommendations: jsonb("ai_recommendations"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Insurance Eligibility Checks
+export const eligibilityChecks = pgTable("eligibility_checks", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  insuranceId: integer("insurance_id").references(() => insurance.id),
+  checkDate: timestamp("check_date").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  status: text("status").notNull(),
+  eligibilityStatus: text("eligibility_status"),
+  coverageDetails: jsonb("coverage_details"),
+  benefitsRemaining: decimal("benefits_remaining", { precision: 10, scale: 2 }),
+  deductibleMet: decimal("deductible_met", { precision: 10, scale: 2 }),
+  effectiveDate: date("effective_date"),
+  terminationDate: date("termination_date"),
+  rawResponse: jsonb("raw_response"),
+});
+
+// ERA/Payment Postings
+export const paymentPostings = pgTable("payment_postings", {
+  id: serial("id").primaryKey(),
+  claimId: integer("claim_id").references(() => billingClaims.id),
+  patientId: integer("patient_id").references(() => patients.id),
+  paymentDate: date("payment_date").notNull(),
+  payerName: text("payer_name").notNull(),
+  checkNumber: text("check_number"),
+  paymentAmount: decimal("payment_amount", { precision: 10, scale: 2 }).notNull(),
+  adjustmentAmount: decimal("adjustment_amount", { precision: 10, scale: 2 }),
+  patientResponsibility: decimal("patient_responsibility", { precision: 10, scale: 2 }),
+  postingStatus: text("posting_status").default("pending").notNull(),
+  varianceFlag: boolean("variance_flag").default(false),
+  varianceReason: text("variance_reason"),
+  eraData: jsonb("era_data"),
+  autoPosted: boolean("auto_posted").default(false),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Training Progress
+export const trainingProgress = pgTable("training_progress", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  moduleName: text("module_name").notNull(),
+  lessonId: text("lesson_id").notNull(),
+  completed: boolean("completed").default(false).notNull(),
+  score: integer("score"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertGeneratedDocumentSchema = createInsertSchema(generatedDocuments).omit({ id: true, createdAt: true });
+export const insertAppealSchema = createInsertSchema(appeals).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertEligibilityCheckSchema = createInsertSchema(eligibilityChecks).omit({ id: true, checkDate: true });
+export const insertPaymentPostingSchema = createInsertSchema(paymentPostings).omit({ id: true, createdAt: true });
+export const insertTrainingProgressSchema = createInsertSchema(trainingProgress).omit({ id: true, createdAt: true });
+
 // Types
 export type Patient = typeof patients.$inferSelect;
 export type InsertPatient = z.infer<typeof insertPatientSchema>;
@@ -525,3 +610,13 @@ export type CodeCrossReference = typeof codeCrossReference.$inferSelect;
 export type InsertCodeCrossReference = z.infer<typeof insertCodeCrossReferenceSchema>;
 export type FeeSchedule = typeof feeSchedules.$inferSelect;
 export type InsertFeeSchedule = z.infer<typeof insertFeeScheduleSchema>;
+export type GeneratedDocument = typeof generatedDocuments.$inferSelect;
+export type InsertGeneratedDocument = z.infer<typeof insertGeneratedDocumentSchema>;
+export type Appeal = typeof appeals.$inferSelect;
+export type InsertAppeal = z.infer<typeof insertAppealSchema>;
+export type EligibilityCheck = typeof eligibilityChecks.$inferSelect;
+export type InsertEligibilityCheck = z.infer<typeof insertEligibilityCheckSchema>;
+export type PaymentPosting = typeof paymentPostings.$inferSelect;
+export type InsertPaymentPosting = z.infer<typeof insertPaymentPostingSchema>;
+export type TrainingProgress = typeof trainingProgress.$inferSelect;
+export type InsertTrainingProgress = z.infer<typeof insertTrainingProgressSchema>;
