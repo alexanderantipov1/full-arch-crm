@@ -21,6 +21,8 @@ import AppointmentsPage from "@/pages/appointments";
 import BillingPage from "@/pages/billing";
 import ProvidersPage from "@/pages/providers";
 import CodingEnginePage from "@/pages/coding-engine";
+import CalculatorPage from "@/pages/calculator";
+import AnalyticsPage from "@/pages/analytics";
 import AIAssistantPage from "@/pages/ai-assistant";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -77,6 +79,8 @@ function Router() {
         <Route path="/billing" component={BillingPage} />
         <Route path="/providers" component={ProvidersPage} />
         <Route path="/coding" component={CodingEnginePage} />
+        <Route path="/calculator" component={CalculatorPage} />
+        <Route path="/analytics" component={AnalyticsPage} />
         <Route path="/ai-assistant" component={AIAssistantPage} />
         <Route component={NotFound} />
       </Switch>

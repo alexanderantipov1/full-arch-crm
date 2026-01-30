@@ -986,5 +986,157 @@ Clinical Notes: ${clinicalNotes || "Not provided"}`
     }
   });
 
+  // ============ PATIENT RESPONSIBILITY CALCULATOR ============
+  app.post("/api/calculator/patient-responsibility", isAuthenticated, async (req, res) => {
+    try {
+      const { treatmentCost, insuranceType, coveragePercentage, deductible, deductibleMet, annualMaximum, usedBenefits, medicalCrossCode } = req.body;
+
+      if (!treatmentCost || typeof treatmentCost !== "number" || treatmentCost <= 0) {
+        return res.status(400).json({ message: "Valid treatment cost is required" });
+      }
+
+      const coverage = coveragePercentage || 0;
+      const deductibleAmount = deductible || 0;
+      const deductibleAlreadyMet = deductibleMet || 0;
+      const maxBenefit = annualMaximum || 0;
+      const benefitsUsed = usedBenefits || 0;
+
+      // Calculate remaining deductible
+      const remainingDeductible = Math.max(0, deductibleAmount - deductibleAlreadyMet);
+      
+      // Amount subject to coverage (after deductible)
+      const amountAfterDeductible = Math.max(0, treatmentCost - remainingDeductible);
+      
+      // Calculate insurance portion based on coverage percentage
+      let insurancePortion = amountAfterDeductible * (coverage / 100);
+      
+      // Check against annual maximum if applicable
+      const remainingBenefits = maxBenefit > 0 ? Math.max(0, maxBenefit - benefitsUsed) : Infinity;
+      insurancePortion = Math.min(insurancePortion, remainingBenefits);
+      
+      // Patient responsibility
+      const patientResponsibility = treatmentCost - insurancePortion;
+      
+      // Medical cross-coding potential (typically higher coverage for medical necessity)
+      let medicalPotential = null;
+      if (medicalCrossCode) {
+        const medicalCoverage = Math.min(coverage + 20, 80); // Medical often covers more
+        const medicalInsurancePortion = amountAfterDeductible * (medicalCoverage / 100);
+        const medicalPatientResp = treatmentCost - Math.min(medicalInsurancePortion, remainingBenefits);
+        medicalPotential = {
+          estimatedCoverage: Math.round(Math.min(medicalInsurancePortion, remainingBenefits) * 100) / 100,
+          patientResponsibility: Math.round(medicalPatientResp * 100) / 100,
+          potentialSavings: Math.round((patientResponsibility - medicalPatientResp) * 100) / 100
+        };
+      }
+
+      res.json({
+        treatmentCost: Math.round(treatmentCost * 100) / 100,
+        deductibleApplied: Math.round(remainingDeductible * 100) / 100,
+        insuranceCoverage: Math.round(insurancePortion * 100) / 100,
+        patientResponsibility: Math.round(patientResponsibility * 100) / 100,
+        coveragePercentage: coverage,
+        remainingAnnualBenefits: remainingBenefits === Infinity ? null : Math.round((remainingBenefits - insurancePortion) * 100) / 100,
+        medicalCrossCodePotential: medicalPotential,
+        breakdown: {
+          totalCost: Math.round(treatmentCost * 100) / 100,
+          lessDeductible: Math.round(remainingDeductible * 100) / 100,
+          amountCovered: Math.round(amountAfterDeductible * 100) / 100,
+          insurancePays: Math.round(insurancePortion * 100) / 100,
+          youPay: Math.round(patientResponsibility * 100) / 100
+        }
+      });
+    } catch (error) {
+      console.error("Error calculating patient responsibility:", error);
+      res.status(500).json({ message: "Failed to calculate patient responsibility" });
+    }
+  });
+
+  // ============ REVENUE CYCLE ANALYTICS ============
+  app.get("/api/analytics/revenue-cycle", isAuthenticated, async (req, res) => {
+    try {
+      const claims = await storage.getBillingClaims();
+      const priorAuths = await storage.getPriorAuthorizations();
+      
+      // Calculate metrics
+      const totalClaims = claims.length;
+      const paidClaims = claims.filter(c => c.claimStatus === "paid");
+      const deniedClaims = claims.filter(c => c.claimStatus === "denied");
+      const pendingClaims = claims.filter(c => c.claimStatus === "pending" || c.claimStatus === "submitted");
+      
+      const totalBilled = claims.reduce((sum, c) => sum + (parseFloat(c.chargedAmount?.toString() || "0")), 0);
+      const totalCollected = paidClaims.reduce((sum, c) => sum + (parseFloat(c.paidAmount?.toString() || "0")), 0);
+      const totalPending = pendingClaims.reduce((sum, c) => sum + (parseFloat(c.chargedAmount?.toString() || "0")), 0);
+      
+      const collectionRate = totalBilled > 0 ? (totalCollected / totalBilled) * 100 : 0;
+      const denialRate = totalClaims > 0 ? (deniedClaims.length / totalClaims) * 100 : 0;
+      
+      // Prior auth metrics
+      const approvedAuths = priorAuths.filter(p => p.status === "approved");
+      const deniedAuths = priorAuths.filter(p => p.status === "denied");
+      const pendingAuths = priorAuths.filter(p => p.status === "pending" || p.status === "submitted");
+      const authApprovalRate = priorAuths.length > 0 ? (approvedAuths.length / priorAuths.length) * 100 : 0;
+      
+      // Calculate average days to payment (mock for demo)
+      const avgDaysToPayment = 32;
+      
+      // Aging buckets
+      const now = new Date();
+      const agingBuckets = {
+        current: pendingClaims.filter(c => {
+          const created = new Date(c.createdAt);
+          return (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24) <= 30;
+        }).length,
+        days31to60: pendingClaims.filter(c => {
+          const created = new Date(c.createdAt);
+          const days = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+          return days > 30 && days <= 60;
+        }).length,
+        days61to90: pendingClaims.filter(c => {
+          const created = new Date(c.createdAt);
+          const days = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+          return days > 60 && days <= 90;
+        }).length,
+        over90: pendingClaims.filter(c => {
+          const created = new Date(c.createdAt);
+          return (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24) > 90;
+        }).length
+      };
+
+      res.json({
+        summary: {
+          totalBilled: Math.round(totalBilled * 100) / 100,
+          totalCollected: Math.round(totalCollected * 100) / 100,
+          totalPending: Math.round(totalPending * 100) / 100,
+          collectionRate: Math.round(collectionRate * 10) / 10,
+          denialRate: Math.round(denialRate * 10) / 10,
+          avgDaysToPayment
+        },
+        claims: {
+          total: totalClaims,
+          paid: paidClaims.length,
+          denied: deniedClaims.length,
+          pending: pendingClaims.length
+        },
+        priorAuthorizations: {
+          total: priorAuths.length,
+          approved: approvedAuths.length,
+          denied: deniedAuths.length,
+          pending: pendingAuths.length,
+          approvalRate: Math.round(authApprovalRate * 10) / 10
+        },
+        agingBuckets,
+        trends: {
+          monthlyCollections: [45000, 52000, 48000, 61000, 58000, 72000],
+          monthlyDenials: [3, 2, 4, 1, 2, 1],
+          months: ["Aug", "Sep", "Oct", "Nov", "Dec", "Jan"]
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching revenue analytics:", error);
+      res.status(500).json({ message: "Failed to fetch revenue analytics" });
+    }
+  });
+
   return httpServer;
 }
