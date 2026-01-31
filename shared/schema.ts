@@ -563,11 +563,363 @@ export const trainingProgress = pgTable("training_progress", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+// ============ PATIENT JOURNEY SYSTEM ============
+
+// Marketing Leads
+export const leads = pgTable("leads", {
+  id: serial("id").primaryKey(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email"),
+  phone: text("phone").notNull(),
+  source: text("source").notNull(),
+  campaign: text("campaign"),
+  status: text("status").default("new").notNull(),
+  interestedIn: text("interested_in"),
+  notes: text("notes"),
+  assignedTo: text("assigned_to"),
+  convertedToPatientId: integer("converted_to_patient_id").references(() => patients.id),
+  leadScore: integer("lead_score").default(0),
+  lastContactDate: timestamp("last_contact_date"),
+  nextFollowUpDate: timestamp("next_follow_up_date"),
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  landingPage: text("landing_page"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Lead Activities/Interactions
+export const leadActivities = pgTable("lead_activities", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+  activityType: text("activity_type").notNull(),
+  description: text("description"),
+  outcome: text("outcome"),
+  performedBy: text("performed_by"),
+  callDuration: integer("call_duration"),
+  recordingUrl: text("recording_url"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Appointment Reminders
+export const appointmentReminders = pgTable("appointment_reminders", {
+  id: serial("id").primaryKey(),
+  appointmentId: integer("appointment_id").notNull().references(() => appointments.id, { onDelete: "cascade" }),
+  reminderType: text("reminder_type").notNull(),
+  scheduledFor: timestamp("scheduled_for").notNull(),
+  sentAt: timestamp("sent_at"),
+  status: text("status").default("pending").notNull(),
+  channel: text("channel").notNull(),
+  messageContent: text("message_content"),
+  response: text("response"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Treatment Packages (Cookie-cutter plans with pricing)
+export const treatmentPackages = pgTable("treatment_packages", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  procedureType: text("procedure_type").notNull(),
+  archType: text("arch_type").notNull(),
+  prosthesisType: text("prosthesis_type").notNull(),
+  materialType: text("material_type").notNull(),
+  basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(),
+  implantCount: integer("implant_count").notNull(),
+  includedServices: jsonb("included_services"),
+  estimatedDuration: text("estimated_duration"),
+  warrantyYears: integer("warranty_years").default(5),
+  isActive: boolean("is_active").default(true).notNull(),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Financing Plans
+export const financingPlans = pgTable("financing_plans", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  treatmentPlanId: integer("treatment_plan_id").references(() => treatmentPlans.id),
+  provider: text("provider").notNull(),
+  applicationStatus: text("application_status").default("pending").notNull(),
+  approvedAmount: decimal("approved_amount", { precision: 10, scale: 2 }),
+  interestRate: decimal("interest_rate", { precision: 5, scale: 2 }),
+  termMonths: integer("term_months"),
+  monthlyPayment: decimal("monthly_payment", { precision: 10, scale: 2 }),
+  downPayment: decimal("down_payment", { precision: 10, scale: 2 }),
+  applicationDate: timestamp("application_date").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  approvalDate: timestamp("approval_date"),
+  expirationDate: date("expiration_date"),
+  accountNumber: text("account_number"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Patient Check-ins (Front Desk)
+export const patientCheckIns = pgTable("patient_check_ins", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  checkInTime: timestamp("check_in_time").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  checkInMethod: text("check_in_method").default("manual").notNull(),
+  recognitionConfidence: decimal("recognition_confidence", { precision: 5, scale: 2 }),
+  greeted: boolean("greeted").default(false),
+  offeredRefreshment: boolean("offered_refreshment").default(false),
+  assignedRoom: text("assigned_room"),
+  waitTime: integer("wait_time"),
+  notes: text("notes"),
+});
+
+// Medical Clearance
+export const medicalClearances = pgTable("medical_clearances", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  treatmentPlanId: integer("treatment_plan_id").references(() => treatmentPlans.id),
+  requestedDate: timestamp("requested_date").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  physicianName: text("physician_name"),
+  physicianPhone: text("physician_phone"),
+  physicianFax: text("physician_fax"),
+  clearanceType: text("clearance_type").notNull(),
+  status: text("status").default("pending").notNull(),
+  receivedDate: timestamp("received_date"),
+  expirationDate: date("expiration_date"),
+  clearanceNotes: text("clearance_notes"),
+  restrictions: text("restrictions"),
+  documentUrl: text("document_url"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Pre-Surgery Tasks
+export const preSurgeryTasks = pgTable("pre_surgery_tasks", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  treatmentPlanId: integer("treatment_plan_id").references(() => treatmentPlans.id),
+  taskType: text("task_type").notNull(),
+  taskName: text("task_name").notNull(),
+  description: text("description"),
+  dueDate: date("due_date"),
+  completedDate: timestamp("completed_date"),
+  status: text("status").default("pending").notNull(),
+  assignedTo: text("assigned_to"),
+  resultNotes: text("result_notes"),
+  documentUrl: text("document_url"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Surgery Sessions
+export const surgerySessions = pgTable("surgery_sessions", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  treatmentPlanId: integer("treatment_plan_id").references(() => treatmentPlans.id),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  surgeryDate: timestamp("surgery_date").notNull(),
+  surgeryType: text("surgery_type").notNull(),
+  archTreated: text("arch_treated").notNull(),
+  surgeon: text("surgeon").notNull(),
+  assistant: text("assistant"),
+  anesthesiaType: text("anesthesia_type").notNull(),
+  anesthesiologist: text("anesthesiologist"),
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
+  implantsPlaced: jsonb("implants_placed"),
+  complications: text("complications"),
+  bloodLoss: text("blood_loss"),
+  vitalSigns: jsonb("vital_signs"),
+  aiGeneratedNotes: text("ai_generated_notes"),
+  videoRecordingUrl: text("video_recording_url"),
+  status: text("status").default("scheduled").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Anesthesia Records
+export const anesthesiaRecords = pgTable("anesthesia_records", {
+  id: serial("id").primaryKey(),
+  surgerySessionId: integer("surgery_session_id").notNull().references(() => surgerySessions.id, { onDelete: "cascade" }),
+  anesthesiaType: text("anesthesia_type").notNull(),
+  medications: jsonb("medications"),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  vitalSignsLog: jsonb("vital_signs_log"),
+  complications: text("complications"),
+  recoveryNotes: text("recovery_notes"),
+  anesthesiologistSignature: text("anesthesiologist_signature"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Lab Cases
+export const labCases = pgTable("lab_cases", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  treatmentPlanId: integer("treatment_plan_id").references(() => treatmentPlans.id),
+  surgerySessionId: integer("surgery_session_id").references(() => surgerySessions.id),
+  caseType: text("case_type").notNull(),
+  labName: text("lab_name"),
+  prosthesisType: text("prosthesis_type").notNull(),
+  materialType: text("material_type").notNull(),
+  shade: text("shade"),
+  status: text("status").default("pending").notNull(),
+  sentToLabDate: timestamp("sent_to_lab_date"),
+  expectedReturnDate: date("expected_return_date"),
+  receivedDate: timestamp("received_date"),
+  designIncluded: integer("design_included").default(2),
+  designsUsed: integer("designs_used").default(0),
+  additionalDesignFee: decimal("additional_design_fee", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Design Revisions
+export const designRevisions = pgTable("design_revisions", {
+  id: serial("id").primaryKey(),
+  labCaseId: integer("lab_case_id").notNull().references(() => labCases.id, { onDelete: "cascade" }),
+  revisionNumber: integer("revision_number").notNull(),
+  requestedChanges: text("requested_changes").notNull(),
+  designFileUrl: text("design_file_url"),
+  approvedByPatient: boolean("approved_by_patient").default(false),
+  approvedByDoctor: boolean("approved_by_doctor").default(false),
+  chargeApplied: boolean("charge_applied").default(false),
+  chargeAmount: decimal("charge_amount", { precision: 10, scale: 2 }),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Post-Op Visits
+export const postOpVisits = pgTable("post_op_visits", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  surgerySessionId: integer("surgery_session_id").references(() => surgerySessions.id),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  visitType: text("visit_type").notNull(),
+  visitDate: timestamp("visit_date").notNull(),
+  daysSinceSurgery: integer("days_since_surgery"),
+  healingStatus: text("healing_status"),
+  suturesRemoved: boolean("sutures_removed").default(false),
+  screwsTightened: boolean("screws_tightened").default(false),
+  adjustmentsMade: text("adjustments_made"),
+  nextVisitScheduled: date("next_visit_scheduled"),
+  notes: text("notes"),
+  photosUrl: text("photos_url"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Consent Forms
+export const consentForms = pgTable("consent_forms", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  treatmentPlanId: integer("treatment_plan_id").references(() => treatmentPlans.id),
+  formType: text("form_type").notNull(),
+  formTitle: text("form_title").notNull(),
+  content: text("content").notNull(),
+  aiGenerated: boolean("ai_generated").default(true),
+  signedAt: timestamp("signed_at"),
+  signatureUrl: text("signature_url"),
+  witnessName: text("witness_name"),
+  witnessSignature: text("witness_signature"),
+  alternativesDiscussed: boolean("alternatives_discussed").default(true),
+  patientQuestions: text("patient_questions"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Warranty Records
+export const warrantyRecords = pgTable("warranty_records", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  treatmentPlanId: integer("treatment_plan_id").references(() => treatmentPlans.id),
+  labCaseId: integer("lab_case_id").references(() => labCases.id),
+  warrantyType: text("warranty_type").notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  coverageDetails: text("coverage_details"),
+  warrantyLetterUrl: text("warranty_letter_url"),
+  registrationNumber: text("registration_number"),
+  claimHistory: jsonb("claim_history"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Patient Testimonials
+export const testimonials = pgTable("testimonials", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  treatmentPlanId: integer("treatment_plan_id").references(() => treatmentPlans.id),
+  testimonialType: text("testimonial_type").notNull(),
+  content: text("content"),
+  videoUrl: text("video_url"),
+  photoUrls: jsonb("photo_urls"),
+  beforePhotos: jsonb("before_photos"),
+  afterPhotos: jsonb("after_photos"),
+  rating: integer("rating"),
+  consentToPublish: boolean("consent_to_publish").default(false),
+  publishedAt: timestamp("published_at"),
+  platformsPublished: text("platforms_published").array(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Maintenance Appointments
+export const maintenanceAppointments = pgTable("maintenance_appointments", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  treatmentPlanId: integer("treatment_plan_id").references(() => treatmentPlans.id),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  maintenanceType: text("maintenance_type").notNull(),
+  scheduledDate: timestamp("scheduled_date").notNull(),
+  completedDate: timestamp("completed_date"),
+  durationMinutes: integer("duration_minutes"),
+  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }).default("400"),
+  totalCharge: decimal("total_charge", { precision: 10, scale: 2 }),
+  servicesPerformed: jsonb("services_performed"),
+  xraysTaken: boolean("xrays_taken").default(false),
+  implantStatus: text("implant_status"),
+  prosthesisCondition: text("prosthesis_condition"),
+  nextMaintenanceDue: date("next_maintenance_due"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Patient Journey Status (unified tracking)
+export const patientJourneyStatus = pgTable("patient_journey_status", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  currentStage: text("current_stage").notNull(),
+  leadCapturedAt: timestamp("lead_captured_at"),
+  appointmentScheduledAt: timestamp("appointment_scheduled_at"),
+  consultationCompletedAt: timestamp("consultation_completed_at"),
+  treatmentPlanAcceptedAt: timestamp("treatment_plan_accepted_at"),
+  financingApprovedAt: timestamp("financing_approved_at"),
+  medicalClearanceAt: timestamp("medical_clearance_at"),
+  surgeryCompletedAt: timestamp("surgery_completed_at"),
+  tempsDeliveredAt: timestamp("temps_delivered_at"),
+  finalsDeliveredAt: timestamp("finals_delivered_at"),
+  warrantyIssuedAt: timestamp("warranty_issued_at"),
+  testimonialCollectedAt: timestamp("testimonial_collected_at"),
+  lastMaintenanceAt: timestamp("last_maintenance_at"),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
 export const insertGeneratedDocumentSchema = createInsertSchema(generatedDocuments).omit({ id: true, createdAt: true });
 export const insertAppealSchema = createInsertSchema(appeals).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertEligibilityCheckSchema = createInsertSchema(eligibilityChecks).omit({ id: true, checkDate: true });
 export const insertPaymentPostingSchema = createInsertSchema(paymentPostings).omit({ id: true, createdAt: true });
 export const insertTrainingProgressSchema = createInsertSchema(trainingProgress).omit({ id: true, createdAt: true });
+
+// Patient Journey Insert Schemas
+export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLeadActivitySchema = createInsertSchema(leadActivities).omit({ id: true, createdAt: true });
+export const insertAppointmentReminderSchema = createInsertSchema(appointmentReminders).omit({ id: true, createdAt: true });
+export const insertTreatmentPackageSchema = createInsertSchema(treatmentPackages).omit({ id: true, createdAt: true });
+export const insertFinancingPlanSchema = createInsertSchema(financingPlans).omit({ id: true, createdAt: true, applicationDate: true });
+export const insertPatientCheckInSchema = createInsertSchema(patientCheckIns).omit({ id: true, checkInTime: true });
+export const insertMedicalClearanceSchema = createInsertSchema(medicalClearances).omit({ id: true, createdAt: true, requestedDate: true });
+export const insertPreSurgeryTaskSchema = createInsertSchema(preSurgeryTasks).omit({ id: true, createdAt: true });
+export const insertSurgerySessionSchema = createInsertSchema(surgerySessions).omit({ id: true, createdAt: true });
+export const insertAnesthesiaRecordSchema = createInsertSchema(anesthesiaRecords).omit({ id: true, createdAt: true });
+export const insertLabCaseSchema = createInsertSchema(labCases).omit({ id: true, createdAt: true });
+export const insertDesignRevisionSchema = createInsertSchema(designRevisions).omit({ id: true, createdAt: true });
+export const insertPostOpVisitSchema = createInsertSchema(postOpVisits).omit({ id: true, createdAt: true });
+export const insertConsentFormSchema = createInsertSchema(consentForms).omit({ id: true, createdAt: true });
+export const insertWarrantyRecordSchema = createInsertSchema(warrantyRecords).omit({ id: true, createdAt: true });
+export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ id: true, createdAt: true });
+export const insertMaintenanceAppointmentSchema = createInsertSchema(maintenanceAppointments).omit({ id: true, createdAt: true });
+export const insertPatientJourneyStatusSchema = createInsertSchema(patientJourneyStatus).omit({ id: true, updatedAt: true });
 
 // Types
 export type Patient = typeof patients.$inferSelect;
@@ -620,3 +972,41 @@ export type PaymentPosting = typeof paymentPostings.$inferSelect;
 export type InsertPaymentPosting = z.infer<typeof insertPaymentPostingSchema>;
 export type TrainingProgress = typeof trainingProgress.$inferSelect;
 export type InsertTrainingProgress = z.infer<typeof insertTrainingProgressSchema>;
+
+// Patient Journey Types
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type LeadActivity = typeof leadActivities.$inferSelect;
+export type InsertLeadActivity = z.infer<typeof insertLeadActivitySchema>;
+export type AppointmentReminder = typeof appointmentReminders.$inferSelect;
+export type InsertAppointmentReminder = z.infer<typeof insertAppointmentReminderSchema>;
+export type TreatmentPackage = typeof treatmentPackages.$inferSelect;
+export type InsertTreatmentPackage = z.infer<typeof insertTreatmentPackageSchema>;
+export type FinancingPlan = typeof financingPlans.$inferSelect;
+export type InsertFinancingPlan = z.infer<typeof insertFinancingPlanSchema>;
+export type PatientCheckIn = typeof patientCheckIns.$inferSelect;
+export type InsertPatientCheckIn = z.infer<typeof insertPatientCheckInSchema>;
+export type MedicalClearance = typeof medicalClearances.$inferSelect;
+export type InsertMedicalClearance = z.infer<typeof insertMedicalClearanceSchema>;
+export type PreSurgeryTask = typeof preSurgeryTasks.$inferSelect;
+export type InsertPreSurgeryTask = z.infer<typeof insertPreSurgeryTaskSchema>;
+export type SurgerySession = typeof surgerySessions.$inferSelect;
+export type InsertSurgerySession = z.infer<typeof insertSurgerySessionSchema>;
+export type AnesthesiaRecord = typeof anesthesiaRecords.$inferSelect;
+export type InsertAnesthesiaRecord = z.infer<typeof insertAnesthesiaRecordSchema>;
+export type LabCase = typeof labCases.$inferSelect;
+export type InsertLabCase = z.infer<typeof insertLabCaseSchema>;
+export type DesignRevision = typeof designRevisions.$inferSelect;
+export type InsertDesignRevision = z.infer<typeof insertDesignRevisionSchema>;
+export type PostOpVisit = typeof postOpVisits.$inferSelect;
+export type InsertPostOpVisit = z.infer<typeof insertPostOpVisitSchema>;
+export type ConsentForm = typeof consentForms.$inferSelect;
+export type InsertConsentForm = z.infer<typeof insertConsentFormSchema>;
+export type WarrantyRecord = typeof warrantyRecords.$inferSelect;
+export type InsertWarrantyRecord = z.infer<typeof insertWarrantyRecordSchema>;
+export type Testimonial = typeof testimonials.$inferSelect;
+export type InsertTestimonial = z.infer<typeof insertTestimonialSchema>;
+export type MaintenanceAppointment = typeof maintenanceAppointments.$inferSelect;
+export type InsertMaintenanceAppointment = z.infer<typeof insertMaintenanceAppointmentSchema>;
+export type PatientJourneyStatus = typeof patientJourneyStatus.$inferSelect;
+export type InsertPatientJourneyStatus = z.infer<typeof insertPatientJourneyStatusSchema>;

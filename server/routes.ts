@@ -24,6 +24,8 @@ import {
   insertReferringProviderSchema,
   insertCodeCrossReferenceSchema,
   insertFeeScheduleSchema,
+  insertLeadSchema,
+  insertTreatmentPackageSchema,
 } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -1586,6 +1588,104 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     } catch (error) {
       console.error("Error completing training:", error);
       res.status(500).json({ message: "Failed to record training progress" });
+    }
+  });
+
+  // ============ PATIENT JOURNEY SYSTEM ============
+
+  // Leads
+  app.get("/api/leads", isAuthenticated, async (req, res) => {
+    try {
+      const allLeads = await storage.getLeads();
+      res.json(allLeads);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      res.status(500).json({ message: "Failed to fetch leads" });
+    }
+  });
+
+  app.get("/api/leads/stats", isAuthenticated, async (req, res) => {
+    try {
+      const stats = await storage.getLeadStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching lead stats:", error);
+      res.json({ totalLeads: 0, newLeads: 0, qualifiedLeads: 0, conversionRate: 0 });
+    }
+  });
+
+  app.post("/api/leads", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertLeadSchema.parse(req.body);
+      const lead = await storage.createLead(validatedData);
+      res.json(lead);
+    } catch (error) {
+      console.error("Error creating lead:", error);
+      res.status(500).json({ message: "Failed to create lead" });
+    }
+  });
+
+  app.patch("/api/leads/:id/status", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const { status } = req.body;
+      const lead = await storage.updateLead(id, { status });
+      res.json(lead);
+    } catch (error) {
+      console.error("Error updating lead status:", error);
+      res.status(500).json({ message: "Failed to update lead status" });
+    }
+  });
+
+  app.post("/api/leads/:id/convert", isAuthenticated, async (req, res) => {
+    try {
+      const leadId = parseInt(req.params.id as string);
+      const lead = await storage.getLead(leadId);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+
+      const patient = await storage.createPatient({
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        email: lead.email || undefined,
+        phone: lead.phone,
+        dateOfBirth: "1990-01-01",
+        gender: "unknown",
+      });
+
+      await storage.updateLead(leadId, { 
+        status: "converted", 
+        convertedToPatientId: patient.id 
+      });
+
+      res.json({ success: true, patientId: patient.id });
+    } catch (error) {
+      console.error("Error converting lead:", error);
+      res.status(500).json({ message: "Failed to convert lead to patient" });
+    }
+  });
+
+  // Treatment Packages
+  app.get("/api/packages", isAuthenticated, async (req, res) => {
+    try {
+      const packages = await storage.getTreatmentPackages();
+      res.json(packages);
+    } catch (error) {
+      console.error("Error fetching treatment packages:", error);
+      res.status(500).json({ message: "Failed to fetch treatment packages" });
+    }
+  });
+
+  app.post("/api/packages", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertTreatmentPackageSchema.parse(req.body);
+      const pkg = await storage.createTreatmentPackage(validatedData);
+      res.json(pkg);
+    } catch (error) {
+      console.error("Error creating treatment package:", error);
+      res.status(500).json({ message: "Failed to create treatment package" });
     }
   });
 

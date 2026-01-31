@@ -27,6 +27,9 @@ import {
   eligibilityChecks,
   paymentPostings,
   trainingProgress,
+  leads,
+  leadActivities,
+  treatmentPackages,
   users,
   type Patient,
   type InsertPatient,
@@ -78,6 +81,12 @@ import {
   type InsertPaymentPosting,
   type TrainingProgress,
   type InsertTrainingProgress,
+  type Lead,
+  type InsertLead,
+  type LeadActivity,
+  type InsertLeadActivity,
+  type TreatmentPackage,
+  type InsertTreatmentPackage,
   type User,
   type UpsertUser,
 } from "@shared/schema";
@@ -219,6 +228,20 @@ export interface IStorage {
   // Additional helpers
   getInsurance(patientId: number): Promise<Insurance[]>;
   getTreatmentPlansByPatient(patientId: number): Promise<TreatmentPlan[]>;
+
+  // Patient Journey - Leads
+  getLeads(): Promise<Lead[]>;
+  getLead(id: number): Promise<Lead | undefined>;
+  createLead(data: InsertLead): Promise<Lead>;
+  updateLead(id: number, data: Partial<InsertLead>): Promise<Lead | undefined>;
+  getLeadStats(): Promise<{ totalLeads: number; newLeads: number; qualifiedLeads: number; conversionRate: number }>;
+  createLeadActivity(data: InsertLeadActivity): Promise<LeadActivity>;
+
+  // Patient Journey - Treatment Packages
+  getTreatmentPackages(): Promise<TreatmentPackage[]>;
+  getTreatmentPackage(id: number): Promise<TreatmentPackage | undefined>;
+  createTreatmentPackage(data: InsertTreatmentPackage): Promise<TreatmentPackage>;
+  updateTreatmentPackage(id: number, data: Partial<InsertTreatmentPackage>): Promise<TreatmentPackage | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -784,6 +807,68 @@ export class DatabaseStorage implements IStorage {
 
   async getTreatmentPlansByPatient(patientId: number): Promise<TreatmentPlan[]> {
     return db.select().from(treatmentPlans).where(eq(treatmentPlans.patientId, patientId));
+  }
+
+  // ============ PATIENT JOURNEY SYSTEM ============
+
+  // Leads
+  async getLeads(): Promise<Lead[]> {
+    return db.select().from(leads).orderBy(desc(leads.createdAt));
+  }
+
+  async getLead(id: number): Promise<Lead | undefined> {
+    const [lead] = await db.select().from(leads).where(eq(leads.id, id));
+    return lead;
+  }
+
+  async createLead(data: InsertLead): Promise<Lead> {
+    const [lead] = await db.insert(leads).values(data).returning();
+    return lead;
+  }
+
+  async updateLead(id: number, data: Partial<InsertLead>): Promise<Lead | undefined> {
+    const [lead] = await db.update(leads).set({ ...data, updatedAt: new Date() }).where(eq(leads.id, id)).returning();
+    return lead;
+  }
+
+  async getLeadStats(): Promise<{ totalLeads: number; newLeads: number; qualifiedLeads: number; conversionRate: number }> {
+    const allLeads = await db.select().from(leads);
+    const totalLeads = allLeads.length;
+    const newLeads = allLeads.filter(l => l.status === "new").length;
+    const qualifiedLeads = allLeads.filter(l => l.status === "qualified").length;
+    const convertedLeads = allLeads.filter(l => l.status === "converted" || l.convertedToPatientId).length;
+    const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
+    return { totalLeads, newLeads, qualifiedLeads, conversionRate };
+  }
+
+  // Lead Activities
+  async getLeadActivities(leadId: number): Promise<LeadActivity[]> {
+    return db.select().from(leadActivities).where(eq(leadActivities.leadId, leadId)).orderBy(desc(leadActivities.createdAt));
+  }
+
+  async createLeadActivity(data: InsertLeadActivity): Promise<LeadActivity> {
+    const [activity] = await db.insert(leadActivities).values(data).returning();
+    return activity;
+  }
+
+  // Treatment Packages
+  async getTreatmentPackages(): Promise<TreatmentPackage[]> {
+    return db.select().from(treatmentPackages).orderBy(treatmentPackages.displayOrder);
+  }
+
+  async getTreatmentPackage(id: number): Promise<TreatmentPackage | undefined> {
+    const [pkg] = await db.select().from(treatmentPackages).where(eq(treatmentPackages.id, id));
+    return pkg;
+  }
+
+  async createTreatmentPackage(data: InsertTreatmentPackage): Promise<TreatmentPackage> {
+    const [pkg] = await db.insert(treatmentPackages).values(data).returning();
+    return pkg;
+  }
+
+  async updateTreatmentPackage(id: number, data: Partial<InsertTreatmentPackage>): Promise<TreatmentPackage | undefined> {
+    const [pkg] = await db.update(treatmentPackages).set(data).where(eq(treatmentPackages.id, id)).returning();
+    return pkg;
   }
 }
 

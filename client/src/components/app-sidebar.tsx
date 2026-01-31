@@ -20,6 +20,15 @@ import {
   Shield,
   TrendingUp,
   GraduationCap,
+  UserPlus,
+  Phone,
+  CreditCard,
+  ClipboardCheck,
+  Syringe,
+  HeartPulse,
+  Package,
+  Star,
+  Wrench,
 } from "lucide-react";
 import {
   Sidebar,
@@ -38,9 +47,20 @@ import { useAuth } from "@/hooks/use-auth";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Lead Management", url: "/leads", icon: UserPlus },
   { title: "Patients", url: "/patients", icon: Users },
   { title: "Appointments", url: "/appointments", icon: Calendar },
   { title: "Treatment Plans", url: "/treatment-plans", icon: ClipboardList },
+  { title: "Treatment Packages", url: "/packages", icon: Package },
+];
+
+const patientJourneyItems = [
+  { title: "Check-In", url: "/check-in", icon: ClipboardCheck },
+  { title: "Financing", url: "/financing", icon: CreditCard },
+  { title: "Medical Clearance", url: "/medical-clearance", icon: HeartPulse },
+  { title: "Surgery Workflow", url: "/surgery", icon: Syringe },
+  { title: "Lab & Design", url: "/lab", icon: Wrench },
+  { title: "Testimonials", url: "/testimonials", icon: Star },
 ];
 
 const clinicalItems = [
@@ -93,6 +113,28 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNavItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Patient Journey</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {patientJourneyItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
