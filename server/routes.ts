@@ -26,6 +26,9 @@ import {
   insertFeeScheduleSchema,
   insertLeadSchema,
   insertTreatmentPackageSchema,
+  insertAppointmentReminderSchema,
+  insertPatientCheckInSchema,
+  insertFinancingPlanSchema,
 } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -1686,6 +1689,99 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     } catch (error) {
       console.error("Error creating treatment package:", error);
       res.status(500).json({ message: "Failed to create treatment package" });
+    }
+  });
+
+  // Appointment Reminders
+  app.get("/api/reminders", isAuthenticated, async (req, res) => {
+    try {
+      const reminders = await storage.getAppointmentReminders();
+      res.json(reminders);
+    } catch (error) {
+      console.error("Error fetching reminders:", error);
+      res.status(500).json({ message: "Failed to fetch reminders" });
+    }
+  });
+
+  app.post("/api/reminders", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertAppointmentReminderSchema.parse(req.body);
+      const reminder = await storage.createAppointmentReminder(validatedData);
+      res.json(reminder);
+    } catch (error) {
+      console.error("Error creating reminder:", error);
+      res.status(500).json({ message: "Failed to create reminder" });
+    }
+  });
+
+  app.post("/api/reminders/:id/send", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const reminder = await storage.updateAppointmentReminder(id, { 
+        status: "sent", 
+        sentAt: new Date() 
+      });
+      res.json(reminder);
+    } catch (error) {
+      console.error("Error sending reminder:", error);
+      res.status(500).json({ message: "Failed to send reminder" });
+    }
+  });
+
+  // Patient Check-ins
+  app.get("/api/checkins", isAuthenticated, async (req, res) => {
+    try {
+      const checkIns = await storage.getPatientCheckIns();
+      res.json(checkIns);
+    } catch (error) {
+      console.error("Error fetching check-ins:", error);
+      res.status(500).json({ message: "Failed to fetch check-ins" });
+    }
+  });
+
+  app.post("/api/checkins", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertPatientCheckInSchema.parse(req.body);
+      const checkIn = await storage.createPatientCheckIn(validatedData);
+      res.json(checkIn);
+    } catch (error) {
+      console.error("Error creating check-in:", error);
+      res.status(500).json({ message: "Failed to create check-in" });
+    }
+  });
+
+  // Financing Plans
+  app.get("/api/financing", isAuthenticated, async (req, res) => {
+    try {
+      const plans = await storage.getFinancingPlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching financing plans:", error);
+      res.status(500).json({ message: "Failed to fetch financing plans" });
+    }
+  });
+
+  app.post("/api/financing", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertFinancingPlanSchema.parse(req.body);
+      const plan = await storage.createFinancingPlan(validatedData);
+      res.json(plan);
+    } catch (error) {
+      console.error("Error creating financing plan:", error);
+      res.status(500).json({ message: "Failed to create financing plan" });
+    }
+  });
+
+  app.patch("/api/financing/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const updateSchema = insertFinancingPlanSchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+      const plan = await storage.updateFinancingPlan(id, validatedData);
+      res.json(plan);
+    } catch (error) {
+      console.error("Error updating financing plan:", error);
+      res.status(500).json({ message: "Failed to update financing plan" });
     }
   });
 

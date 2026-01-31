@@ -30,6 +30,9 @@ import {
   leads,
   leadActivities,
   treatmentPackages,
+  appointmentReminders,
+  patientCheckIns,
+  financingPlans,
   users,
   type Patient,
   type InsertPatient,
@@ -87,6 +90,12 @@ import {
   type InsertLeadActivity,
   type TreatmentPackage,
   type InsertTreatmentPackage,
+  type AppointmentReminder,
+  type InsertAppointmentReminder,
+  type PatientCheckIn,
+  type InsertPatientCheckIn,
+  type FinancingPlan,
+  type InsertFinancingPlan,
   type User,
   type UpsertUser,
 } from "@shared/schema";
@@ -242,6 +251,21 @@ export interface IStorage {
   getTreatmentPackage(id: number): Promise<TreatmentPackage | undefined>;
   createTreatmentPackage(data: InsertTreatmentPackage): Promise<TreatmentPackage>;
   updateTreatmentPackage(id: number, data: Partial<InsertTreatmentPackage>): Promise<TreatmentPackage | undefined>;
+
+  // Patient Journey - Appointment Reminders
+  getAppointmentReminders(): Promise<AppointmentReminder[]>;
+  createAppointmentReminder(data: InsertAppointmentReminder): Promise<AppointmentReminder>;
+  updateAppointmentReminder(id: number, data: Partial<InsertAppointmentReminder>): Promise<AppointmentReminder | undefined>;
+
+  // Patient Journey - Check-ins
+  getPatientCheckIns(): Promise<PatientCheckIn[]>;
+  createPatientCheckIn(data: InsertPatientCheckIn): Promise<PatientCheckIn>;
+  updatePatientCheckIn(id: number, data: Partial<InsertPatientCheckIn>): Promise<PatientCheckIn | undefined>;
+
+  // Patient Journey - Financing Plans
+  getFinancingPlans(): Promise<FinancingPlan[]>;
+  createFinancingPlan(data: InsertFinancingPlan): Promise<FinancingPlan>;
+  updateFinancingPlan(id: number, data: Partial<InsertFinancingPlan>): Promise<FinancingPlan | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -869,6 +893,51 @@ export class DatabaseStorage implements IStorage {
   async updateTreatmentPackage(id: number, data: Partial<InsertTreatmentPackage>): Promise<TreatmentPackage | undefined> {
     const [pkg] = await db.update(treatmentPackages).set(data).where(eq(treatmentPackages.id, id)).returning();
     return pkg;
+  }
+
+  // Appointment Reminders
+  async getAppointmentReminders(): Promise<AppointmentReminder[]> {
+    return db.select().from(appointmentReminders).orderBy(desc(appointmentReminders.createdAt));
+  }
+
+  async createAppointmentReminder(data: InsertAppointmentReminder): Promise<AppointmentReminder> {
+    const [reminder] = await db.insert(appointmentReminders).values(data).returning();
+    return reminder;
+  }
+
+  async updateAppointmentReminder(id: number, data: Partial<InsertAppointmentReminder>): Promise<AppointmentReminder | undefined> {
+    const [reminder] = await db.update(appointmentReminders).set(data).where(eq(appointmentReminders.id, id)).returning();
+    return reminder;
+  }
+
+  // Patient Check-ins
+  async getPatientCheckIns(): Promise<PatientCheckIn[]> {
+    return db.select().from(patientCheckIns).orderBy(desc(patientCheckIns.createdAt));
+  }
+
+  async createPatientCheckIn(data: InsertPatientCheckIn): Promise<PatientCheckIn> {
+    const [checkIn] = await db.insert(patientCheckIns).values(data).returning();
+    return checkIn;
+  }
+
+  async updatePatientCheckIn(id: number, data: Partial<InsertPatientCheckIn>): Promise<PatientCheckIn | undefined> {
+    const [checkIn] = await db.update(patientCheckIns).set(data).where(eq(patientCheckIns.id, id)).returning();
+    return checkIn;
+  }
+
+  // Financing Plans
+  async getFinancingPlans(): Promise<FinancingPlan[]> {
+    return db.select().from(financingPlans).orderBy(desc(financingPlans.createdAt));
+  }
+
+  async createFinancingPlan(data: InsertFinancingPlan): Promise<FinancingPlan> {
+    const [plan] = await db.insert(financingPlans).values(data).returning();
+    return plan;
+  }
+
+  async updateFinancingPlan(id: number, data: Partial<InsertFinancingPlan>): Promise<FinancingPlan | undefined> {
+    const [plan] = await db.update(financingPlans).set(data).where(eq(financingPlans.id, id)).returning();
+    return plan;
   }
 }
 

@@ -32,6 +32,9 @@ import PredictiveAnalyticsPage from "@/pages/predictive-analytics";
 import TrainingPage from "@/pages/training";
 import LeadsPage from "@/pages/leads";
 import TreatmentPackagesPage from "@/pages/treatment-packages";
+import AppointmentRemindersPage from "@/pages/appointment-reminders";
+import PatientCheckInPage from "@/pages/patient-checkin";
+import FinancingPage from "@/pages/financing";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -81,6 +84,9 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/leads" component={LeadsPage} />
         <Route path="/packages" component={TreatmentPackagesPage} />
+        <Route path="/reminders" component={AppointmentRemindersPage} />
+        <Route path="/check-in" component={PatientCheckInPage} />
+        <Route path="/financing" component={FinancingPage} />
         <Route path="/patients" component={PatientsPage} />
         <Route path="/patients/new" component={PatientForm} />
         <Route path="/patients/:id" component={PatientDetailPage} />

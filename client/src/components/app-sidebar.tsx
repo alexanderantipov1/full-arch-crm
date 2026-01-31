@@ -50,6 +50,7 @@ const mainNavItems = [
   { title: "Lead Management", url: "/leads", icon: UserPlus },
   { title: "Patients", url: "/patients", icon: Users },
   { title: "Appointments", url: "/appointments", icon: Calendar },
+  { title: "Reminders", url: "/reminders", icon: Phone },
   { title: "Treatment Plans", url: "/treatment-plans", icon: ClipboardList },
   { title: "Treatment Packages", url: "/packages", icon: Package },
 ];
