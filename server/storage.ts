@@ -33,6 +33,14 @@ import {
   appointmentReminders,
   patientCheckIns,
   financingPlans,
+  medicalClearances,
+  preSurgeryTasks,
+  surgerySessions,
+  labCases,
+  postOpVisits,
+  warrantyRecords,
+  testimonials,
+  maintenanceAppointments,
   users,
   type Patient,
   type InsertPatient,
@@ -96,6 +104,22 @@ import {
   type InsertPatientCheckIn,
   type FinancingPlan,
   type InsertFinancingPlan,
+  type MedicalClearance,
+  type InsertMedicalClearance,
+  type PreSurgeryTask,
+  type InsertPreSurgeryTask,
+  type SurgerySession,
+  type InsertSurgerySession,
+  type LabCase,
+  type InsertLabCase,
+  type PostOpVisit,
+  type InsertPostOpVisit,
+  type WarrantyRecord,
+  type InsertWarrantyRecord,
+  type Testimonial,
+  type InsertTestimonial,
+  type MaintenanceAppointment,
+  type InsertMaintenanceAppointment,
   type User,
   type UpsertUser,
 } from "@shared/schema";
@@ -266,6 +290,49 @@ export interface IStorage {
   getFinancingPlans(): Promise<FinancingPlan[]>;
   createFinancingPlan(data: InsertFinancingPlan): Promise<FinancingPlan>;
   updateFinancingPlan(id: number, data: Partial<InsertFinancingPlan>): Promise<FinancingPlan | undefined>;
+  
+  // Medical Clearances
+  getMedicalClearances(): Promise<MedicalClearance[]>;
+  getMedicalClearancesByPatient(patientId: number): Promise<MedicalClearance[]>;
+  createMedicalClearance(data: InsertMedicalClearance): Promise<MedicalClearance>;
+  updateMedicalClearance(id: number, data: Partial<InsertMedicalClearance>): Promise<MedicalClearance | undefined>;
+  
+  // Pre-Surgery Tasks
+  getPreSurgeryTasks(): Promise<PreSurgeryTask[]>;
+  getPreSurgeryTasksByPatient(patientId: number): Promise<PreSurgeryTask[]>;
+  createPreSurgeryTask(data: InsertPreSurgeryTask): Promise<PreSurgeryTask>;
+  updatePreSurgeryTask(id: number, data: Partial<InsertPreSurgeryTask>): Promise<PreSurgeryTask | undefined>;
+  
+  // Surgery Sessions
+  getSurgerySessions(): Promise<SurgerySession[]>;
+  getSurgerySession(id: number): Promise<SurgerySession | undefined>;
+  createSurgerySession(data: InsertSurgerySession): Promise<SurgerySession>;
+  updateSurgerySession(id: number, data: Partial<InsertSurgerySession>): Promise<SurgerySession | undefined>;
+  
+  // Lab Cases
+  getLabCases(): Promise<LabCase[]>;
+  createLabCase(data: InsertLabCase): Promise<LabCase>;
+  updateLabCase(id: number, data: Partial<InsertLabCase>): Promise<LabCase | undefined>;
+  
+  // Post-Op Visits
+  getPostOpVisits(): Promise<PostOpVisit[]>;
+  createPostOpVisit(data: InsertPostOpVisit): Promise<PostOpVisit>;
+  updatePostOpVisit(id: number, data: Partial<InsertPostOpVisit>): Promise<PostOpVisit | undefined>;
+  
+  // Warranty Records
+  getWarrantyRecords(): Promise<WarrantyRecord[]>;
+  createWarrantyRecord(data: InsertWarrantyRecord): Promise<WarrantyRecord>;
+  updateWarrantyRecord(id: number, data: Partial<InsertWarrantyRecord>): Promise<WarrantyRecord | undefined>;
+  
+  // Testimonials
+  getTestimonials(): Promise<Testimonial[]>;
+  createTestimonial(data: InsertTestimonial): Promise<Testimonial>;
+  updateTestimonial(id: number, data: Partial<InsertTestimonial>): Promise<Testimonial | undefined>;
+  
+  // Maintenance Appointments
+  getMaintenanceAppointments(): Promise<MaintenanceAppointment[]>;
+  createMaintenanceAppointment(data: InsertMaintenanceAppointment): Promise<MaintenanceAppointment>;
+  updateMaintenanceAppointment(id: number, data: Partial<InsertMaintenanceAppointment>): Promise<MaintenanceAppointment | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -938,6 +1005,139 @@ export class DatabaseStorage implements IStorage {
   async updateFinancingPlan(id: number, data: Partial<InsertFinancingPlan>): Promise<FinancingPlan | undefined> {
     const [plan] = await db.update(financingPlans).set(data).where(eq(financingPlans.id, id)).returning();
     return plan;
+  }
+
+  // Medical Clearances
+  async getMedicalClearances(): Promise<MedicalClearance[]> {
+    return db.select().from(medicalClearances).orderBy(desc(medicalClearances.requestedDate));
+  }
+
+  async getMedicalClearancesByPatient(patientId: number): Promise<MedicalClearance[]> {
+    return db.select().from(medicalClearances).where(eq(medicalClearances.patientId, patientId)).orderBy(desc(medicalClearances.requestedDate));
+  }
+
+  async createMedicalClearance(data: InsertMedicalClearance): Promise<MedicalClearance> {
+    const [clearance] = await db.insert(medicalClearances).values(data).returning();
+    return clearance;
+  }
+
+  async updateMedicalClearance(id: number, data: Partial<InsertMedicalClearance>): Promise<MedicalClearance | undefined> {
+    const [clearance] = await db.update(medicalClearances).set(data).where(eq(medicalClearances.id, id)).returning();
+    return clearance;
+  }
+
+  // Pre-Surgery Tasks
+  async getPreSurgeryTasks(): Promise<PreSurgeryTask[]> {
+    return db.select().from(preSurgeryTasks).orderBy(desc(preSurgeryTasks.createdAt));
+  }
+
+  async getPreSurgeryTasksByPatient(patientId: number): Promise<PreSurgeryTask[]> {
+    return db.select().from(preSurgeryTasks).where(eq(preSurgeryTasks.patientId, patientId)).orderBy(desc(preSurgeryTasks.createdAt));
+  }
+
+  async createPreSurgeryTask(data: InsertPreSurgeryTask): Promise<PreSurgeryTask> {
+    const [task] = await db.insert(preSurgeryTasks).values(data).returning();
+    return task;
+  }
+
+  async updatePreSurgeryTask(id: number, data: Partial<InsertPreSurgeryTask>): Promise<PreSurgeryTask | undefined> {
+    const [task] = await db.update(preSurgeryTasks).set(data).where(eq(preSurgeryTasks.id, id)).returning();
+    return task;
+  }
+
+  // Surgery Sessions
+  async getSurgerySessions(): Promise<SurgerySession[]> {
+    return db.select().from(surgerySessions).orderBy(desc(surgerySessions.surgeryDate));
+  }
+
+  async getSurgerySession(id: number): Promise<SurgerySession | undefined> {
+    const [session] = await db.select().from(surgerySessions).where(eq(surgerySessions.id, id));
+    return session;
+  }
+
+  async createSurgerySession(data: InsertSurgerySession): Promise<SurgerySession> {
+    const [session] = await db.insert(surgerySessions).values(data).returning();
+    return session;
+  }
+
+  async updateSurgerySession(id: number, data: Partial<InsertSurgerySession>): Promise<SurgerySession | undefined> {
+    const [session] = await db.update(surgerySessions).set(data).where(eq(surgerySessions.id, id)).returning();
+    return session;
+  }
+
+  // Lab Cases
+  async getLabCases(): Promise<LabCase[]> {
+    return db.select().from(labCases).orderBy(desc(labCases.createdAt));
+  }
+
+  async createLabCase(data: InsertLabCase): Promise<LabCase> {
+    const [labCase] = await db.insert(labCases).values(data).returning();
+    return labCase;
+  }
+
+  async updateLabCase(id: number, data: Partial<InsertLabCase>): Promise<LabCase | undefined> {
+    const [labCase] = await db.update(labCases).set(data).where(eq(labCases.id, id)).returning();
+    return labCase;
+  }
+
+  // Post-Op Visits
+  async getPostOpVisits(): Promise<PostOpVisit[]> {
+    return db.select().from(postOpVisits).orderBy(desc(postOpVisits.visitDate));
+  }
+
+  async createPostOpVisit(data: InsertPostOpVisit): Promise<PostOpVisit> {
+    const [visit] = await db.insert(postOpVisits).values(data).returning();
+    return visit;
+  }
+
+  async updatePostOpVisit(id: number, data: Partial<InsertPostOpVisit>): Promise<PostOpVisit | undefined> {
+    const [visit] = await db.update(postOpVisits).set(data).where(eq(postOpVisits.id, id)).returning();
+    return visit;
+  }
+
+  // Warranty Records
+  async getWarrantyRecords(): Promise<WarrantyRecord[]> {
+    return db.select().from(warrantyRecords).orderBy(desc(warrantyRecords.createdAt));
+  }
+
+  async createWarrantyRecord(data: InsertWarrantyRecord): Promise<WarrantyRecord> {
+    const [record] = await db.insert(warrantyRecords).values(data).returning();
+    return record;
+  }
+
+  async updateWarrantyRecord(id: number, data: Partial<InsertWarrantyRecord>): Promise<WarrantyRecord | undefined> {
+    const [record] = await db.update(warrantyRecords).set(data).where(eq(warrantyRecords.id, id)).returning();
+    return record;
+  }
+
+  // Testimonials
+  async getTestimonials(): Promise<Testimonial[]> {
+    return db.select().from(testimonials).orderBy(desc(testimonials.createdAt));
+  }
+
+  async createTestimonial(data: InsertTestimonial): Promise<Testimonial> {
+    const [testimonial] = await db.insert(testimonials).values(data).returning();
+    return testimonial;
+  }
+
+  async updateTestimonial(id: number, data: Partial<InsertTestimonial>): Promise<Testimonial | undefined> {
+    const [testimonial] = await db.update(testimonials).set(data).where(eq(testimonials.id, id)).returning();
+    return testimonial;
+  }
+
+  // Maintenance Appointments
+  async getMaintenanceAppointments(): Promise<MaintenanceAppointment[]> {
+    return db.select().from(maintenanceAppointments).orderBy(desc(maintenanceAppointments.scheduledDate));
+  }
+
+  async createMaintenanceAppointment(data: InsertMaintenanceAppointment): Promise<MaintenanceAppointment> {
+    const [appointment] = await db.insert(maintenanceAppointments).values(data).returning();
+    return appointment;
+  }
+
+  async updateMaintenanceAppointment(id: number, data: Partial<InsertMaintenanceAppointment>): Promise<MaintenanceAppointment | undefined> {
+    const [appointment] = await db.update(maintenanceAppointments).set(data).where(eq(maintenanceAppointments.id, id)).returning();
+    return appointment;
   }
 }
 

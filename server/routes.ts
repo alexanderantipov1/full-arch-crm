@@ -29,6 +29,14 @@ import {
   insertAppointmentReminderSchema,
   insertPatientCheckInSchema,
   insertFinancingPlanSchema,
+  insertMedicalClearanceSchema,
+  insertPreSurgeryTaskSchema,
+  insertSurgerySessionSchema,
+  insertLabCaseSchema,
+  insertPostOpVisitSchema,
+  insertWarrantyRecordSchema,
+  insertTestimonialSchema,
+  insertMaintenanceAppointmentSchema,
 } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -1782,6 +1790,337 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     } catch (error) {
       console.error("Error updating financing plan:", error);
       res.status(500).json({ message: "Failed to update financing plan" });
+    }
+  });
+
+  // Medical Clearances
+  app.get("/api/medical-clearances", isAuthenticated, async (req, res) => {
+    try {
+      const clearances = await storage.getMedicalClearances();
+      res.json(clearances);
+    } catch (error) {
+      console.error("Error fetching medical clearances:", error);
+      res.status(500).json({ message: "Failed to fetch medical clearances" });
+    }
+  });
+
+  app.get("/api/medical-clearances/patient/:patientId", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId as string);
+      const clearances = await storage.getMedicalClearancesByPatient(patientId);
+      res.json(clearances);
+    } catch (error) {
+      console.error("Error fetching patient clearances:", error);
+      res.status(500).json({ message: "Failed to fetch patient clearances" });
+    }
+  });
+
+  app.post("/api/medical-clearances", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertMedicalClearanceSchema.parse(req.body);
+      const clearance = await storage.createMedicalClearance(validatedData);
+      res.json(clearance);
+    } catch (error) {
+      console.error("Error creating medical clearance:", error);
+      res.status(500).json({ message: "Failed to create medical clearance" });
+    }
+  });
+
+  app.patch("/api/medical-clearances/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const updateSchema = insertMedicalClearanceSchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+      const clearance = await storage.updateMedicalClearance(id, validatedData);
+      res.json(clearance);
+    } catch (error) {
+      console.error("Error updating medical clearance:", error);
+      res.status(500).json({ message: "Failed to update medical clearance" });
+    }
+  });
+
+  // Pre-Surgery Tasks
+  app.get("/api/pre-surgery-tasks", isAuthenticated, async (req, res) => {
+    try {
+      const tasks = await storage.getPreSurgeryTasks();
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching pre-surgery tasks:", error);
+      res.status(500).json({ message: "Failed to fetch pre-surgery tasks" });
+    }
+  });
+
+  app.get("/api/pre-surgery-tasks/patient/:patientId", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId as string);
+      const tasks = await storage.getPreSurgeryTasksByPatient(patientId);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching patient tasks:", error);
+      res.status(500).json({ message: "Failed to fetch patient tasks" });
+    }
+  });
+
+  app.post("/api/pre-surgery-tasks", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertPreSurgeryTaskSchema.parse(req.body);
+      const task = await storage.createPreSurgeryTask(validatedData);
+      res.json(task);
+    } catch (error) {
+      console.error("Error creating pre-surgery task:", error);
+      res.status(500).json({ message: "Failed to create pre-surgery task" });
+    }
+  });
+
+  app.patch("/api/pre-surgery-tasks/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const updateSchema = insertPreSurgeryTaskSchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+      const task = await storage.updatePreSurgeryTask(id, validatedData);
+      res.json(task);
+    } catch (error) {
+      console.error("Error updating pre-surgery task:", error);
+      res.status(500).json({ message: "Failed to update pre-surgery task" });
+    }
+  });
+
+  // Surgery Sessions
+  app.get("/api/surgery-sessions", isAuthenticated, async (req, res) => {
+    try {
+      const sessions = await storage.getSurgerySessions();
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching surgery sessions:", error);
+      res.status(500).json({ message: "Failed to fetch surgery sessions" });
+    }
+  });
+
+  app.get("/api/surgery-sessions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const session = await storage.getSurgerySession(id);
+      if (!session) {
+        return res.status(404).json({ message: "Surgery session not found" });
+      }
+      res.json(session);
+    } catch (error) {
+      console.error("Error fetching surgery session:", error);
+      res.status(500).json({ message: "Failed to fetch surgery session" });
+    }
+  });
+
+  app.post("/api/surgery-sessions", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertSurgerySessionSchema.parse(req.body);
+      const session = await storage.createSurgerySession(validatedData);
+      res.json(session);
+    } catch (error) {
+      console.error("Error creating surgery session:", error);
+      res.status(500).json({ message: "Failed to create surgery session" });
+    }
+  });
+
+  app.patch("/api/surgery-sessions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const updateSchema = insertSurgerySessionSchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+      const session = await storage.updateSurgerySession(id, validatedData);
+      res.json(session);
+    } catch (error) {
+      console.error("Error updating surgery session:", error);
+      res.status(500).json({ message: "Failed to update surgery session" });
+    }
+  });
+
+  // Lab Cases
+  app.get("/api/lab-cases", isAuthenticated, async (req, res) => {
+    try {
+      const cases = await storage.getLabCases();
+      res.json(cases);
+    } catch (error) {
+      console.error("Error fetching lab cases:", error);
+      res.status(500).json({ message: "Failed to fetch lab cases" });
+    }
+  });
+
+  app.post("/api/lab-cases", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertLabCaseSchema.parse(req.body);
+      const labCase = await storage.createLabCase(validatedData);
+      res.json(labCase);
+    } catch (error) {
+      console.error("Error creating lab case:", error);
+      res.status(500).json({ message: "Failed to create lab case" });
+    }
+  });
+
+  app.patch("/api/lab-cases/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const updateSchema = insertLabCaseSchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+      const labCase = await storage.updateLabCase(id, validatedData);
+      res.json(labCase);
+    } catch (error) {
+      console.error("Error updating lab case:", error);
+      res.status(500).json({ message: "Failed to update lab case" });
+    }
+  });
+
+  // Post-Op Visits
+  app.get("/api/post-op-visits", isAuthenticated, async (req, res) => {
+    try {
+      const visits = await storage.getPostOpVisits();
+      res.json(visits);
+    } catch (error) {
+      console.error("Error fetching post-op visits:", error);
+      res.status(500).json({ message: "Failed to fetch post-op visits" });
+    }
+  });
+
+  app.post("/api/post-op-visits", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertPostOpVisitSchema.parse(req.body);
+      const visit = await storage.createPostOpVisit(validatedData);
+      res.json(visit);
+    } catch (error) {
+      console.error("Error creating post-op visit:", error);
+      res.status(500).json({ message: "Failed to create post-op visit" });
+    }
+  });
+
+  app.patch("/api/post-op-visits/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const updateSchema = insertPostOpVisitSchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+      const visit = await storage.updatePostOpVisit(id, validatedData);
+      res.json(visit);
+    } catch (error) {
+      console.error("Error updating post-op visit:", error);
+      res.status(500).json({ message: "Failed to update post-op visit" });
+    }
+  });
+
+  // Warranty Records
+  app.get("/api/warranty-records", isAuthenticated, async (req, res) => {
+    try {
+      const records = await storage.getWarrantyRecords();
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching warranty records:", error);
+      res.status(500).json({ message: "Failed to fetch warranty records" });
+    }
+  });
+
+  app.post("/api/warranty-records", isAuthenticated, async (req, res) => {
+    try {
+      const body = {
+        ...req.body,
+        startDate: req.body.startDate,
+        endDate: req.body.endDate,
+      };
+      const validatedData = insertWarrantyRecordSchema.parse(body);
+      const record = await storage.createWarrantyRecord(validatedData);
+      res.json(record);
+    } catch (error) {
+      console.error("Error creating warranty record:", error);
+      res.status(500).json({ message: "Failed to create warranty record" });
+    }
+  });
+
+  app.patch("/api/warranty-records/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const updateSchema = insertWarrantyRecordSchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+      const record = await storage.updateWarrantyRecord(id, validatedData);
+      res.json(record);
+    } catch (error) {
+      console.error("Error updating warranty record:", error);
+      res.status(500).json({ message: "Failed to update warranty record" });
+    }
+  });
+
+  // Testimonials
+  app.get("/api/testimonials", isAuthenticated, async (req, res) => {
+    try {
+      const testimonials = await storage.getTestimonials();
+      res.json(testimonials);
+    } catch (error) {
+      console.error("Error fetching testimonials:", error);
+      res.status(500).json({ message: "Failed to fetch testimonials" });
+    }
+  });
+
+  app.post("/api/testimonials", isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertTestimonialSchema.parse(req.body);
+      const testimonial = await storage.createTestimonial(validatedData);
+      res.json(testimonial);
+    } catch (error) {
+      console.error("Error creating testimonial:", error);
+      res.status(500).json({ message: "Failed to create testimonial" });
+    }
+  });
+
+  app.patch("/api/testimonials/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const updateSchema = insertTestimonialSchema.partial();
+      const validatedData = updateSchema.parse(req.body);
+      const testimonial = await storage.updateTestimonial(id, validatedData);
+      res.json(testimonial);
+    } catch (error) {
+      console.error("Error updating testimonial:", error);
+      res.status(500).json({ message: "Failed to update testimonial" });
+    }
+  });
+
+  // Maintenance Appointments
+  app.get("/api/maintenance", isAuthenticated, async (req, res) => {
+    try {
+      const appointments = await storage.getMaintenanceAppointments();
+      res.json(appointments);
+    } catch (error) {
+      console.error("Error fetching maintenance appointments:", error);
+      res.status(500).json({ message: "Failed to fetch maintenance appointments" });
+    }
+  });
+
+  app.post("/api/maintenance", isAuthenticated, async (req, res) => {
+    try {
+      const body = {
+        ...req.body,
+        scheduledDate: req.body.scheduledDate ? new Date(req.body.scheduledDate) : undefined,
+        completedDate: req.body.completedDate ? new Date(req.body.completedDate) : undefined,
+      };
+      const validatedData = insertMaintenanceAppointmentSchema.parse(body);
+      const appointment = await storage.createMaintenanceAppointment(validatedData);
+      res.json(appointment);
+    } catch (error: unknown) {
+      console.error("Error creating maintenance appointment:", error);
+      res.status(500).json({ message: "Failed to create maintenance appointment" });
+    }
+  });
+
+  app.patch("/api/maintenance/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id as string);
+      const body = {
+        ...req.body,
+        scheduledDate: req.body.scheduledDate ? new Date(req.body.scheduledDate) : undefined,
+        completedDate: req.body.completedDate ? new Date(req.body.completedDate) : undefined,
+      };
+      const updateSchema = insertMaintenanceAppointmentSchema.partial();
+      const validatedData = updateSchema.parse(body);
+      const appointment = await storage.updateMaintenanceAppointment(id, validatedData);
+      res.json(appointment);
+    } catch (error) {
+      console.error("Error updating maintenance appointment:", error);
+      res.status(500).json({ message: "Failed to update maintenance appointment" });
     }
   });
 

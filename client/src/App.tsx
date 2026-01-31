@@ -35,6 +35,14 @@ import TreatmentPackagesPage from "@/pages/treatment-packages";
 import AppointmentRemindersPage from "@/pages/appointment-reminders";
 import PatientCheckInPage from "@/pages/patient-checkin";
 import FinancingPage from "@/pages/financing";
+import MedicalClearancePage from "@/pages/medical-clearance";
+import PreSurgeryPage from "@/pages/pre-surgery";
+import SurgeryDayPage from "@/pages/surgery-day";
+import LabPage from "@/pages/lab";
+import PostOpPage from "@/pages/post-op";
+import TestimonialsPage from "@/pages/testimonials";
+import WarrantyPage from "@/pages/warranty";
+import MaintenancePage from "@/pages/maintenance";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -87,6 +95,14 @@ function Router() {
         <Route path="/reminders" component={AppointmentRemindersPage} />
         <Route path="/check-in" component={PatientCheckInPage} />
         <Route path="/financing" component={FinancingPage} />
+        <Route path="/medical-clearance" component={MedicalClearancePage} />
+        <Route path="/surgery" component={SurgeryDayPage} />
+        <Route path="/pre-surgery" component={PreSurgeryPage} />
+        <Route path="/lab" component={LabPage} />
+        <Route path="/post-op" component={PostOpPage} />
+        <Route path="/testimonials" component={TestimonialsPage} />
+        <Route path="/warranty" component={WarrantyPage} />
+        <Route path="/maintenance" component={MaintenancePage} />
         <Route path="/patients" component={PatientsPage} />
         <Route path="/patients/new" component={PatientForm} />
         <Route path="/patients/:id" component={PatientDetailPage} />

@@ -29,6 +29,8 @@ import {
   Package,
   Star,
   Wrench,
+  CheckCircle,
+  RefreshCcw,
 } from "lucide-react";
 import {
   Sidebar,
@@ -59,8 +61,12 @@ const patientJourneyItems = [
   { title: "Check-In", url: "/check-in", icon: ClipboardCheck },
   { title: "Financing", url: "/financing", icon: CreditCard },
   { title: "Medical Clearance", url: "/medical-clearance", icon: HeartPulse },
-  { title: "Surgery Workflow", url: "/surgery", icon: Syringe },
+  { title: "Pre-Surgery", url: "/pre-surgery", icon: ClipboardCheck },
+  { title: "Surgery Day", url: "/surgery", icon: Syringe },
   { title: "Lab & Design", url: "/lab", icon: Wrench },
+  { title: "Post-Op & Delivery", url: "/post-op", icon: CheckCircle },
+  { title: "Warranty", url: "/warranty", icon: Shield },
+  { title: "Maintenance", url: "/maintenance", icon: RefreshCcw },
   { title: "Testimonials", url: "/testimonials", icon: Star },
 ];
 
