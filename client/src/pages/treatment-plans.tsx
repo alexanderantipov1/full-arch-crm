@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +37,9 @@ import {
   Send,
 } from "lucide-react";
 import { format } from "date-fns";
-import type { TreatmentPlan } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { TreatmentPlan, Patient } from "@shared/schema";
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   draft: { label: "Draft", color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300", icon: FileText },
@@ -110,12 +114,22 @@ const orthoPreauth = {
 };
 
 export default function TreatmentPlansPage() {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showPackages, setShowPackages] = useState(false);
   const [showCopayCalculator, setShowCopayCalculator] = useState(false);
   const [showCosmeticPackages, setShowCosmeticPackages] = useState(false);
   const [showOrthoPreauth, setShowOrthoPreauth] = useState(false);
+  const [showNewPlanDialog, setShowNewPlanDialog] = useState(false);
+  const [newPlan, setNewPlan] = useState({
+    patientId: "",
+    planName: "",
+    diagnosis: "",
+    diagnosisCode: "",
+    totalCost: "35000",
+    notes: "",
+  });
   
   const [copayCalc, setCopayCalc] = useState({
     treatmentCost: 35000,
@@ -127,6 +141,35 @@ export default function TreatmentPlansPage() {
 
   const { data: plans, isLoading } = useQuery<TreatmentPlan[]>({
     queryKey: ["/api/treatment-plans"],
+  });
+
+  const { data: patients = [] } = useQuery<Patient[]>({
+    queryKey: ["/api/patients"],
+  });
+
+  const createPlanMutation = useMutation({
+    mutationFn: async (data: typeof newPlan) => {
+      const res = await apiRequest("POST", "/api/treatment-plans", {
+        patientId: parseInt(data.patientId),
+        planName: data.planName,
+        diagnosis: data.diagnosis,
+        diagnosisCode: data.diagnosisCode,
+        totalCost: data.totalCost,
+        status: "draft",
+        notes: data.notes || null,
+        procedures: [],
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/treatment-plans"] });
+      setShowNewPlanDialog(false);
+      setNewPlan({ patientId: "", planName: "", diagnosis: "", diagnosisCode: "", totalCost: "35000", notes: "" });
+      toast({ title: "Treatment Plan Created", description: "The treatment plan has been created successfully." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
   });
 
   const filteredPlans = plans?.filter((plan) => {
@@ -191,12 +234,99 @@ export default function TreatmentPlansPage() {
               </div>
             </DialogContent>
           </Dialog>
-          <Button asChild data-testid="button-new-plan">
-            <Link href="/treatment-plans/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New Plan
-            </Link>
-          </Button>
+          <Dialog open={showNewPlanDialog} onOpenChange={setShowNewPlanDialog}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-new-plan">
+                <Plus className="mr-2 h-4 w-4" />
+                New Plan
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Create Treatment Plan</DialogTitle>
+                <DialogDescription>Create a new treatment plan for a patient</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Patient</Label>
+                  <Select value={newPlan.patientId} onValueChange={(v) => setNewPlan({ ...newPlan, patientId: v })}>
+                    <SelectTrigger data-testid="select-patient">
+                      <SelectValue placeholder="Select patient" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {patients.map((p) => (
+                        <SelectItem key={p.id} value={p.id.toString()}>
+                          {p.firstName} {p.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Plan Name</Label>
+                  <Select value={newPlan.planName} onValueChange={(v) => setNewPlan({ ...newPlan, planName: v })}>
+                    <SelectTrigger data-testid="select-plan-name">
+                      <SelectValue placeholder="Select plan type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All-on-4 Lower Arch">All-on-4 Lower Arch</SelectItem>
+                      <SelectItem value="All-on-4 Upper Arch">All-on-4 Upper Arch</SelectItem>
+                      <SelectItem value="All-on-6 Full Mouth">All-on-6 Full Mouth</SelectItem>
+                      <SelectItem value="Full Mouth Reconstruction">Full Mouth Reconstruction</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Diagnosis</Label>
+                    <Input 
+                      placeholder="e.g., Complete edentulism"
+                      value={newPlan.diagnosis}
+                      onChange={(e) => setNewPlan({ ...newPlan, diagnosis: e.target.value })}
+                      data-testid="input-diagnosis"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>ICD-10 Code</Label>
+                    <Input 
+                      placeholder="e.g., K08.1"
+                      value={newPlan.diagnosisCode}
+                      onChange={(e) => setNewPlan({ ...newPlan, diagnosisCode: e.target.value })}
+                      data-testid="input-diagnosis-code"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Estimated Total Cost</Label>
+                  <Input 
+                    type="number"
+                    value={newPlan.totalCost}
+                    onChange={(e) => setNewPlan({ ...newPlan, totalCost: e.target.value })}
+                    data-testid="input-cost"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea 
+                    placeholder="Additional notes..."
+                    value={newPlan.notes}
+                    onChange={(e) => setNewPlan({ ...newPlan, notes: e.target.value })}
+                    data-testid="input-notes"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowNewPlanDialog(false)}>Cancel</Button>
+                  <Button 
+                    onClick={() => createPlanMutation.mutate(newPlan)}
+                    disabled={!newPlan.patientId || !newPlan.planName || createPlanMutation.isPending}
+                    data-testid="button-submit"
+                  >
+                    {createPlanMutation.isPending ? "Creating..." : "Create Plan"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -375,11 +505,9 @@ export default function TreatmentPlansPage() {
               <p className="mb-6 max-w-sm text-sm text-muted-foreground">
                 Create a treatment plan with AI-assisted diagnosis and automatic cost calculation
               </p>
-              <Button asChild>
-                <Link href="/treatment-plans/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Treatment Plan
-                </Link>
+              <Button onClick={() => setShowNewPlanDialog(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Treatment Plan
               </Button>
             </div>
           )}
