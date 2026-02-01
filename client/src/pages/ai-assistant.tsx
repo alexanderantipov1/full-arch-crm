@@ -241,7 +241,7 @@ export default function AIAssistantPage() {
               <SelectValue placeholder="Select patient (optional)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No patient selected</SelectItem>
+              <SelectItem value="none">No patient selected</SelectItem>
               {patients.map((patient) => (
                 <SelectItem key={patient.id} value={patient.id.toString()}>
                   {patient.firstName} {patient.lastName}

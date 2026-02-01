@@ -45,6 +45,9 @@ import TestimonialsPage from "@/pages/testimonials";
 import WarrantyPage from "@/pages/warranty";
 import MaintenancePage from "@/pages/maintenance";
 import AuditLogsPage from "@/pages/audit-logs";
+import ClinicalNotesPage from "@/pages/clinical-notes";
+import EvaluationsPage from "@/pages/evaluations";
+import SettingsPage from "@/pages/settings";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -124,6 +127,9 @@ function Router() {
         <Route path="/eligibility" component={InsuranceVerificationPage} />
         <Route path="/predictive" component={PredictiveAnalyticsPage} />
         <Route path="/training" component={TrainingPage} />
+        <Route path="/notes" component={ClinicalNotesPage} />
+        <Route path="/evaluations" component={EvaluationsPage} />
+        <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>
