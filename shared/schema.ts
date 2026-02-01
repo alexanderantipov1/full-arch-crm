@@ -895,6 +895,24 @@ export const patientJourneyStatus = pgTable("patient_journey_status", {
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+// HIPAA Audit Logs - Track all PHI access for compliance
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  userEmail: text("user_email"),
+  action: text("action").notNull(), // view, create, update, delete, export, print
+  resourceType: text("resource_type").notNull(), // patient, treatment_plan, billing_claim, etc.
+  resourceId: text("resource_id"), // ID of the accessed resource
+  patientId: integer("patient_id"), // If action involves patient PHI
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  details: jsonb("details"), // Additional context about the action
+  phiAccessed: boolean("phi_accessed").default(false), // Whether PHI was accessed
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+
 export const insertGeneratedDocumentSchema = createInsertSchema(generatedDocuments).omit({ id: true, createdAt: true });
 export const insertAppealSchema = createInsertSchema(appeals).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertEligibilityCheckSchema = createInsertSchema(eligibilityChecks).omit({ id: true, checkDate: true });
@@ -1010,3 +1028,5 @@ export type MaintenanceAppointment = typeof maintenanceAppointments.$inferSelect
 export type InsertMaintenanceAppointment = z.infer<typeof insertMaintenanceAppointmentSchema>;
 export type PatientJourneyStatus = typeof patientJourneyStatus.$inferSelect;
 export type InsertPatientJourneyStatus = z.infer<typeof insertPatientJourneyStatusSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;

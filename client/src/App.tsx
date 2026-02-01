@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { SessionTimeout } from "@/components/session-timeout";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import NotFound from "@/pages/not-found";
@@ -43,6 +44,7 @@ import PostOpPage from "@/pages/post-op";
 import TestimonialsPage from "@/pages/testimonials";
 import WarrantyPage from "@/pages/warranty";
 import MaintenancePage from "@/pages/maintenance";
+import AuditLogsPage from "@/pages/audit-logs";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -52,6 +54,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider style={sidebarStyle}>
+      <SessionTimeout />
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <SidebarInset className="flex flex-1 flex-col">
@@ -103,6 +106,7 @@ function Router() {
         <Route path="/testimonials" component={TestimonialsPage} />
         <Route path="/warranty" component={WarrantyPage} />
         <Route path="/maintenance" component={MaintenancePage} />
+        <Route path="/audit-logs" component={AuditLogsPage} />
         <Route path="/patients" component={PatientsPage} />
         <Route path="/patients/new" component={PatientForm} />
         <Route path="/patients/:id" component={PatientDetailPage} />

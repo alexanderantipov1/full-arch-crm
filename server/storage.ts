@@ -41,6 +41,7 @@ import {
   warrantyRecords,
   testimonials,
   maintenanceAppointments,
+  auditLogs,
   users,
   type Patient,
   type InsertPatient,
@@ -120,6 +121,8 @@ import {
   type InsertTestimonial,
   type MaintenanceAppointment,
   type InsertMaintenanceAppointment,
+  type AuditLog,
+  type InsertAuditLog,
   type User,
   type UpsertUser,
 } from "@shared/schema";
@@ -1138,6 +1141,24 @@ export class DatabaseStorage implements IStorage {
   async updateMaintenanceAppointment(id: number, data: Partial<InsertMaintenanceAppointment>): Promise<MaintenanceAppointment | undefined> {
     const [appointment] = await db.update(maintenanceAppointments).set(data).where(eq(maintenanceAppointments.id, id)).returning();
     return appointment;
+  }
+
+  // Audit Logs
+  async createAuditLog(data: InsertAuditLog): Promise<AuditLog> {
+    const [log] = await db.insert(auditLogs).values(data).returning();
+    return log;
+  }
+
+  async getAuditLogs(limit: number = 100, offset: number = 0): Promise<AuditLog[]> {
+    return db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(limit).offset(offset);
+  }
+
+  async getAuditLogsByPatient(patientId: number): Promise<AuditLog[]> {
+    return db.select().from(auditLogs).where(eq(auditLogs.patientId, patientId)).orderBy(desc(auditLogs.createdAt));
+  }
+
+  async getAuditLogsByUser(userId: string): Promise<AuditLog[]> {
+    return db.select().from(auditLogs).where(eq(auditLogs.userId, userId)).orderBy(desc(auditLogs.createdAt));
   }
 }
 

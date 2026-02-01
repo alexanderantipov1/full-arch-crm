@@ -18,6 +18,8 @@ Full Arch CRM is a comprehensive practice management system designed specificall
 - **Scheduling**: Appointment calendar for surgeries, consultations, follow-ups
 - **Insurance Strategy**: Medical vs dental billing guidance, approval optimization
 - **Provider Portal**: Referring dentist/orthodontist management, care reports
+- **HIPAA Audit Logging**: Complete audit trail of PHI access with filtering and compliance reporting
+- **Session Timeout**: 15-minute inactivity timeout with warning dialog for HIPAA compliance
 
 ## Technology Stack
 - **Frontend**: React + TypeScript, Vite, TailwindCSS, Shadcn/UI
@@ -33,6 +35,7 @@ Full Arch CRM is a comprehensive practice management system designed specificall
 │   │   ├── components/        # UI components
 │   │   │   ├── ui/           # Shadcn UI components
 │   │   │   ├── app-sidebar.tsx
+│   │   │   ├── session-timeout.tsx  # HIPAA session timeout component
 │   │   │   ├── theme-provider.tsx
 │   │   │   └── theme-toggle.tsx
 │   │   ├── pages/            # Page components
@@ -94,6 +97,7 @@ Key tables:
 - `eligibility_checks`: Insurance verification results
 - `payment_postings`: ERA payment reconciliation
 - `training_progress`: Staff training completion tracking
+- `audit_logs`: HIPAA audit trail with userId, action, resourceType, PHI access tracking
 
 ## Key API Endpoints
 - `GET/POST /api/patients` - Patient CRUD
@@ -114,6 +118,8 @@ Key tables:
 - `GET/POST /api/era` - ERA payment processing
 - `GET /api/analytics/predictive` - Predictive analytics
 - `GET/POST /api/training` - Training progress tracking
+- `GET /api/audit-logs` - HIPAA audit logs
+- `GET /api/audit-logs/patient/:patientId` - Patient-specific audit logs
 
 ## Design Theme
 Medical professional theme with:

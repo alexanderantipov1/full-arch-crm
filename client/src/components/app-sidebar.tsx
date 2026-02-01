@@ -88,6 +88,7 @@ const adminItems = [
   { title: "Predictive Analytics", url: "/predictive", icon: TrendingUp },
   { title: "Training Center", url: "/training", icon: GraduationCap },
   { title: "Referring Providers", url: "/providers", icon: Building2 },
+  { title: "HIPAA Audit Logs", url: "/audit-logs", icon: Shield },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

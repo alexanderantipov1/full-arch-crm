@@ -2124,5 +2124,114 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     }
   });
 
+  // =====================
+  // HIPAA Audit Logs
+  // =====================
+  app.get("/api/audit-logs", isAuthenticated, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const logs = await storage.getAuditLogs(limit, offset);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  app.get("/api/audit-logs/patient/:patientId", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const logs = await storage.getAuditLogsByPatient(patientId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching patient audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch patient audit logs" });
+    }
+  });
+
+  // Audit logging middleware helper
+  const logAudit = async (
+    userId: string,
+    userEmail: string | undefined,
+    action: string,
+    resourceType: string,
+    resourceId?: string,
+    patientId?: number,
+    details?: any,
+    req?: any
+  ) => {
+    try {
+      await storage.createAuditLog({
+        userId,
+        userEmail: userEmail || null,
+        action,
+        resourceType,
+        resourceId: resourceId || null,
+        patientId: patientId || null,
+        ipAddress: req?.ip || req?.connection?.remoteAddress || null,
+        userAgent: req?.headers?.["user-agent"] || null,
+        details: details || null,
+        phiAccessed: !!patientId,
+      });
+    } catch (error) {
+      console.error("Failed to create audit log:", error);
+    }
+  };
+
+  // Comprehensive PHI audit logging middleware
+  const phiEndpoints = [
+    { pattern: /^\/api\/patients\/(\d+)/, resourceType: "patient" },
+    { pattern: /^\/api\/medical-history/, resourceType: "medical_history" },
+    { pattern: /^\/api\/dental-info/, resourceType: "dental_info" },
+    { pattern: /^\/api\/treatment-plans/, resourceType: "treatment_plan" },
+    { pattern: /^\/api\/billing/, resourceType: "billing" },
+    { pattern: /^\/api\/insurance/, resourceType: "insurance" },
+    { pattern: /^\/api\/clinical-notes/, resourceType: "clinical_notes" },
+    { pattern: /^\/api\/surgery-reports/, resourceType: "surgery_report" },
+    { pattern: /^\/api\/full-arch-exams/, resourceType: "full_arch_exam" },
+    { pattern: /^\/api\/facial-evaluations/, resourceType: "facial_evaluation" },
+    { pattern: /^\/api\/cephalometrics/, resourceType: "cephalometrics" },
+    { pattern: /^\/api\/appointments/, resourceType: "appointment" },
+  ];
+
+  const methodToAction: Record<string, string> = {
+    GET: "view",
+    POST: "create",
+    PUT: "update",
+    PATCH: "update",
+    DELETE: "delete",
+  };
+
+  app.use((req, res, next) => {
+    if (!req.user) {
+      next();
+      return;
+    }
+
+    for (const endpoint of phiEndpoints) {
+      const match = req.originalUrl.match(endpoint.pattern);
+      if (match) {
+        const action = methodToAction[req.method] || "access";
+        const resourceId = match[1] || req.query.patientId?.toString() || undefined;
+        const patientIdFromUrl = endpoint.resourceType === "patient" ? parseInt(match[1]) : undefined;
+        const patientIdFromQuery = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
+        
+        logAudit(
+          req.user.id,
+          req.user.email,
+          action,
+          endpoint.resourceType,
+          resourceId,
+          patientIdFromUrl || patientIdFromQuery,
+          { endpoint: req.originalUrl, method: req.method },
+          req
+        );
+        break;
+      }
+    }
+    next();
+  });
+
   return httpServer;
 }
