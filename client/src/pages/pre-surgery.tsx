@@ -190,12 +190,12 @@ export default function PreSurgeryPage() {
           <p className="text-muted-foreground">Manage pre-operative tasks and requirements</p>
         </div>
         <div className="flex gap-2">
-          <Select value={selectedPatient?.toString() || ""} onValueChange={(v) => setSelectedPatient(v ? parseInt(v) : null)}>
+          <Select value={selectedPatient?.toString() || "all"} onValueChange={(v) => setSelectedPatient(v === "all" ? null : parseInt(v))}>
             <SelectTrigger className="w-48" data-testid="filter-patient">
               <SelectValue placeholder="All Patients" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Patients</SelectItem>
+              <SelectItem value="all">All Patients</SelectItem>
               {patients.map((patient) => (
                 <SelectItem key={patient.id} value={patient.id.toString()}>
                   {patient.firstName} {patient.lastName}

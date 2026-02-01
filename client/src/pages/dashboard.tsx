@@ -31,17 +31,19 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/stats"],
   });
 
-  const { data: recentPatients, isLoading: patientsLoading } = useQuery<Patient[]>({
-    queryKey: ["/api/patients", { limit: 5 }],
+  const { data: allPatients, isLoading: patientsLoading } = useQuery<Patient[]>({
+    queryKey: ["/api/patients"],
   });
+  const recentPatients = allPatients?.slice(0, 5);
 
   const { data: upcomingAppointments, isLoading: appointmentsLoading } = useQuery<Appointment[]>({
     queryKey: ["/api/appointments/upcoming"],
   });
 
-  const { data: pendingPlans, isLoading: plansLoading } = useQuery<TreatmentPlan[]>({
-    queryKey: ["/api/treatment-plans", { status: "pending" }],
+  const { data: allPlans, isLoading: plansLoading } = useQuery<TreatmentPlan[]>({
+    queryKey: ["/api/treatment-plans"],
   });
+  const pendingPlans = allPlans?.filter(p => p.status === "pending");
 
   const statCards = [
     {
@@ -168,7 +170,7 @@ export default function Dashboard() {
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Calendar className="mb-3 h-10 w-10 text-muted-foreground/50" />
                 <p className="text-sm text-muted-foreground">No upcoming appointments</p>
-                <Button variant="link" size="sm" asChild className="mt-2">
+                <Button variant="ghost" size="sm" asChild className="mt-2">
                   <Link href="/appointments/new">Schedule one now</Link>
                 </Button>
               </div>
@@ -225,7 +227,7 @@ export default function Dashboard() {
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Users className="mb-3 h-10 w-10 text-muted-foreground/50" />
                 <p className="text-sm text-muted-foreground">No patients yet</p>
-                <Button variant="link" size="sm" asChild className="mt-2">
+                <Button variant="ghost" size="sm" asChild className="mt-2">
                   <Link href="/patients/new">Add your first patient</Link>
                 </Button>
               </div>
