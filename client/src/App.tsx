@@ -48,6 +48,12 @@ import AuditLogsPage from "@/pages/audit-logs";
 import ClinicalNotesPage from "@/pages/clinical-notes";
 import EvaluationsPage from "@/pages/evaluations";
 import SettingsPage from "@/pages/settings";
+import PaymentsPage from "@/pages/payments";
+import ConsentFormsPage from "@/pages/consent-forms";
+import ReportsPage from "@/pages/reports";
+import PatientDocumentsPage from "@/pages/patient-documents";
+import TreatmentProgressPage from "@/pages/treatment-progress";
+import IntakeFormPage from "@/pages/intake-form";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -130,6 +136,12 @@ function Router() {
         <Route path="/notes" component={ClinicalNotesPage} />
         <Route path="/evaluations" component={EvaluationsPage} />
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/payments" component={PaymentsPage} />
+        <Route path="/consent-forms" component={ConsentFormsPage} />
+        <Route path="/reports" component={ReportsPage} />
+        <Route path="/documents" component={PatientDocumentsPage} />
+        <Route path="/treatment-progress" component={TreatmentProgressPage} />
+        <Route path="/intake" component={IntakeFormPage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>

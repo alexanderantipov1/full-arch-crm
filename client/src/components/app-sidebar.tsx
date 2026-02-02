@@ -54,10 +54,12 @@ const mainNavItems = [
   { title: "Appointments", url: "/appointments", icon: Calendar },
   { title: "Reminders", url: "/reminders", icon: Phone },
   { title: "Treatment Plans", url: "/treatment-plans", icon: ClipboardList },
+  { title: "Treatment Progress", url: "/treatment-progress", icon: ClipboardList },
   { title: "Treatment Packages", url: "/packages", icon: Package },
 ];
 
 const patientJourneyItems = [
+  { title: "Patient Intake", url: "/intake", icon: ClipboardCheck },
   { title: "Check-In", url: "/check-in", icon: ClipboardCheck },
   { title: "Financing", url: "/financing", icon: CreditCard },
   { title: "Medical Clearance", url: "/medical-clearance", icon: HeartPulse },
@@ -72,6 +74,7 @@ const patientJourneyItems = [
 
 const clinicalItems = [
   { title: "Clinical Notes", url: "/notes", icon: FileText },
+  { title: "Patient Documents", url: "/documents", icon: FileText },
   { title: "AI Assistant", url: "/ai-assistant", icon: MessageSquare },
   { title: "AI Documentation", url: "/ai-documentation", icon: Sparkles },
   { title: "Exams & Evaluations", url: "/evaluations", icon: Stethoscope },
@@ -79,12 +82,14 @@ const clinicalItems = [
 
 const adminItems = [
   { title: "Billing & Claims", url: "/billing", icon: DollarSign },
+  { title: "Payment Tracking", url: "/payments", icon: CreditCard },
   { title: "Coding Engine", url: "/coding", icon: FileCode },
   { title: "ERA Processing", url: "/era-processing", icon: Receipt },
   { title: "Appeals Engine", url: "/appeals", icon: Gavel },
   { title: "Eligibility Check", url: "/eligibility", icon: Shield },
+  { title: "Consent Forms", url: "/consent-forms", icon: FileText },
   { title: "Cost Calculator", url: "/calculator", icon: Calculator },
-  { title: "Revenue Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Reports & Analytics", url: "/reports", icon: BarChart3 },
   { title: "Predictive Analytics", url: "/predictive", icon: TrendingUp },
   { title: "Training Center", url: "/training", icon: GraduationCap },
   { title: "Referring Providers", url: "/providers", icon: Building2 },

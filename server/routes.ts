@@ -37,6 +37,8 @@ import {
   insertWarrantyRecordSchema,
   insertTestimonialSchema,
   insertMaintenanceAppointmentSchema,
+  insertConsentFormSchema,
+  insertPatientDocumentSchema,
 } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -2147,6 +2149,103 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     } catch (error) {
       console.error("Error fetching patient audit logs:", error);
       res.status(500).json({ message: "Failed to fetch patient audit logs" });
+    }
+  });
+
+  // ============ CONSENT FORMS ============
+  app.get("/api/consent-forms", isAuthenticated, async (req, res) => {
+    try {
+      const forms = await storage.getConsentForms();
+      res.json(forms);
+    } catch (error) {
+      console.error("Error fetching consent forms:", error);
+      res.status(500).json({ message: "Failed to fetch consent forms" });
+    }
+  });
+
+  app.get("/api/consent-forms/patient/:patientId", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const forms = await storage.getConsentFormsByPatient(patientId);
+      res.json(forms);
+    } catch (error) {
+      console.error("Error fetching patient consent forms:", error);
+      res.status(500).json({ message: "Failed to fetch consent forms" });
+    }
+  });
+
+  app.post("/api/consent-forms", isAuthenticated, async (req, res) => {
+    try {
+      const parsed = insertConsentFormSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid consent form data", errors: parsed.error.errors });
+      }
+      const form = await storage.createConsentForm(parsed.data);
+      res.json(form);
+    } catch (error) {
+      console.error("Error creating consent form:", error);
+      res.status(500).json({ message: "Failed to create consent form" });
+    }
+  });
+
+  app.post("/api/consent-forms/:id/sign", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const form = await storage.signConsentForm(id);
+      if (!form) {
+        return res.status(404).json({ message: "Consent form not found" });
+      }
+      res.json(form);
+    } catch (error) {
+      console.error("Error signing consent form:", error);
+      res.status(500).json({ message: "Failed to sign consent form" });
+    }
+  });
+
+  // ============ PATIENT DOCUMENTS ============
+  app.get("/api/documents", isAuthenticated, async (req, res) => {
+    try {
+      const documents = await storage.getDocuments();
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  app.get("/api/documents/patient/:patientId", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const documents = await storage.getDocumentsByPatient(patientId);
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching patient documents:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  app.post("/api/documents", isAuthenticated, async (req, res) => {
+    try {
+      const parsed = insertPatientDocumentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid document data", errors: parsed.error.errors });
+      }
+      const document = await storage.createDocument(parsed.data);
+      res.json(document);
+    } catch (error) {
+      console.error("Error creating document:", error);
+      res.status(500).json({ message: "Failed to create document" });
+    }
+  });
+
+  app.delete("/api/documents/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteDocument(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ message: "Failed to delete document" });
     }
   });
 

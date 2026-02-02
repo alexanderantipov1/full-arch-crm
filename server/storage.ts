@@ -42,6 +42,7 @@ import {
   testimonials,
   maintenanceAppointments,
   auditLogs,
+  consentForms,
   users,
   type Patient,
   type InsertPatient,
@@ -123,6 +124,8 @@ import {
   type InsertMaintenanceAppointment,
   type AuditLog,
   type InsertAuditLog,
+  type ConsentForm,
+  type InsertConsentForm,
   type User,
   type UpsertUser,
 } from "@shared/schema";
@@ -336,6 +339,18 @@ export interface IStorage {
   getMaintenanceAppointments(): Promise<MaintenanceAppointment[]>;
   createMaintenanceAppointment(data: InsertMaintenanceAppointment): Promise<MaintenanceAppointment>;
   updateMaintenanceAppointment(id: number, data: Partial<InsertMaintenanceAppointment>): Promise<MaintenanceAppointment | undefined>;
+  
+  // Consent Forms
+  getConsentForms(): Promise<ConsentForm[]>;
+  getConsentFormsByPatient(patientId: number): Promise<ConsentForm[]>;
+  createConsentForm(data: InsertConsentForm): Promise<ConsentForm>;
+  signConsentForm(id: number): Promise<ConsentForm | undefined>;
+
+  // Patient Documents
+  getDocuments(): Promise<PatientDocument[]>;
+  getDocumentsByPatient(patientId: number): Promise<PatientDocument[]>;
+  createDocument(data: InsertPatientDocument): Promise<PatientDocument>;
+  deleteDocument(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1159,6 +1174,46 @@ export class DatabaseStorage implements IStorage {
 
   async getAuditLogsByUser(userId: string): Promise<AuditLog[]> {
     return db.select().from(auditLogs).where(eq(auditLogs.userId, userId)).orderBy(desc(auditLogs.createdAt));
+  }
+
+  // Consent Forms
+  async getConsentForms(): Promise<ConsentForm[]> {
+    return db.select().from(consentForms).orderBy(desc(consentForms.createdAt));
+  }
+
+  async getConsentFormsByPatient(patientId: number): Promise<ConsentForm[]> {
+    return db.select().from(consentForms).where(eq(consentForms.patientId, patientId)).orderBy(desc(consentForms.createdAt));
+  }
+
+  async createConsentForm(data: InsertConsentForm): Promise<ConsentForm> {
+    const [form] = await db.insert(consentForms).values(data).returning();
+    return form;
+  }
+
+  async signConsentForm(id: number): Promise<ConsentForm | undefined> {
+    const [form] = await db.update(consentForms).set({
+      status: "signed",
+      signedAt: new Date(),
+    }).where(eq(consentForms.id, id)).returning();
+    return form;
+  }
+
+  // Patient Documents
+  async getDocuments(): Promise<PatientDocument[]> {
+    return db.select().from(patientDocuments).orderBy(desc(patientDocuments.createdAt));
+  }
+
+  async getDocumentsByPatient(patientId: number): Promise<PatientDocument[]> {
+    return db.select().from(patientDocuments).where(eq(patientDocuments.patientId, patientId)).orderBy(desc(patientDocuments.createdAt));
+  }
+
+  async createDocument(data: InsertPatientDocument): Promise<PatientDocument> {
+    const [doc] = await db.insert(patientDocuments).values(data).returning();
+    return doc;
+  }
+
+  async deleteDocument(id: number): Promise<void> {
+    await db.delete(patientDocuments).where(eq(patientDocuments.id, id));
   }
 }
 
