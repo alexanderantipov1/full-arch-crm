@@ -20,6 +20,12 @@ Full Arch CRM is a comprehensive practice management system designed specificall
 - **Provider Portal**: Referring dentist/orthodontist management, care reports
 - **HIPAA Audit Logging**: Complete audit trail of PHI access with filtering and compliance reporting
 - **Session Timeout**: 15-minute inactivity timeout with warning dialog for HIPAA compliance
+- **Payment Tracking**: Revenue metrics dashboard with insurance vs patient payment breakdown, trend analysis
+- **Digital Consent Forms**: 8 template types (general treatment, implant surgery, sedation, HIPAA, financial, photo release, bone graft, extraction) with digital signing
+- **Reports & Analytics**: Revenue trends, claims approval rates, patient growth metrics, provider productivity
+- **Patient Documents**: Photo/X-ray attachment management with categorization and preview
+- **Treatment Progress**: 12-phase treatment timeline visualization with progress tracking
+- **Patient Intake Forms**: Multi-step wizard with personal info, medical/dental history, insurance, and consent sections
 
 ## Technology Stack
 - **Frontend**: React + TypeScript, Vite, TailwindCSS, Shadcn/UI
@@ -55,7 +61,13 @@ Full Arch CRM is a comprehensive practice management system designed specificall
 │   │   │   ├── era-processing.tsx    # ERA auto-posting
 │   │   │   ├── insurance-verification.tsx  # Eligibility checks
 │   │   │   ├── predictive-analytics.tsx    # Analytics dashboard
-│   │   │   └── training.tsx          # Training center
+│   │   │   ├── training.tsx          # Training center
+│   │   │   ├── payments.tsx          # Payment tracking dashboard
+│   │   │   ├── consent-forms.tsx     # Digital consent forms
+│   │   │   ├── reports.tsx           # Reports & analytics
+│   │   │   ├── patient-documents.tsx # Photo/X-ray attachments
+│   │   │   ├── treatment-progress.tsx # Treatment progress tracking
+│   │   │   └── intake-form.tsx       # Patient intake wizard
 │   │   ├── hooks/            # Custom React hooks
 │   │   ├── lib/              # Utilities
 │   │   └── App.tsx           # Main app with routing
@@ -98,6 +110,8 @@ Key tables:
 - `payment_postings`: ERA payment reconciliation
 - `training_progress`: Staff training completion tracking
 - `audit_logs`: HIPAA audit trail with userId, action, resourceType, PHI access tracking
+- `consent_forms`: Digital consent forms with status and signing capability
+- `patient_documents`: Photo/X-ray attachments with categorization
 
 ## Key API Endpoints
 - `GET/POST /api/patients` - Patient CRUD
@@ -120,6 +134,9 @@ Key tables:
 - `GET/POST /api/training` - Training progress tracking
 - `GET /api/audit-logs` - HIPAA audit logs
 - `GET /api/audit-logs/patient/:patientId` - Patient-specific audit logs
+- `GET/POST /api/consent-forms` - Consent form management
+- `POST /api/consent-forms/:id/sign` - Sign consent form
+- `GET/POST/DELETE /api/documents` - Patient document management
 
 ## Design Theme
 Medical professional theme with:
