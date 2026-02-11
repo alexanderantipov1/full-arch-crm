@@ -31,6 +31,7 @@ import {
   Wrench,
   CheckCircle,
   RefreshCcw,
+  Zap,
 } from "lucide-react";
 import {
   Sidebar,
@@ -49,6 +50,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Command Center", url: "/command-center", icon: Zap },
   { title: "Lead Management", url: "/leads", icon: UserPlus },
   { title: "Patients", url: "/patients", icon: Users },
   { title: "Appointments", url: "/appointments", icon: Calendar },

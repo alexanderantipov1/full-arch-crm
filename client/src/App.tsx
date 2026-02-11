@@ -54,6 +54,7 @@ import ReportsPage from "@/pages/reports";
 import PatientDocumentsPage from "@/pages/patient-documents";
 import TreatmentProgressPage from "@/pages/treatment-progress";
 import IntakeFormPage from "@/pages/intake-form";
+import CommandCenterPage from "@/pages/command-center";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -142,6 +143,7 @@ function Router() {
         <Route path="/documents" component={PatientDocumentsPage} />
         <Route path="/treatment-progress" component={TreatmentProgressPage} />
         <Route path="/intake" component={IntakeFormPage} />
+        <Route path="/command-center" component={CommandCenterPage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>
