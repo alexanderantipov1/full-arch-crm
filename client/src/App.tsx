@@ -59,6 +59,7 @@ import PracticeLaunchPadPage from "@/pages/practice-launchpad";
 import DentBotPage from "@/pages/dentbot";
 import PracticeCRMPage from "@/pages/practice-crm";
 import SaasAdminPage from "@/pages/saas-admin";
+import AdvancedModulesPage from "@/pages/advanced-modules";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -152,6 +153,7 @@ function Router() {
         <Route path="/dentbot" component={DentBotPage} />
         <Route path="/practice-crm" component={PracticeCRMPage} />
         <Route path="/saas-admin" component={SaasAdminPage} />
+        <Route path="/advanced-modules" component={AdvancedModulesPage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>

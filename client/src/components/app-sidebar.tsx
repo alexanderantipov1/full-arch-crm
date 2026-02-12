@@ -36,6 +36,7 @@ import {
   Bot,
   Contact,
   Cog,
+  Layers,
 } from "lucide-react";
 import {
   Sidebar,
@@ -91,6 +92,7 @@ const growthItems = [
   { title: "DentBot Advisor", url: "/dentbot", icon: Bot },
   { title: "Practice CRM", url: "/practice-crm", icon: Contact },
   { title: "SaaS Admin", url: "/saas-admin", icon: Cog },
+  { title: "Advanced Modules", url: "/advanced-modules", icon: Layers },
 ];
 
 const adminItems = [
