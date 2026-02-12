@@ -32,6 +32,10 @@ import {
   CheckCircle,
   RefreshCcw,
   Zap,
+  Rocket,
+  Bot,
+  Contact,
+  Cog,
 } from "lucide-react";
 import {
   Sidebar,
@@ -80,6 +84,13 @@ const clinicalItems = [
   { title: "AI Assistant", url: "/ai-assistant", icon: MessageSquare },
   { title: "AI Documentation", url: "/ai-documentation", icon: Sparkles },
   { title: "Exams & Evaluations", url: "/evaluations", icon: Stethoscope },
+];
+
+const growthItems = [
+  { title: "Practice Launch Pad", url: "/practice-launchpad", icon: Rocket },
+  { title: "DentBot Advisor", url: "/dentbot", icon: Bot },
+  { title: "Practice CRM", url: "/practice-crm", icon: Contact },
+  { title: "SaaS Admin", url: "/saas-admin", icon: Cog },
 ];
 
 const adminItems = [
@@ -172,6 +183,28 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {clinicalItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Practice Growth</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {growthItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

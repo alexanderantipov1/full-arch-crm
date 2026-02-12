@@ -55,6 +55,10 @@ import PatientDocumentsPage from "@/pages/patient-documents";
 import TreatmentProgressPage from "@/pages/treatment-progress";
 import IntakeFormPage from "@/pages/intake-form";
 import CommandCenterPage from "@/pages/command-center";
+import PracticeLaunchPadPage from "@/pages/practice-launchpad";
+import DentBotPage from "@/pages/dentbot";
+import PracticeCRMPage from "@/pages/practice-crm";
+import SaasAdminPage from "@/pages/saas-admin";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -144,6 +148,10 @@ function Router() {
         <Route path="/treatment-progress" component={TreatmentProgressPage} />
         <Route path="/intake" component={IntakeFormPage} />
         <Route path="/command-center" component={CommandCenterPage} />
+        <Route path="/practice-launchpad" component={PracticeLaunchPadPage} />
+        <Route path="/dentbot" component={DentBotPage} />
+        <Route path="/practice-crm" component={PracticeCRMPage} />
+        <Route path="/saas-admin" component={SaasAdminPage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>
