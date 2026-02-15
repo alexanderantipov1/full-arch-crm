@@ -66,6 +66,23 @@ import AllOn4Page from "@/pages/seo-all-on-4";
 import AllOn6Page from "@/pages/seo-all-on-6";
 import DentalImplantBillingPage from "@/pages/seo-dental-billing";
 import AboutPage from "@/pages/about";
+import PerioChartingPage from "@/pages/perio-charting";
+import AIDiagnosticsPage from "@/pages/ai-diagnostics";
+import EPrescribingPage from "@/pages/e-prescribing";
+import DecisionSupportPage from "@/pages/decision-support";
+import OrthoTrackerPage from "@/pages/ortho-tracker";
+import ImplantTrackerPage from "@/pages/implant-tracker";
+import InventoryPage from "@/pages/inventory";
+import HRPayrollPage from "@/pages/hr-payroll";
+import SterilizationPage from "@/pages/sterilization";
+import AIPhonePage from "@/pages/ai-phone";
+import VoiceToCodePage from "@/pages/voice-to-code";
+import CaseAcceptancePage from "@/pages/case-acceptance";
+import TelehealthPage from "@/pages/telehealth";
+import FeeOptimizerPage from "@/pages/fee-optimizer";
+import ProviderIntelPage from "@/pages/provider-intel";
+import PayerIntelPage from "@/pages/payer-intel";
+import MultiLocationPage from "@/pages/multi-location";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -162,6 +179,23 @@ function Router() {
         <Route path="/advanced-modules" component={AdvancedModulesPage} />
         <Route path="/content-engine" component={ContentEnginePage} />
         <Route path="/reputation" component={ReputationManagerPage} />
+        <Route path="/perio" component={PerioChartingPage} />
+        <Route path="/ai-diagnostics" component={AIDiagnosticsPage} />
+        <Route path="/e-prescribing" component={EPrescribingPage} />
+        <Route path="/decision-support" component={DecisionSupportPage} />
+        <Route path="/ortho" component={OrthoTrackerPage} />
+        <Route path="/implant-tracker" component={ImplantTrackerPage} />
+        <Route path="/inventory" component={InventoryPage} />
+        <Route path="/hr" component={HRPayrollPage} />
+        <Route path="/sterilization" component={SterilizationPage} />
+        <Route path="/ai-phone" component={AIPhonePage} />
+        <Route path="/voice-to-code" component={VoiceToCodePage} />
+        <Route path="/case-acceptance" component={CaseAcceptancePage} />
+        <Route path="/telehealth" component={TelehealthPage} />
+        <Route path="/fee-optimizer" component={FeeOptimizerPage} />
+        <Route path="/provider-intel" component={ProviderIntelPage} />
+        <Route path="/payer-intel" component={PayerIntelPage} />
+        <Route path="/multi-location" component={MultiLocationPage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>

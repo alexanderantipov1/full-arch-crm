@@ -39,6 +39,15 @@ import {
   Layers,
   PenTool,
   Award,
+  Microscope,
+  Pill,
+  Brain,
+  Smile,
+  FlaskConical,
+  Mic,
+  Target,
+  Video,
+  MapPin,
 } from "lucide-react";
 import {
   Sidebar,
@@ -84,9 +93,38 @@ const patientJourneyItems = [
 const clinicalItems = [
   { title: "Clinical Notes", url: "/notes", icon: FileText },
   { title: "Patient Documents", url: "/documents", icon: FileText },
+  { title: "Perio Charting", url: "/perio", icon: BarChart3 },
+  { title: "AI Diagnostics", url: "/ai-diagnostics", icon: Microscope },
+  { title: "E-Prescribing", url: "/e-prescribing", icon: Pill },
+  { title: "Decision Support", url: "/decision-support", icon: Brain },
   { title: "AI Assistant", url: "/ai-assistant", icon: MessageSquare },
   { title: "AI Documentation", url: "/ai-documentation", icon: Sparkles },
   { title: "Exams & Evaluations", url: "/evaluations", icon: Stethoscope },
+];
+
+const specialtyItems = [
+  { title: "Ortho Tracker", url: "/ortho", icon: Smile },
+  { title: "Implant Tracker", url: "/implant-tracker", icon: Wrench },
+  { title: "Case Acceptance", url: "/case-acceptance", icon: Target },
+  { title: "Teledentistry", url: "/telehealth", icon: Video },
+];
+
+const aiEngineItems = [
+  { title: "AI Phone Agent", url: "/ai-phone", icon: Phone },
+  { title: "Voice-to-Code", url: "/voice-to-code", icon: Mic },
+];
+
+const operationsItems = [
+  { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "HR & Payroll", url: "/hr", icon: Users },
+  { title: "Sterilization", url: "/sterilization", icon: FlaskConical },
+];
+
+const intelligenceItems = [
+  { title: "Fee Optimizer", url: "/fee-optimizer", icon: DollarSign },
+  { title: "Provider Intel", url: "/provider-intel", icon: TrendingUp },
+  { title: "Payer Intel", url: "/payer-intel", icon: Building2 },
+  { title: "Multi-Location", url: "/multi-location", icon: MapPin },
 ];
 
 const growthItems = [
@@ -189,6 +227,94 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {clinicalItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Specialty & Tracking</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {specialtyItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>AI Engines</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {aiEngineItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Operations</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {operationsItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(item.url)}
+                    data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Intelligence</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {intelligenceItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
