@@ -60,6 +60,12 @@ import DentBotPage from "@/pages/dentbot";
 import PracticeCRMPage from "@/pages/practice-crm";
 import SaasAdminPage from "@/pages/saas-admin";
 import AdvancedModulesPage from "@/pages/advanced-modules";
+import ContentEnginePage from "@/pages/content-engine";
+import ReputationManagerPage from "@/pages/reputation-manager";
+import AllOn4Page from "@/pages/seo-all-on-4";
+import AllOn6Page from "@/pages/seo-all-on-6";
+import DentalImplantBillingPage from "@/pages/seo-dental-billing";
+import AboutPage from "@/pages/about";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -154,6 +160,8 @@ function Router() {
         <Route path="/practice-crm" component={PracticeCRMPage} />
         <Route path="/saas-admin" component={SaasAdminPage} />
         <Route path="/advanced-modules" component={AdvancedModulesPage} />
+        <Route path="/content-engine" component={ContentEnginePage} />
+        <Route path="/reputation" component={ReputationManagerPage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>
@@ -165,7 +173,15 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="implantcrm-theme">
         <TooltipProvider>
-          <Router />
+          <Switch>
+            <Route path="/all-on-4-billing" component={AllOn4Page} />
+            <Route path="/all-on-6-billing" component={AllOn6Page} />
+            <Route path="/dental-implant-billing" component={DentalImplantBillingPage} />
+            <Route path="/about" component={AboutPage} />
+            <Route>
+              <Router />
+            </Route>
+          </Switch>
           <Toaster />
         </TooltipProvider>
       </ThemeProvider>

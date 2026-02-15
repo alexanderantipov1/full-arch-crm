@@ -37,6 +37,8 @@ import {
   Contact,
   Cog,
   Layers,
+  PenTool,
+  Award,
 } from "lucide-react";
 import {
   Sidebar,
@@ -93,6 +95,8 @@ const growthItems = [
   { title: "Practice CRM", url: "/practice-crm", icon: Contact },
   { title: "SaaS Admin", url: "/saas-admin", icon: Cog },
   { title: "Advanced Modules", url: "/advanced-modules", icon: Layers },
+  { title: "Content Engine", url: "/content-engine", icon: PenTool },
+  { title: "Reputation Manager", url: "/reputation", icon: Award },
 ];
 
 const adminItems = [

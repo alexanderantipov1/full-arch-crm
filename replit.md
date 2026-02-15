@@ -26,6 +26,10 @@ Full Arch CRM is a comprehensive practice management system designed specificall
 - **Patient Documents**: Photo/X-ray attachment management with categorization and preview
 - **Treatment Progress**: 12-phase treatment timeline visualization with progress tracking
 - **Patient Intake Forms**: Multi-step wizard with personal info, medical/dental history, insurance, and consent sections
+- **AI Content Engine**: Blog post generator, social media content, case studies, SEO keyword planner, content calendar
+- **Reputation Manager**: Review monitoring (Google/Healthgrades/Yelp/Facebook), campaign management, AI sentiment analysis, automated response drafts, reputation analytics
+- **SEO Landing Pages**: Public pages for All-on-4 billing, All-on-6 billing, and general dental implant billing with CDT code references
+- **About/Marketplace Page**: Platform showcase, competitor comparison, integration ecosystem, leadership team, trust certifications
 
 ## Technology Stack
 - **Frontend**: React + TypeScript, Vite, TailwindCSS, Shadcn/UI
