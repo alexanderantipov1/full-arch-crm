@@ -30,6 +30,18 @@ Full Arch CRM is a comprehensive practice management system designed specificall
 - **Reputation Manager**: Review monitoring (Google/Healthgrades/Yelp/Facebook), campaign management, AI sentiment analysis, automated response drafts, reputation analytics
 - **SEO Landing Pages**: Public pages for All-on-4 billing, All-on-6 billing, and general dental implant billing with CDT code references
 - **About/Marketplace Page**: Platform showcase, competitor comparison, integration ecosystem, leadership team, trust certifications
+- **Revenue Cycle Command Center**: Real-time pipeline from verification to payment, claims tracking, engine performance metrics
+- **Financial Command Center**: P&L summary, overhead breakdown, cash flow, budget tracking, financial forecasting
+- **Marketing Suite**: Channel performance, campaign management, content calendar, marketing analytics with ROI tracking
+- **Patient NPS**: Net Promoter Score tracking, survey responses, satisfaction trends, action items
+- **AI Compliance & Coding Audit**: Compliance scoring, coding accuracy auditing, documentation completeness, OSHA training
+- **Unified Business Intelligence**: Cross-module analytics, AI value attribution, competitive benchmarking, strategic recommendations
+- **Fee Optimizer**: Fee comparison analysis, percentile benchmarking, payer comparison, optimization recommendations
+- **Payer Intelligence**: Payer profiles, contract analysis, reimbursement trends, denial pattern tracking
+- **Case Acceptance**: Acceptance rate tracking, objection analysis with AI counter-strategies, follow-up queue
+- **Smart Scheduling**: AI-powered scheduling with no-show prediction, waitlist management, production-based scheduling
+- **AI Phone Agent**: 24/7 AI receptionist with live call feed, multilingual support, auto-callback
+- **Teledentistry**: HIPAA video consults, photo triage, post-op monitoring, D9995/D9996 billing
 
 ## Technology Stack
 - **Frontend**: React + TypeScript, Vite, TailwindCSS, Shadcn/UI
