@@ -48,6 +48,12 @@ import {
   Target,
   Video,
   MapPin,
+  Activity,
+  Wallet,
+  Megaphone,
+  ThumbsUp,
+  ShieldCheck,
+  PieChart,
 } from "lucide-react";
 import {
   Sidebar,
@@ -121,16 +127,22 @@ const operationsItems = [
 ];
 
 const intelligenceItems = [
+  { title: "Revenue Cycle", url: "/rcm", icon: Activity },
+  { title: "Financial Center", url: "/financial", icon: Wallet },
   { title: "Fee Optimizer", url: "/fee-optimizer", icon: DollarSign },
   { title: "Provider Intel", url: "/provider-intel", icon: TrendingUp },
   { title: "Payer Intel", url: "/payer-intel", icon: Building2 },
   { title: "Multi-Location", url: "/multi-location", icon: MapPin },
+  { title: "Compliance Audit", url: "/compliance", icon: ShieldCheck },
+  { title: "Business Intel", url: "/business-intelligence", icon: PieChart },
 ];
 
 const growthItems = [
   { title: "Practice Launch Pad", url: "/practice-launchpad", icon: Rocket },
   { title: "DentBot Advisor", url: "/dentbot", icon: Bot },
   { title: "Practice CRM", url: "/practice-crm", icon: Contact },
+  { title: "Marketing Suite", url: "/marketing", icon: Megaphone },
+  { title: "Patient NPS", url: "/nps", icon: ThumbsUp },
   { title: "SaaS Admin", url: "/saas-admin", icon: Cog },
   { title: "Advanced Modules", url: "/advanced-modules", icon: Layers },
   { title: "Content Engine", url: "/content-engine", icon: PenTool },

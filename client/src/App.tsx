@@ -83,6 +83,12 @@ import FeeOptimizerPage from "@/pages/fee-optimizer";
 import ProviderIntelPage from "@/pages/provider-intel";
 import PayerIntelPage from "@/pages/payer-intel";
 import MultiLocationPage from "@/pages/multi-location";
+import RcmPage from "@/pages/rcm";
+import FinancialPage from "@/pages/financial";
+import MarketingSuitePage from "@/pages/marketing";
+import NpsPage from "@/pages/nps";
+import CompliancePage from "@/pages/compliance";
+import BusinessIntelligencePage from "@/pages/business-intelligence";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -196,6 +202,12 @@ function Router() {
         <Route path="/provider-intel" component={ProviderIntelPage} />
         <Route path="/payer-intel" component={PayerIntelPage} />
         <Route path="/multi-location" component={MultiLocationPage} />
+        <Route path="/rcm" component={RcmPage} />
+        <Route path="/financial" component={FinancialPage} />
+        <Route path="/marketing" component={MarketingSuitePage} />
+        <Route path="/nps" component={NpsPage} />
+        <Route path="/compliance" component={CompliancePage} />
+        <Route path="/business-intelligence" component={BusinessIntelligencePage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>
