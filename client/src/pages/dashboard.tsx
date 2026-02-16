@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Users,
@@ -14,10 +15,41 @@ import {
   AlertCircle,
   ArrowRight,
   Plus,
+  Target,
+  Percent,
+  UserPlus,
+  ThumbsUp,
+  PieChart,
+  RotateCcw,
+  Activity,
+  Heart,
+  CheckCircle,
+  XCircle,
+  BarChart3,
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import type { Patient, Appointment, TreatmentPlan } from "@shared/schema";
+
+const DEO_KPIS = [
+  { label: "Production/Day", value: "$52.4K", target: "$55K", pct: 95, icon: DollarSign, color: "text-emerald-600 dark:text-emerald-400" },
+  { label: "Collections %", value: "96.2%", target: "98%", pct: 98, icon: Percent, color: "text-blue-600 dark:text-blue-400" },
+  { label: "New Patients/Mo", value: "38", target: "45", pct: 84, icon: UserPlus, color: "text-violet-600 dark:text-violet-400" },
+  { label: "Case Acceptance", value: "72%", target: "80%", pct: 90, icon: ThumbsUp, color: "text-amber-600 dark:text-amber-400" },
+  { label: "Overhead Ratio", value: "57.3%", target: "<59%", pct: 97, icon: PieChart, color: "text-emerald-600 dark:text-emerald-400" },
+  { label: "Reappt Rate", value: "87%", target: "90%", pct: 97, icon: RotateCcw, color: "text-sky-600 dark:text-sky-400" },
+  { label: "Hygiene Prod %", value: "29%", target: "30%", pct: 97, icon: Activity, color: "text-teal-600 dark:text-teal-400" },
+  { label: "Patient LTV", value: "$8,740", target: "$12K", pct: 73, icon: Heart, color: "text-rose-600 dark:text-rose-400" },
+];
+
+const WEEKLY_SCORECARD = [
+  { metric: "Production", vals: ["$48K", "$52K", "$55K", "$49K", "$51K"], total: "$255K", goal: "$275K", hit: false },
+  { metric: "Collections", vals: ["$46K", "$50K", "$53K", "$47K", "$49K"], total: "$245K", goal: "$250K", hit: false },
+  { metric: "New Patients", vals: ["3", "2", "4", "2", "3"], total: "14", goal: "10", hit: true },
+  { metric: "Cases Presented", vals: ["5", "4", "6", "5", "4"], total: "24", goal: "20", hit: true },
+  { metric: "Cases Accepted", vals: ["3", "3", "5", "4", "2"], total: "17", goal: "15", hit: true },
+  { metric: "Hygiene Prod.", vals: ["$14K", "$16K", "$15K", "$14K", "$15K"], total: "$74K", goal: "$80K", hit: false },
+];
 
 interface DashboardStats {
   totalPatients: number;
@@ -122,6 +154,96 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
+
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold flex flex-wrap items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              DEO Practice KPIs
+            </h2>
+            <p className="text-sm text-muted-foreground">Dental Entrepreneur Organization standard metrics</p>
+          </div>
+          <Badge variant="outline" data-testid="badge-deo-standard">DEO Standard</Badge>
+        </div>
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+          {DEO_KPIS.map((kpi) => (
+            <Card
+              key={kpi.label}
+              data-testid={`kpi-card-${kpi.label.toLowerCase().replace(/[^a-z0-9]/g, "-")}`}
+            >
+              <CardContent className="p-4 text-center space-y-2">
+                <div className="flex items-center justify-center">
+                  <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
+                </div>
+                <div className={`text-2xl font-bold ${kpi.color}`} data-testid={`kpi-value-${kpi.label.toLowerCase().replace(/[^a-z0-9]/g, "-")}`}>
+                  {kpi.value}
+                </div>
+                <div className="text-xs font-semibold">{kpi.label}</div>
+                <Progress value={kpi.pct} className="h-1.5" />
+                <div className="text-xs text-muted-foreground">Target: {kpi.target}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-4">
+          <div>
+            <CardTitle className="text-lg flex flex-wrap items-center gap-2">
+              <Target className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              Weekly Scorecard
+            </CardTitle>
+            <CardDescription>DEO Framework - Daily performance tracking</CardDescription>
+          </div>
+          <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700" data-testid="badge-deo-weekly">
+            This Week
+          </Badge>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="table-weekly-scorecard">
+              <thead>
+                <tr className="border-b">
+                  <th className="py-2 px-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Metric</th>
+                  {["Mon", "Tue", "Wed", "Thu", "Fri"].map((d) => (
+                    <th key={d} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">{d}</th>
+                  ))}
+                  <th className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Week Total</th>
+                  <th className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Goal</th>
+                  <th className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {WEEKLY_SCORECARD.map((row) => (
+                  <tr key={row.metric} className="border-b last:border-0" data-testid={`scorecard-row-${row.metric.toLowerCase().replace(/\s+/g, "-")}`}>
+                    <td className="py-2.5 px-3 font-semibold">{row.metric}</td>
+                    {row.vals.map((v, j) => (
+                      <td key={j} className="py-2.5 px-3 text-center text-muted-foreground font-mono text-xs">{v}</td>
+                    ))}
+                    <td className="py-2.5 px-3 text-center font-bold font-mono text-xs">{row.total}</td>
+                    <td className="py-2.5 px-3 text-center text-muted-foreground text-xs">{row.goal}</td>
+                    <td className="py-2.5 px-3 text-center">
+                      {row.hit ? (
+                        <Badge variant="secondary" className="gap-1 text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30" data-testid={`scorecard-status-${row.metric.toLowerCase().replace(/\s+/g, "-")}`}>
+                          <CheckCircle className="h-3 w-3" />
+                          HIT
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="gap-1 text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/30" data-testid={`scorecard-status-${row.metric.toLowerCase().replace(/\s+/g, "-")}`}>
+                          <XCircle className="h-3 w-3" />
+                          MISS
+                        </Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
