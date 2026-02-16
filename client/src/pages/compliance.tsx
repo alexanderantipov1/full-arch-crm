@@ -123,7 +123,7 @@ export default function CompliancePage() {
               return (
                 <div key={i} className={`rounded-md border-l-4 ${borderColor} ${bgColor} p-3`} data-testid={`audit-item-${i}`}>
                   <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-                    <span className="text-xs font-bold">{item.issue}</span>
+                    <span className="text-xs font-bold" data-testid={`audit-issue-${i}`}>{item.issue}</span>
                     <Badge
                       variant={isHigh ? "destructive" : "outline"}
                       className={`text-[10px] ${!isHigh ? "text-yellow-600 dark:text-yellow-400 border-yellow-500" : ""}`}
@@ -133,10 +133,10 @@ export default function CompliancePage() {
                     </Badge>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mb-1 flex-wrap">
-                    <span>{item.provider}</span>
-                    <span>{item.cases} {item.cases === 1 ? "case" : "cases"}</span>
+                    <span data-testid={`audit-provider-${i}`}>{item.provider}</span>
+                    <span data-testid={`audit-cases-${i}`}>{item.cases} {item.cases === 1 ? "case" : "cases"}</span>
                   </div>
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400" data-testid={`audit-resolution-${i}`}>
                     <Bot className="inline mr-1 h-3 w-3" />
                     {item.resolution}
                   </p>
@@ -166,8 +166,8 @@ export default function CompliancePage() {
               return (
                 <div key={i} data-testid={`doc-completeness-${i}`}>
                   <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-                    <span className="text-xs font-medium">{doc.label}</span>
-                    <span className={`text-xs font-bold font-mono ${valueColor}`}>{doc.value}%</span>
+                    <span className="text-xs font-medium" data-testid={`doc-label-${i}`}>{doc.label}</span>
+                    <span className={`text-xs font-bold font-mono ${valueColor}`} data-testid={`doc-value-${i}`}>{doc.value}%</span>
                   </div>
                   <Progress value={doc.value} className={`h-2 ${progressClass}`} />
                 </div>

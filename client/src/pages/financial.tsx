@@ -102,12 +102,12 @@ export default function FinancialPage() {
                   className={`flex items-center justify-between gap-4 py-2 ${line.separator ? "border-b" : ""} ${line.bold ? "font-bold" : ""}`}
                   data-testid={`pl-line-${i}`}
                 >
-                  <span className={`text-sm ${line.bold ? "" : "text-muted-foreground"}`}>{line.label}</span>
+                  <span className={`text-sm ${line.bold ? "" : "text-muted-foreground"}`} data-testid={`pl-label-${i}`}>{line.label}</span>
                   <div className="flex items-center gap-3">
                     {line.pct && (
-                      <span className="text-xs text-muted-foreground">{line.pct}</span>
+                      <span className="text-xs text-muted-foreground" data-testid={`pl-pct-${i}`}>{line.pct}</span>
                     )}
-                    <span className={`font-mono text-sm ${line.bold ? "text-foreground" : ""}`}>{line.value}</span>
+                    <span className={`font-mono text-sm ${line.bold ? "text-foreground" : ""}`} data-testid={`pl-value-${i}`}>{line.value}</span>
                   </div>
                 </div>
               ))}
@@ -127,8 +127,8 @@ export default function FinancialPage() {
               {overheadItems.map((item, i) => (
                 <div key={i} data-testid={`overhead-item-${i}`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-sm font-medium">{item.label}</span>
-                    <span className={`text-sm font-mono font-bold ${item.over ? "text-destructive" : ""}`}>
+                    <span className="text-sm font-medium" data-testid={`overhead-label-${i}`}>{item.label}</span>
+                    <span className={`text-sm font-mono font-bold ${item.over ? "text-destructive" : ""}`} data-testid={`overhead-value-${i}`}>
                       {item.value}% / {item.target}% target
                     </span>
                   </div>
@@ -137,7 +137,7 @@ export default function FinancialPage() {
                     className={`h-2 ${item.over ? "[&>div]:bg-destructive" : ""}`}
                   />
                   {item.over && (
-                    <p className="text-xs text-destructive mt-1 font-medium">Over budget</p>
+                    <p className="text-xs text-destructive mt-1 font-medium" data-testid={`overhead-status-${i}`}>Over budget</p>
                   )}
                 </div>
               ))}

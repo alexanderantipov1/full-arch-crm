@@ -159,8 +159,8 @@ export default function RcmPage() {
                 >
                   <div className="flex items-start justify-between gap-2 flex-wrap">
                     <div className="text-sm">
-                      <span className="font-mono text-xs font-bold text-muted-foreground mr-2">{item.time}</span>
-                      {item.text}
+                      <span className="font-mono text-xs font-bold text-muted-foreground mr-2" data-testid={`activity-time-${i}`}>{item.time}</span>
+                      <span data-testid={`activity-text-${i}`}>{item.text}</span>
                     </div>
                     {item.amount && (
                       <Badge variant="outline" className="font-mono text-xs shrink-0" data-testid={`activity-amount-${i}`}>
@@ -186,8 +186,8 @@ export default function RcmPage() {
               {engineMetrics.map((m, i) => (
                 <div key={i} data-testid={`engine-metric-${i}`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-sm font-medium">{m.label}</span>
-                    <span className="text-sm font-mono font-bold">
+                    <span className="text-sm font-medium" data-testid={`engine-metric-label-${i}`}>{m.label}</span>
+                    <span className="text-sm font-mono font-bold" data-testid={`engine-metric-value-${i}`}>
                       {m.sub ? `${m.sub} (${m.value}%)` : `${m.value}%`}
                     </span>
                   </div>

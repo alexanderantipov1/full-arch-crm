@@ -123,11 +123,11 @@ export default function MarketingPage() {
                 <tbody>
                   {channels.map((c, i) => (
                     <tr key={i} className="border-b last:border-0" data-testid={`channel-row-${i}`}>
-                      <td className="py-3 pr-4 font-medium">{c.name}</td>
-                      <td className="py-3 pr-4 font-mono">{c.spend}</td>
-                      <td className="py-3 pr-4 font-mono font-bold">{c.patients}</td>
-                      <td className="py-3 pr-4 font-mono">{c.cpa}</td>
-                      <td className="py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{c.roi}</td>
+                      <td className="py-3 pr-4 font-medium" data-testid={`channel-name-${i}`}>{c.name}</td>
+                      <td className="py-3 pr-4 font-mono" data-testid={`channel-spend-${i}`}>{c.spend}</td>
+                      <td className="py-3 pr-4 font-mono font-bold" data-testid={`channel-patients-${i}`}>{c.patients}</td>
+                      <td className="py-3 pr-4 font-mono" data-testid={`channel-cpa-${i}`}>{c.cpa}</td>
+                      <td className="py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400" data-testid={`channel-roi-${i}`}>{c.roi}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -161,8 +161,8 @@ export default function MarketingPage() {
                 >
                   <div className="flex items-start justify-between gap-2 flex-wrap">
                     <div>
-                      <span className="text-xs font-bold uppercase text-muted-foreground mr-2">{item.day}</span>
-                      <span className="text-sm">{item.content}</span>
+                      <span className="text-xs font-bold uppercase text-muted-foreground mr-2" data-testid={`calendar-day-${i}`}>{item.day}</span>
+                      <span className="text-sm" data-testid={`calendar-content-${i}`}>{item.content}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge variant="outline" className="text-xs" data-testid={`calendar-platform-${i}`}>

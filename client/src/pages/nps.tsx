@@ -130,9 +130,9 @@ export default function NpsPage() {
               return (
                 <div key={i} className="border-b pb-3 last:border-0 last:pb-0" data-testid={`survey-response-${i}`}>
                   <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-                    <span className="text-xs font-bold">{r.name}</span>
+                    <span className="text-xs font-bold" data-testid={`survey-name-${i}`}>{r.name}</span>
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold font-mono ${scoreColor}`}>
+                      <span className={`text-xs font-bold font-mono ${scoreColor}`} data-testid={`survey-score-${i}`}>
                         <Star className="inline mr-0.5 h-3 w-3" />
                         {r.score}
                       </span>
@@ -141,9 +141,9 @@ export default function NpsPage() {
                       </Badge>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">"{r.comment}"</p>
+                  <p className="text-xs text-muted-foreground" data-testid={`survey-comment-${i}`}>"{r.comment}"</p>
                   {r.action && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1" data-testid={`survey-action-${i}`}>
                       <CheckCircle className="inline mr-1 h-3 w-3" />
                       {r.action}
                     </p>
@@ -174,8 +174,8 @@ export default function NpsPage() {
               return (
                 <div key={i} data-testid={`satisfaction-category-${i}`}>
                   <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-                    <span className="text-xs font-medium">{cat.label}</span>
-                    <span className={`text-xs font-bold font-mono ${valueColor}`}>{cat.value}%</span>
+                    <span className="text-xs font-medium" data-testid={`satisfaction-label-${i}`}>{cat.label}</span>
+                    <span className={`text-xs font-bold font-mono ${valueColor}`} data-testid={`satisfaction-value-${i}`}>{cat.value}%</span>
                   </div>
                   <Progress value={cat.value} className={`h-2 ${progressClass}`} />
                 </div>

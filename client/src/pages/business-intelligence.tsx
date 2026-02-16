@@ -109,8 +109,8 @@ export default function BusinessIntelligencePage() {
             <div className="space-y-2">
               {aiValueItems.map((item, i) => (
                 <div key={i} className="flex items-center justify-between py-1.5 border-b last:border-0" data-testid={`ai-value-${i}`}>
-                  <span className="text-xs font-medium">{item.label}</span>
-                  <span className="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">{item.value}</span>
+                  <span className="text-xs font-medium" data-testid={`ai-value-label-${i}`}>{item.label}</span>
+                  <span className="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400" data-testid={`ai-value-amount-${i}`}>{item.value}</span>
                 </div>
               ))}
             </div>
@@ -148,9 +148,9 @@ export default function BusinessIntelligencePage() {
                   <tbody>
                     {benchmarkData.map((row, i) => (
                       <tr key={i} className="border-b last:border-0" data-testid={`benchmark-row-${i}`}>
-                        <td className="py-2.5 pr-4 text-xs font-medium">{row.metric}</td>
-                        <td className="py-2.5 pr-4 text-xs font-bold font-mono">{row.yours}</td>
-                        <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground">{row.national}</td>
+                        <td className="py-2.5 pr-4 text-xs font-medium" data-testid={`benchmark-metric-${i}`}>{row.metric}</td>
+                        <td className="py-2.5 pr-4 text-xs font-bold font-mono" data-testid={`benchmark-yours-${i}`}>{row.yours}</td>
+                        <td className="py-2.5 pr-4 text-xs font-mono text-muted-foreground" data-testid={`benchmark-national-${i}`}>{row.national}</td>
                         <td className="py-2.5">
                           <Badge
                             variant="outline"
@@ -179,7 +179,7 @@ export default function BusinessIntelligencePage() {
               {strategicRecommendations.map((rec, i) => (
                 <div key={i} className="flex gap-2" data-testid={`recommendation-${i}`}>
                   <Bot className="h-3.5 w-3.5 mt-0.5 shrink-0 text-purple-600 dark:text-purple-400" />
-                  <p className="text-xs text-muted-foreground leading-relaxed">{rec}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed" data-testid={`recommendation-text-${i}`}>{rec}</p>
                 </div>
               ))}
             </CardContent>
