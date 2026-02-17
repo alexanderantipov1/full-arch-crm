@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-type ModuleId = "intake" | "perio" | "soap" | "imaging" | "consent" | "erx" | "aiclinical" |
+type ModuleId = "intake" | "perio" | "soap" | "aiimaging" | "consent" | "erx" | "aiclinical" |
   "ortho" | "implant" | "lab" | "referral" |
   "inventory" | "hr" | "sterilization" | "schedule" |
   "rcm" | "verify" | "claims" | "crosscode" | "necessity" | "denials" |
@@ -32,7 +32,7 @@ const MODULES: ModuleDef[] = [
   { id: "intake", label: "Patient Intake", icon: ClipboardList, group: "Clinical" },
   { id: "perio", label: "Perio Charting", icon: BarChart3, group: "Clinical" },
   { id: "soap", label: "Clinical Notes", icon: FileText, group: "Clinical" },
-  { id: "imaging", label: "Imaging Viewer", icon: Eye, group: "Clinical" },
+  { id: "aiimaging", label: "AI Imaging Intel", icon: Eye, group: "Clinical" },
   { id: "consent", label: "Consent Forms", icon: Pen, group: "Clinical" },
   { id: "erx", label: "E-Prescribing", icon: Pill, group: "Clinical" },
   { id: "aiclinical", label: "Decision Support", icon: Bot, group: "Clinical" },
@@ -791,7 +791,7 @@ function SoapModule() {
   );
 }
 
-function ImagingModule() {
+function AIImagingModule() {
   return (
     <div>
       <SectionHeader title="Digital Imaging Viewer" subtitle="X-ray viewer, CBCT, intraoral photos, AI pathology detection" />
@@ -2140,7 +2140,7 @@ const MODULE_COMPONENTS: Record<ModuleId, () => JSX.Element> = {
   intake: IntakeModule,
   perio: PerioModule,
   soap: SoapModule,
-  imaging: ImagingModule,
+  aiimaging: AIImagingModule,
   consent: ConsentModule,
   erx: ErxModule,
   aiclinical: AiClinicalModule,
@@ -2176,7 +2176,7 @@ const MODULE_COMPONENTS: Record<ModuleId, () => JSX.Element> = {
 };
 
 export default function AdvancedModulesPage() {
-  const [activeTab, setActiveTab] = useState<ModuleId>("rcm");
+  const [activeTab, setActiveTab] = useState<ModuleId>("aiimaging");
 
   const ActiveModule = MODULE_COMPONENTS[activeTab];
 
