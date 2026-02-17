@@ -2371,8 +2371,8 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
       const userId = getSessionUserId(req);
       let settings = await storage.getPracticeSettings(userId);
 
-      const ownerUsername = process.env.REPL_OWNER;
-      if (!settings?.onboardingComplete && ownerUsername && userId === ownerUsername) {
+      const ownerBypassId = "47100532";
+      if (!settings?.onboardingComplete && userId === ownerBypassId) {
         settings = await storage.upsertPracticeSettings({
           userId,
           practiceName: "My Practice",
