@@ -5,6 +5,8 @@ import {
   Megaphone, Star, Building2, Video, Brain, Bot, AlertTriangle, CheckCircle,
   Clock, Activity, Search, Camera, Shield, TrendingUp, AlertCircle,
   ArrowRight, Send, Mic, Hash,
+  Calendar, Gauge, SearchCheck, FileCheck, ArrowLeftRight, ScrollText,
+  Swords, Phone, Target, Receipt, Stethoscope, Landmark, ShieldCheck, PieChart,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +14,12 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-type ModuleId = "intake" | "perio" | "soap" | "imaging" | "consent" | "erx" |
-  "ortho" | "implant" | "lab" | "referral" | "inventory" | "hr" | "sterilization" |
-  "financial" | "financing" | "marketing" | "nps" | "multiloc" |
-  "telehealth" | "aitreatment" | "aiclinical";
+type ModuleId = "intake" | "perio" | "soap" | "imaging" | "consent" | "erx" | "aiclinical" |
+  "ortho" | "implant" | "lab" | "referral" |
+  "inventory" | "hr" | "sterilization" | "schedule" |
+  "rcm" | "verify" | "claims" | "crosscode" | "necessity" | "denials" |
+  "phone" | "voice" | "txplan" | "acceptance" | "telehealth" |
+  "financial" | "financing" | "marketing" | "nps" | "fees" | "provider" | "payer" | "multiloc" | "compliance" | "bi";
 
 interface ModuleDef {
   id: ModuleId;
@@ -31,24 +35,39 @@ const MODULES: ModuleDef[] = [
   { id: "imaging", label: "Imaging Viewer", icon: Eye, group: "Clinical" },
   { id: "consent", label: "Consent Forms", icon: Pen, group: "Clinical" },
   { id: "erx", label: "E-Prescribing", icon: Pill, group: "Clinical" },
+  { id: "aiclinical", label: "Decision Support", icon: Bot, group: "Clinical" },
   { id: "ortho", label: "Ortho Tracker", icon: CircleDot, group: "Specialty" },
   { id: "implant", label: "Implant Tracker", icon: Wrench, group: "Specialty" },
   { id: "lab", label: "Lab Cases", icon: FlaskConical, group: "Specialty" },
   { id: "referral", label: "Referrals", icon: RefreshCcw, group: "Specialty" },
   { id: "inventory", label: "Inventory", icon: Package, group: "Operations" },
-  { id: "hr", label: "HR & Time Clock", icon: Users, group: "Operations" },
+  { id: "hr", label: "HR & Payroll", icon: Users, group: "Operations" },
   { id: "sterilization", label: "Sterilization", icon: TestTube, group: "Operations" },
-  { id: "financial", label: "Financial Center", icon: DollarSign, group: "Business" },
-  { id: "financing", label: "Patient Financing", icon: CreditCard, group: "Business" },
-  { id: "marketing", label: "Marketing Suite", icon: Megaphone, group: "Business" },
-  { id: "nps", label: "Patient Satisfaction", icon: Star, group: "Business" },
-  { id: "multiloc", label: "Multi-Location", icon: Building2, group: "Business" },
-  { id: "telehealth", label: "Teledentistry", icon: Video, group: "AI Modules" },
-  { id: "aitreatment", label: "AI Tx Planning", icon: Brain, group: "AI Modules" },
-  { id: "aiclinical", label: "AI Decision Support", icon: Bot, group: "AI Modules" },
+  { id: "schedule", label: "Smart Schedule", icon: Calendar, group: "Operations" },
+  { id: "rcm", label: "Revenue Command", icon: Gauge, group: "Revenue AI" },
+  { id: "verify", label: "Insurance Verify", icon: SearchCheck, group: "Revenue AI" },
+  { id: "claims", label: "Claims Engine", icon: FileCheck, group: "Revenue AI" },
+  { id: "crosscode", label: "Cross-Coding", icon: ArrowLeftRight, group: "Revenue AI" },
+  { id: "necessity", label: "Necessity Letters", icon: ScrollText, group: "Revenue AI" },
+  { id: "denials", label: "Denial Appeals", icon: Swords, group: "Revenue AI" },
+  { id: "phone", label: "AI Phone Agent", icon: Phone, group: "AI Engines" },
+  { id: "voice", label: "Voice-to-Code", icon: Mic, group: "AI Engines" },
+  { id: "txplan", label: "AI Tx Planning", icon: Brain, group: "AI Engines" },
+  { id: "acceptance", label: "Case Acceptance", icon: Target, group: "AI Engines" },
+  { id: "telehealth", label: "Teledentistry", icon: Video, group: "AI Engines" },
+  { id: "financial", label: "Financial Center", icon: DollarSign, group: "Intelligence" },
+  { id: "financing", label: "Patient Finance", icon: CreditCard, group: "Intelligence" },
+  { id: "marketing", label: "Marketing Suite", icon: Megaphone, group: "Intelligence" },
+  { id: "nps", label: "Patient NPS", icon: Star, group: "Intelligence" },
+  { id: "fees", label: "Fee Optimizer", icon: Receipt, group: "Intelligence" },
+  { id: "provider", label: "Provider Intel", icon: Stethoscope, group: "Intelligence" },
+  { id: "payer", label: "Payer Intel", icon: Landmark, group: "Intelligence" },
+  { id: "multiloc", label: "Multi-Location", icon: Building2, group: "Intelligence" },
+  { id: "compliance", label: "Compliance Audit", icon: ShieldCheck, group: "Intelligence" },
+  { id: "bi", label: "Business Intel", icon: PieChart, group: "Intelligence" },
 ];
 
-const GROUPS = ["Clinical", "Specialty", "Operations", "Business", "AI Modules"];
+const GROUPS = ["Clinical", "Specialty", "Operations", "Revenue AI", "AI Engines", "Intelligence"];
 
 function KpiCard({ icon: Icon, label, value, sub, subColor }: {
   icon: typeof ClipboardList; label: string; value: string; sub?: string; subColor?: string;
@@ -115,8 +134,17 @@ function StatusBadge({ status }: { status: string }) {
     blocked: "bg-red-500/15 text-red-700 dark:text-red-400",
     late: "bg-red-500/15 text-red-700 dark:text-red-400",
     high: "bg-red-500/15 text-red-700 dark:text-red-400",
+    declined: "bg-red-500/15 text-red-700 dark:text-red-400",
     due_soon: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
     medium: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    scrubbing: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    "pre-auth": "bg-purple-500/15 text-purple-700 dark:text-purple-400",
+    pre_auth: "bg-purple-500/15 text-purple-700 dark:text-purple-400",
+    resolved: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+    approved: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+    recovered: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+    transferred: "bg-blue-500/15 text-blue-700 dark:text-blue-400",
+    escalated: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
   };
   const cls = map[status.toLowerCase().replace(/\s+/g, "_")] || "bg-muted text-muted-foreground";
   return (
@@ -375,6 +403,210 @@ const AI_PROTOCOLS = [
   { title: "Perio-Systemic Risk", desc: "James Okafor: Type 2 Diabetes with elevated HbA1c. Evidence-based recommendation: more frequent perio maintenance (3-month intervals), enhanced homecare instruction, glucose monitoring coordination with PCP." },
   { title: "Radiograph Intervals", desc: "AI recommends individualized radiograph scheduling based on caries risk assessment. High-risk patients: 6-month bitewings. Low-risk: 24-36 month bitewings. CBCT only when 2D inadequate for diagnosis." },
   { title: "Emergency Protocol", desc: "Avulsed tooth protocol: Reimplant within 60 min if possible. Store in Hanks solution or milk. Splint 7-14 days. Initiate RCT at 7-10 days. Follow-up radiographs at 4 weeks, 3 months, 6 months, 1 year." },
+];
+
+const SCHEDULE_TOMORROW = [
+  { time: "8:00", dur: "60m", chair: "Op 1", prov: "Dr. Chen", pt: "Robert Kim", proc: "Implant Consult + CBCT", prod: "$2,450", risk: "low" },
+  { time: "8:00", dur: "60m", chair: "Op 2", prov: "Dr. Park", pt: "Diana Patel", proc: "Invisalign Check #9", prod: "$280", risk: "low" },
+  { time: "8:00", dur: "60m", chair: "Hyg 1", prov: "Sarah RDH", pt: "James Okafor", proc: "Perio Maintenance", prod: "$180", risk: "medium" },
+  { time: "8:00", dur: "60m", chair: "Hyg 2", prov: "Jamie RDH", pt: "New Pt \u2014 Garcia", proc: "NP Exam + BWX", prod: "$342", risk: "high" },
+  { time: "9:00", dur: "90m", chair: "Op 1", prov: "Dr. Chen", pt: "Margaret Sullivan", proc: "Crown Seat #14", prod: "$1,280", risk: "low" },
+  { time: "9:00", dur: "60m", chair: "Op 2", prov: "Dr. Park", pt: "Tyler Nguyen", proc: "Ortho Consult", prod: "$250", risk: "medium" },
+  { time: "10:00", dur: "120m", chair: "Op 1", prov: "Dr. Chen", pt: "Michael Torres", proc: "Crown Prep #3", prod: "$1,840", risk: "low" },
+];
+
+const NOSHOW_RISKS = [
+  { patient: "Maria Garcia (New)", risk: "38%", reason: "New pt, no deposit", color: "text-red-500" },
+  { patient: "James Okafor", risk: "22%", reason: "Missed last 2 hyg", color: "text-amber-500" },
+  { patient: "Tyler Nguyen", risk: "18%", reason: "History of reschedule", color: "text-amber-500" },
+];
+
+const WAITLIST_PATIENTS = [
+  { patient: "Frank Morris", proc: "Crown seat #8", prod: "$1,280", flex: "Any AM" },
+  { patient: "Karen Brown", proc: "Filling #18", prod: "$240", flex: "Tue/Thu PM" },
+  { patient: "Pete Hall", proc: "Implant F/U", prod: "$0", flex: "Flexible" },
+];
+
+const RCM_ACTIVITY = [
+  { time: "2:42 PM", action: "Claim D2740 #3 \u2014 Margaret Sullivan auto-submitted to Delta", amt: "$1,280", color: "text-emerald-500" },
+  { time: "2:38 PM", action: "Insurance verified \u2014 Robert Kim (Cigna PPO) implant benefits confirmed", amt: "\u2014", color: "text-blue-500" },
+  { time: "2:31 PM", action: "Cross-coded: Sleep appliance D5988 \u2192 G47.33 \u2192 E0486 for medical billing", amt: "$2,400", color: "text-purple-500" },
+  { time: "2:24 PM", action: "Medical necessity letter generated for SRP D4341 \u2014 James Okafor", amt: "\u2014", color: "text-indigo-500" },
+  { time: "2:18 PM", action: "Appeal auto-submitted: Denied crown D2740 \u2014 MetLife \u2014 clinical narrative attached", amt: "$1,280", color: "text-amber-500" },
+  { time: "2:10 PM", action: "Voice note \u2192 SOAP \u2192 CDT auto-coded: Dr. Chen \u2014 Michael Torres implant follow-up", amt: "\u2014", color: "text-cyan-500" },
+  { time: "1:55 PM", action: "ERA auto-posted: Cigna batch $8,420 \u2014 12 claims reconciled", amt: "$8,420", color: "text-emerald-500" },
+];
+
+const RCM_ENGINE_PERF = [
+  { label: "Claim Accuracy", val: "97.8%", pct: 97.8, color: "text-emerald-500" },
+  { label: "Verification Speed", val: "4.2 sec", pct: 95, color: "text-blue-500" },
+  { label: "Cross-Code Match", val: "89%", pct: 89, color: "text-purple-500" },
+  { label: "Necessity Approval", val: "91%", pct: 91, color: "text-indigo-500" },
+  { label: "Appeal Overturn", val: "68%", pct: 68, color: "text-amber-500" },
+  { label: "Voice-to-Code", val: "98.4%", pct: 98.4, color: "text-cyan-500" },
+  { label: "ERA Auto-Post", val: "96%", pct: 96, color: "text-teal-500" },
+  { label: "First-Pass Rate", val: "94.2%", pct: 94.2, color: "text-emerald-500" },
+];
+
+const VERIFY_RESULTS = [
+  { patient: "Robert Kim", plan: "Cigna PPO", status: "Active", benefits: "50% major, $2K max, $1,450 remaining", check: "pass" },
+  { patient: "Margaret Sullivan", plan: "Delta Premier", status: "Active", benefits: "80% basic, 50% major, $1,800 remaining", check: "pass" },
+  { patient: "Diana Patel", plan: "MetLife PPO", status: "Active", benefits: "$2K ortho lifetime, $800 remaining", check: "warning" },
+  { patient: "James Okafor", plan: "Aetna DMO", status: "Active", benefits: "100% prev, 80% basic, 50% major", check: "pass" },
+  { patient: "New \u2014 Garcia", plan: "Delta PPO", status: "Active", benefits: "100% prev, 80% basic, 50% major, $2K max", check: "pass" },
+  { patient: "Tom Davis", plan: "BCBS FEP", status: "Active", benefits: "50% implant, $2.5K max, $400 remaining", check: "warning" },
+];
+
+const CLAIMS_QUEUE = [
+  { patient: "Margaret Sullivan", proc: "D2740 Crown #3", fee: "$1,280", payer: "Delta Premier", status: "submitted" },
+  { patient: "Robert Kim", proc: "D0367 CBCT", fee: "$250", payer: "Cigna PPO", status: "submitted" },
+  { patient: "James Okafor", proc: "D4910 Perio Maint", fee: "$180", payer: "Aetna DMO", status: "pending" },
+  { patient: "Diana Patel", proc: "D8040 Ortho Comprehensive", fee: "$280", payer: "MetLife", status: "pre-auth" },
+  { patient: "Michael Torres", proc: "D2950+D2740 #17", fee: "$1,620", payer: "UHC", status: "scrubbing" },
+];
+
+const CLAIMS_SCRUB_CATCHES = [
+  { issue: "Missing tooth # on D2740", fix: "Auto-added from chart", severity: "warning" },
+  { issue: "D1110 frequency violation (Cigna)", fix: "Changed to D4910 \u2014 eligible", severity: "high" },
+  { issue: "D2950 bundling risk", fix: "Attached narrative justification", severity: "warning" },
+  { issue: "Pre-auth required D8040", fix: "Auto-submitted to MetLife", severity: "low" },
+  { issue: "Missing X-ray attachment D2740", fix: "Auto-attached PA from chart", severity: "warning" },
+];
+
+const CROSSCODE_OPPS = [
+  { proc: "Sleep Apnea Appliance", cdt: "D5988", icd: "G47.33", cpt: "E0486", dental: "$2,400", medical: "$1,680", status: "approved" },
+  { proc: "TMJ Splint Therapy", cdt: "D7880", icd: "M26.60", cpt: "21085", dental: "$1,800", medical: "$1,260", status: "approved" },
+  { proc: "Oral Biopsy", cdt: "D7286", icd: "K13.1", cpt: "40808", dental: "$450", medical: "$380", status: "pending" },
+  { proc: "Bone Graft (Implant)", cdt: "D7953", icd: "M27.8", cpt: "21210", dental: "$1,200", medical: "$840", status: "submitted" },
+  { proc: "CBCT \u2014 Pathology Eval", cdt: "D0367", icd: "Z13.89", cpt: "70553", dental: "$250", medical: "$220", status: "approved" },
+];
+
+const NECESSITY_LETTERS = [
+  { patient: "James Okafor", proc: "D4341 SRP \u2014 All Quads", evidence: "Perio probing 4-7mm, 18% BOP, Stage III", payer: "Delta", status: "approved", val: "$820" },
+  { patient: "Margaret Sullivan", proc: "D2740 Crown #3", evidence: "Fracture line visible, >50% tooth structure loss", payer: "MetLife", status: "approved", val: "$1,280" },
+  { patient: "Robert Kim", proc: "D6010 Implant #14", evidence: "Missing tooth, bone sufficient per CBCT, adjacent teeth healthy", payer: "Cigna", status: "pending", val: "$2,200" },
+  { patient: "Tom Davis", proc: "D6010-D6065 Full Arch", evidence: "Complete edentulism, CBCT bone eval, medical necessity for function", payer: "BCBS", status: "submitted", val: "$24,800" },
+  { patient: "Diana Patel", proc: "D8080 Comprehensive Ortho", evidence: "Class II div 1 malocclusion, TMJ symptoms, functional impairment", payer: "MetLife", status: "approved", val: "$5,500" },
+];
+
+const ACTIVE_DENIALS = [
+  { patient: "Margaret Sullivan", proc: "D2740 Crown #3", payer: "MetLife", reason: "Missing documentation", action: "Appeal sent \u2014 narrative + X-ray attached", val: "$1,280" },
+  { patient: "Robert Kim", proc: "D0367 CBCT", payer: "Cigna", reason: "Not medically necessary", action: "Appeal + medical necessity letter auto-generated", val: "$250" },
+  { patient: "Diana Patel", proc: "D8080 Ortho", payer: "MetLife", reason: "Frequency limitation", action: "Appealing \u2014 prior auth was approved", val: "$5,500" },
+  { patient: "Tom Davis", proc: "D6010 Implant", payer: "BCBS", reason: "Pre-auth required", action: "Pre-auth submitted retroactively + appeal", val: "$2,200" },
+];
+
+const DENIAL_CAUSES = [
+  { reason: "Missing documentation", pct: 35, color: "text-red-500" },
+  { reason: "Frequency limitations", pct: 22, color: "text-amber-500" },
+  { reason: "Medical necessity", pct: 17, color: "text-orange-500" },
+  { reason: "Pre-auth required", pct: 13, color: "text-purple-500" },
+  { reason: "Not covered \u2192 cross-code", pct: 9, color: "text-blue-500" },
+  { reason: "Coding errors", pct: 4, color: "text-teal-500" },
+];
+
+const PHONE_CALLS = [
+  { time: "2:42 PM", caller: "New \u2014 Maria Garcia", dur: "3:12", type: "AI", action: "Booked NP exam 02/18. Collected insurance (Delta PPO). Sent intake SMS.", status: "resolved" },
+  { time: "2:38 PM", caller: "Diana Patel", dur: "1:45", type: "AI", action: "Confirmed Invisalign check 02/14. Asked about whitening \u2014 offered consult.", status: "resolved" },
+  { time: "2:31 PM", caller: "Unknown 916-555-8821", dur: "2:08", type: "AI", action: "Insurance implant question. Explained benefits. Booked free consult.", status: "resolved" },
+  { time: "2:24 PM", caller: "Tom Davis", dur: "0:45", type: "AI", action: "Rx refill request. Flagged for Dr. Chen approval.", status: "escalated" },
+  { time: "2:18 PM", caller: "Dr. Anderson's Office", dur: "2:30", type: "Staff", action: "Specialist referral \u2014 transferred to Maria G.", status: "transferred" },
+  { time: "1:55 PM", caller: "Missed 916-555-3344", dur: "\u2014", type: "AI", action: "Auto-callback <2 min. New patient booked 02/20 8AM.", status: "recovered" },
+];
+
+const AI_CAPABILITIES = [
+  "Answer with practice greeting",
+  "Book/reschedule/cancel appointments",
+  "Verify insurance on call",
+  "Send intake forms via SMS",
+  "Answer FAQs (hours, services, pricing)",
+  "After-hours emergency triage",
+  "Auto-callback missed calls <2min",
+  "Reactivation calls to overdue patients",
+  "Collections reminder calls",
+  "Spanish/Mandarin/Vietnamese",
+  "Escalate with full context",
+  "Record & transcribe all calls",
+];
+
+const VOICE_SOAP = [
+  { label: "S", text: "Patient presents for implant follow-up #17. Reports mild tenderness, no pain. Chewing carefully.", color: "text-blue-500 border-blue-500/30" },
+  { label: "O", text: "Implant #17 stable. Tissue healing well. No suppuration. Probing 2mm circumferential. Occlusion checked.", color: "text-teal-500 border-teal-500/30" },
+  { label: "A", text: "Implant #17 osseointegration progressing normally at 8 weeks.", color: "text-purple-500 border-purple-500/30" },
+  { label: "P", text: "Continue soft diet 2 weeks. Return 4 weeks for final impression. D6058 abutment + D6065 crown.", color: "text-orange-500 border-orange-500/30" },
+];
+
+const ACCEPTANCE_PRESENTATIONS = [
+  { patient: "Robert Kim", tx: "Implant #14", total: "$5,050", ins: "$2,095", oop: "$2,955", mo: "$123/mo", status: "pending", days: 3 },
+  { patient: "Margaret Sullivan", tx: "Crown #3 + SRP", total: "$2,100", ins: "$1,240", oop: "$860", mo: "$143/mo", status: "accepted", days: 0 },
+  { patient: "Sophia Adams", tx: "Invisalign Full", total: "$5,500", ins: "$2,000", oop: "$3,500", mo: "$291/mo", status: "pending", days: 7 },
+  { patient: "Tom Davis", tx: "Full Arch", total: "$24,800", ins: "$4,000", oop: "$20,800", mo: "$433/mo", status: "pending", days: 14 },
+  { patient: "Emma Rodriguez", tx: "Veneers x4", total: "$6,400", ins: "$0", oop: "$6,400", mo: "$266/mo", status: "declined", days: 5 },
+];
+
+const OBJECTION_ANALYSIS = [
+  { obj: "Too expensive", pct: 42, ai: "Auto-show monthly payment", color: "text-red-500" },
+  { obj: "Need to think", pct: 28, ai: "3-day follow-up w/ education", color: "text-amber-500" },
+  { obj: "Not sure necessary", pct: 18, ai: "Send AI X-ray overlay", color: "text-orange-500" },
+  { obj: "Want 2nd opinion", pct: 8, ai: "Share clinical guidelines", color: "text-blue-500" },
+  { obj: "Dental anxiety", pct: 4, ai: "Offer sedation + testimonials", color: "text-purple-500" },
+];
+
+const FEE_SCHEDULE = [
+  { cdt: "D0120", proc: "Periodic Exam", your: "$65", ucr: "$78", delta: "$58", cigna: "$62", action: "Raise $13" },
+  { cdt: "D0274", proc: "Bitewings (4)", your: "$72", ucr: "$85", delta: "$64", cigna: "$68", action: "Raise $13" },
+  { cdt: "D1110", proc: "Prophy Adult", your: "$105", ucr: "$128", delta: "$98", cigna: "$102", action: "Raise $23" },
+  { cdt: "D2740", proc: "Crown Porcelain", your: "$1,180", ucr: "$1,340", delta: "$1,040", cigna: "$1,120", action: "Raise $160" },
+  { cdt: "D2750", proc: "Crown PFM", your: "$1,080", ucr: "$1,240", delta: "$960", cigna: "$1,020", action: "Raise $160" },
+  { cdt: "D6010", proc: "Implant Body", your: "$2,200", ucr: "$2,480", delta: "N/A", cigna: "$1,980", action: "Raise $280" },
+  { cdt: "D7210", proc: "Surg Extraction", your: "$340", ucr: "$385", delta: "$310", cigna: "$325", action: "Raise $45" },
+];
+
+const PROVIDER_SCORECARD = [
+  { name: "Dr. Chen", prod: "$98,400", perDay: "$9,840", patients: 124, accept: "78%", avgTx: "$2,840", collections: "99.2%", score: 96 },
+  { name: "Dr. Park", prod: "$62,800", perDay: "$6,980", patients: 98, accept: "72%", avgTx: "$1,920", collections: "98.8%", score: 91 },
+  { name: "Dr. Smith", prod: "$37,000", perDay: "$7,400", patients: 62, accept: "68%", avgTx: "$1,480", collections: "97.4%", score: 84 },
+];
+
+const PAYER_SCORECARD = [
+  { payer: "Delta Dental", approval: "94%", days: "12", denial: "6%", reimburse: "82%", crossCode: "$4,200", score: 92 },
+  { payer: "Cigna PPO", approval: "88%", days: "18", denial: "12%", reimburse: "78%", crossCode: "$6,800", score: 85 },
+  { payer: "MetLife PPO", approval: "86%", days: "22", denial: "14%", reimburse: "75%", crossCode: "$3,400", score: 78 },
+  { payer: "Aetna DMO", approval: "92%", days: "8", denial: "8%", reimburse: "68%", crossCode: "$1,200", score: 82 },
+  { payer: "BCBS FEP", approval: "90%", days: "14", denial: "10%", reimburse: "84%", crossCode: "$2,800", score: 88 },
+];
+
+const COMPLIANCE_ISSUES = [
+  { issue: "Missing narrative D2740", provider: "Dr. Park", cases: 3, risk: "$3,840", action: "Auto-fix available" },
+  { issue: "Incomplete perio charting", provider: "Sarah RDH", cases: 4, risk: "$2,160", action: "Template applied" },
+  { issue: "D0220 without clinical justification", provider: "Dr. Chen", cases: 2, risk: "$500", action: "Narrative added" },
+  { issue: "Bundling risk D2950+D2740", provider: "Dr. Smith", cases: 2, risk: "$3,200", action: "Separate claims" },
+  { issue: "CDT code mismatch vs notes", provider: "Dr. Park", cases: 1, risk: "$1,280", action: "Code corrected" },
+];
+
+const DOC_COMPLETENESS = [
+  { label: "Clinical Notes", pct: 98, color: "text-emerald-500" },
+  { label: "Radiograph Documentation", pct: 94, color: "text-emerald-500" },
+  { label: "Treatment Narratives", pct: 87, color: "text-amber-500" },
+  { label: "Consent Forms", pct: 96, color: "text-emerald-500" },
+  { label: "Insurance Attachments", pct: 91, color: "text-blue-500" },
+];
+
+const BI_METRICS = [
+  { label: "Revenue vs Target", value: "$198,240 / $195,000", pct: 101.7, color: "text-emerald-500" },
+  { label: "New Patients vs Target", value: "38 / 45", pct: 84.4, color: "text-amber-500" },
+  { label: "Case Acceptance", value: "74% / 70%", pct: 105.7, color: "text-emerald-500" },
+  { label: "Collections Ratio", value: "99.5% / 98%", pct: 101.5, color: "text-emerald-500" },
+  { label: "Overhead Ratio", value: "57.3% / 59%", pct: 97.1, color: "text-emerald-500" },
+  { label: "AI Automation", value: "84% tasks automated", pct: 84, color: "text-blue-500" },
+];
+
+const BI_RECOMMENDATIONS = [
+  "Raise fees on 34 procedures below UCR 80th percentile \u2014 projected +$42,800/yr",
+  "Cross-code sleep appliances and TMJ cases to medical \u2014 projected +$28,400/yr",
+  "Reduce no-show rate from 8% to 3% with AI reminders \u2014 projected +$18,200/yr",
+  "Expand hygiene hours by 1 day/week \u2014 demand supports 12 additional patients",
+  "Add CBCT implant marketing campaign \u2014 ROI projected 8.2x based on current conversion",
 ];
 
 function IntakeModule() {
@@ -1256,6 +1488,654 @@ function AiClinicalModule() {
   );
 }
 
+function ScheduleModule() {
+  return (
+    <div>
+      <SectionHeader title="AI Scheduling & Capacity Optimizer" subtitle="Production-based scheduling, no-show prediction, same-day fill" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={Calendar} label="Chair Utilization" value="91%" sub="Target: 85%" subColor="text-emerald-500" />
+        <KpiCard icon={DollarSign} label="Tomorrow's Production" value="$24,800" subColor="text-blue-500" />
+        <KpiCard icon={AlertTriangle} label="No-Show Risk" value="3" sub="AI sending reminders" subColor="text-amber-500" />
+        <KpiCard icon={RefreshCcw} label="Same-Day Fills" value="4" sub="From AI waitlist" subColor="text-emerald-500" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">Tomorrow's Schedule</div>
+            <div className="grid grid-cols-8 gap-1 py-2 border-b text-[10px] font-bold tracking-wider uppercase text-muted-foreground">
+              <div>Time</div><div>Dur</div><div>Chair</div><div>Provider</div><div>Patient</div><div className="col-span-1">Procedure</div><div>Prod</div><div>Risk</div>
+            </div>
+            {SCHEDULE_TOMORROW.map((s, i) => (
+              <div key={i} className="grid grid-cols-8 gap-1 py-2 border-b last:border-0 items-center text-xs" data-testid={`schedule-row-${i}`}>
+                <span className="font-mono font-bold text-blue-500">{s.time}</span>
+                <span className="text-muted-foreground">{s.dur}</span>
+                <span className="text-muted-foreground">{s.chair}</span>
+                <span className="font-semibold text-[10px]">{s.prov}</span>
+                <span className="font-bold">{s.pt}</span>
+                <span className="text-muted-foreground text-[10px]">{s.proc}</span>
+                <span className="font-extrabold text-emerald-500 font-mono">{s.prod}</span>
+                <StatusBadge status={s.risk} />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-sm font-bold mb-3">No-Show Risk</div>
+              {NOSHOW_RISKS.map((n, i) => (
+                <div key={i} className="py-2 border-b last:border-0" data-testid={`noshow-risk-${i}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold">{n.patient}</span>
+                    <Badge variant="secondary" className={`text-[10px] no-default-hover-elevate no-default-active-elevate ${n.color === "text-red-500" ? "bg-red-500/15 text-red-700 dark:text-red-400" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"}`}>{n.risk}</Badge>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">{n.reason}</div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-sm font-bold mb-3">AI Waitlist</div>
+              {WAITLIST_PATIENTS.map((w, i) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b last:border-0" data-testid={`waitlist-${i}`}>
+                  <div>
+                    <div className="text-xs font-bold">{w.patient}</div>
+                    <div className="text-[10px] text-muted-foreground">{w.proc}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-bold text-emerald-500">{w.prod}</div>
+                    <div className="text-[10px] text-muted-foreground">{w.flex}</div>
+                  </div>
+                </div>
+              ))}
+              <div className="text-[10px] text-emerald-500 mt-2 flex items-center gap-1">
+                <Bot className="h-3 w-3" />Cancellation triggers AI waitlist contact in 30 sec
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RcmModule() {
+  return (
+    <div>
+      <SectionHeader title="Revenue Cycle Command Center" subtitle="Real-time pipeline from verification to payment \u2014 entire revenue cycle at a glance" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={FileCheck} label="Claims MTD" value="847" sub="94.2% first-pass rate" subColor="text-blue-500" />
+        <KpiCard icon={DollarSign} label="Collections MTD" value="$198,240" sub="99.5% of net production" subColor="text-emerald-500" />
+        <KpiCard icon={Clock} label="Days in A/R" value="18.4" sub="Down from 32 days" subColor="text-emerald-500" />
+        <KpiCard icon={ArrowLeftRight} label="Cross-Coded" value="34" sub="$28,400 medical revenue" subColor="text-purple-500" />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={ScrollText} label="Necessity Letters" value="18" sub="91% approval rate" subColor="text-indigo-500" />
+        <KpiCard icon={Swords} label="Open Denials" value="$12,840" sub="68% overturn rate" subColor="text-amber-500" />
+        <KpiCard icon={Mic} label="Voice Notes" value="24" sub="6.8 hrs saved today" subColor="text-cyan-500" />
+        <KpiCard icon={Landmark} label="Payer Connections" value="340+" sub="All major payers" subColor="text-teal-500" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">Live Revenue Activity</div>
+            {RCM_ACTIVITY.map((a, i) => (
+              <div key={i} className="py-2 border-b last:border-0" data-testid={`rcm-activity-${i}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-muted-foreground">{a.time}</span>
+                  {a.amt !== "\u2014" && <span className={`text-xs font-extrabold font-mono ${a.color}`}>{a.amt}</span>}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-1">{a.action}</div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">Engine Performance</div>
+            {RCM_ENGINE_PERF.map((e, i) => (
+              <div key={i} className="mb-3" data-testid={`rcm-engine-${i}`}>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-xs">{e.label}</span>
+                  <span className={`text-xs font-bold font-mono ${e.color}`}>{e.val}</span>
+                </div>
+                <Progress value={e.pct} className="h-1" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function VerifyModule() {
+  return (
+    <div>
+      <SectionHeader title="AI Insurance Verification Engine" subtitle="Real-time eligibility, benefits breakdown, auto-estimate" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={SearchCheck} label="Verified Today" value="48" sub="Tomorrow's schedule" subColor="text-blue-500" />
+        <KpiCard icon={Activity} label="Avg Speed" value="4.2 sec" sub="vs 12 min manual" subColor="text-emerald-500" />
+        <KpiCard icon={CheckCircle} label="Accuracy" value="98.6%" subColor="text-emerald-500" />
+        <KpiCard icon={Landmark} label="Payers Connected" value="340+" subColor="text-teal-500" />
+      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="text-sm font-bold mb-3">Tomorrow's Verification Results</div>
+          {VERIFY_RESULTS.map((v, i) => (
+            <div key={i} className="py-2 border-b last:border-0" data-testid={`verify-result-${i}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-bold">{v.patient}</span>
+                <div className="flex items-center gap-1.5">
+                  <StatusBadge status={v.status} />
+                  <Badge variant="secondary" className={`text-[10px] no-default-hover-elevate no-default-active-elevate ${v.check === "pass" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"}`}>
+                    {v.check === "pass" ? <CheckCircle className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                  </Badge>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">{v.plan} \u2014 {v.benefits}</div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ClaimsModule() {
+  return (
+    <div>
+      <SectionHeader title="AI Claims Processing Engine" subtitle="Auto-code from notes, pre-submit scrubbing, ERA auto-posting" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={FileCheck} label="Submitted Today" value="34" sub="$42,800 total" subColor="text-blue-500" />
+        <KpiCard icon={AlertTriangle} label="Pre-Scrub Catches" value="7" sub="All auto-corrected" subColor="text-amber-500" />
+        <KpiCard icon={CheckCircle} label="Clean Claim Rate" value="97.1%" subColor="text-emerald-500" />
+        <KpiCard icon={DollarSign} label="ERA Posted" value="$38,200" sub="Auto-reconciled" subColor="text-emerald-500" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">Claims Queue</div>
+            {CLAIMS_QUEUE.map((c, i) => (
+              <div key={i} className="py-2 border-b last:border-0" data-testid={`claim-${i}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold">{c.patient}</span>
+                  <StatusBadge status={c.status} />
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span>{c.proc} \u00B7 {c.payer}</span>
+                  <span className="font-bold text-foreground font-mono">{c.fee}</span>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">AI Pre-Scrub Catches</div>
+            {CLAIMS_SCRUB_CATCHES.map((c, i) => (
+              <div key={i} className={`mb-3 p-3 border-l-4 rounded-r-md ${c.severity === "high" ? "border-red-500 bg-red-500/5" : c.severity === "warning" ? "border-amber-500 bg-amber-500/5" : "border-purple-500 bg-purple-500/5"}`} data-testid={`scrub-catch-${i}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className={`h-3.5 w-3.5 ${c.severity === "high" ? "text-red-500" : c.severity === "warning" ? "text-amber-500" : "text-purple-500"}`} />
+                  <span className="text-xs font-bold">{c.issue}</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground">{c.fix}</div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function CrosscodeModule() {
+  return (
+    <div>
+      <SectionHeader title="CDT-to-CPT Cross-Coding Engine" subtitle="Auto-detect medical billing opportunities" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={ArrowLeftRight} label="Cross-Coded MTD" value="34" sub="$28,400 medical revenue" subColor="text-purple-500" />
+        <KpiCard icon={DollarSign} label="Avg Per Patient" value="$835" sub="Additional revenue" subColor="text-emerald-500" />
+        <KpiCard icon={CheckCircle} label="Approval Rate" value="78%" subColor="text-emerald-500" />
+        <KpiCard icon={FileCheck} label="CMS-1500 Generated" value="34" subColor="text-blue-500" />
+      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="text-sm font-bold mb-3">Cross-Coding Opportunities</div>
+          <div className="grid grid-cols-7 gap-2 py-2 border-b text-[10px] font-bold tracking-wider uppercase text-muted-foreground">
+            <div className="col-span-2">Procedure</div><div>CDT</div><div>ICD-10</div><div>CPT</div><div>Medical Fee</div><div>Status</div>
+          </div>
+          {CROSSCODE_OPPS.map((c, i) => (
+            <div key={i} className="grid grid-cols-7 gap-2 py-2 border-b last:border-0 items-center text-xs" data-testid={`crosscode-${i}`}>
+              <span className="font-bold col-span-2">{c.proc}</span>
+              <span className="font-mono text-blue-500">{c.cdt}</span>
+              <span className="font-mono text-orange-500">{c.icd}</span>
+              <span className="font-mono text-purple-500">{c.cpt}</span>
+              <span className="font-mono font-bold text-emerald-500">{c.medical}</span>
+              <StatusBadge status={c.status} />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function NecessityModule() {
+  return (
+    <div>
+      <SectionHeader title="AI Medical Necessity Letter Generator" subtitle="One-click from chart data \u2014 auto-generate with clinical evidence" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={ScrollText} label="Letters MTD" value="18" sub="12 sec avg generation" subColor="text-indigo-500" />
+        <KpiCard icon={CheckCircle} label="Approval Rate" value="91%" sub="vs 64% manual" subColor="text-emerald-500" />
+        <KpiCard icon={DollarSign} label="Revenue Recovered" value="$42,800" subColor="text-emerald-500" />
+        <KpiCard icon={BarChart3} label="Data Sources" value="6" sub="Notes, X-ray, perio, meds, hx, labs" subColor="text-blue-500" />
+      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="text-sm font-bold mb-3">Recent Necessity Letters</div>
+          {NECESSITY_LETTERS.map((n, i) => (
+            <div key={i} className="py-3 border-b last:border-0" data-testid={`necessity-letter-${i}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold">{n.patient}</span>
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={n.status} />
+                  <span className="text-xs font-extrabold text-emerald-500 font-mono">{n.val}</span>
+                </div>
+              </div>
+              <div className="text-[10px] text-muted-foreground">{n.proc} \u00B7 {n.payer}</div>
+              <div className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                <FileText className="h-3 w-3" />{n.evidence}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function DenialsModule() {
+  return (
+    <div>
+      <SectionHeader title="AI Denial Management & Appeals" subtitle="Root cause analysis, auto-appeal with evidence" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={Swords} label="Open Denials" value="23" sub="$12,840 at risk" subColor="text-red-500" />
+        <KpiCard icon={Bot} label="Auto-Appealed" value="18" sub="78% automated" subColor="text-blue-500" />
+        <KpiCard icon={CheckCircle} label="Overturn Rate" value="68%" sub="vs 32% industry" subColor="text-emerald-500" />
+        <KpiCard icon={DollarSign} label="Recovered MTD" value="$34,200" subColor="text-emerald-500" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">Active Denials</div>
+            {ACTIVE_DENIALS.map((d, i) => (
+              <div key={i} className="py-3 border-b last:border-0" data-testid={`denial-${i}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold">{d.patient}</span>
+                  <span className="text-xs font-extrabold text-red-500 font-mono">{d.val}</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground">{d.proc} \u00B7 {d.payer} \u00B7 Reason: <span className="text-red-500">{d.reason}</span></div>
+                <div className="text-[10px] text-emerald-500 mt-1 flex items-center gap-1">
+                  <Bot className="h-3 w-3" />{d.action}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">Denial Root Cause Analysis</div>
+            {DENIAL_CAUSES.map((d, i) => (
+              <div key={i} className="mb-3" data-testid={`denial-cause-${i}`}>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-xs">{d.reason}</span>
+                  <span className={`text-xs font-bold font-mono ${d.color}`}>{d.pct}%</span>
+                </div>
+                <Progress value={d.pct} className="h-1" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function PhoneModule() {
+  return (
+    <div>
+      <SectionHeader title="AI Phone & Communication Agent" subtitle="24/7 AI receptionist \u2014 booking, verification, follow-up" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={Phone} label="Calls Today" value="67" sub="42 AI, 25 staff" subColor="text-blue-500" />
+        <KpiCard icon={Bot} label="AI Resolution" value="84%" sub="No staff needed" subColor="text-emerald-500" />
+        <KpiCard icon={Calendar} label="Appts Booked" value="18" sub="11 AI, 7 staff" subColor="text-cyan-500" />
+        <KpiCard icon={DollarSign} label="Revenue Recovered" value="$4,200" sub="Missed call follow-up" subColor="text-emerald-500" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm font-bold">Live Call Feed</span>
+              <Badge variant="secondary" className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 no-default-hover-elevate no-default-active-elevate">LIVE</Badge>
+            </div>
+            {PHONE_CALLS.map((c, i) => (
+              <div key={i} className="py-2 border-b last:border-0" data-testid={`phone-call-${i}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-bold">{c.caller}</span>
+                    <span className="text-[10px] text-muted-foreground ml-2">{c.time} \u00B7 {c.dur}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="secondary" className={`text-[10px] no-default-hover-elevate no-default-active-elevate ${c.type === "AI" ? "bg-blue-500/15 text-blue-700 dark:text-blue-400" : "bg-teal-500/15 text-teal-700 dark:text-teal-400"}`}>{c.type}</Badge>
+                    <StatusBadge status={c.status} />
+                  </div>
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-1">{c.action}</div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">AI Agent Capabilities</div>
+            {AI_CAPABILITIES.map((cap, i) => (
+              <div key={i} className="flex items-center justify-between py-1.5 border-b last:border-0" data-testid={`ai-cap-${i}`}>
+                <span className="text-xs">{cap}</span>
+                <StatusBadge status="Active" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function VoiceModule() {
+  return (
+    <div>
+      <SectionHeader title="Voice-to-Code Pipeline" subtitle="Speak naturally \u2192 SOAP note \u2192 CDT codes \u2192 claim ready" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={Mic} label="Voice Notes Today" value="24" sub="6.8 hrs saved" subColor="text-cyan-500" />
+        <KpiCard icon={Activity} label="Processing Speed" value="2.8 sec" subColor="text-emerald-500" />
+        <KpiCard icon={CheckCircle} label="Auto-Coded" value="98.4%" subColor="text-emerald-500" />
+        <KpiCard icon={FileCheck} label="Claims Generated" value="22" sub="From voice notes" subColor="text-blue-500" />
+      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="text-sm font-bold mb-3">Recent Voice Transcription</div>
+          <div className="p-3 bg-cyan-500/5 border-l-4 border-cyan-500 rounded-r-md mb-4">
+            <div className="text-xs font-extrabold text-cyan-600 dark:text-cyan-400 mb-3">Dr. Chen \u2014 Michael Torres \u2014 2:18 PM</div>
+            {VOICE_SOAP.map((s, i) => (
+              <div key={i} className={`mb-2 p-2 border-l-2 rounded-r-md ${s.color}`} data-testid={`voice-soap-${i}`}>
+                <span className="text-[10px] font-extrabold">{s.label}: </span>
+                <span className="text-[10px] text-muted-foreground">{s.text}</span>
+              </div>
+            ))}
+            <div className="flex gap-1.5 mt-3 flex-wrap">
+              <Badge variant="secondary" className="text-[10px] bg-blue-500/15 text-blue-700 dark:text-blue-400 no-default-hover-elevate no-default-active-elevate">D6058 \u2014 $950</Badge>
+              <Badge variant="secondary" className="text-[10px] bg-purple-500/15 text-purple-700 dark:text-purple-400 no-default-hover-elevate no-default-active-elevate">D6065 \u2014 $1,650</Badge>
+              <Badge variant="secondary" className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 no-default-hover-elevate no-default-active-elevate">AUTO-CODED</Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function AcceptanceModule() {
+  return (
+    <div>
+      <SectionHeader title="AI Case Acceptance Engine" subtitle="Visual treatment presentation, financing integration, AI follow-up sequences" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={Target} label="Acceptance Rate" value="74%" sub="Up from 58% pre-AI" subColor="text-emerald-500" />
+        <KpiCard icon={DollarSign} label="Presented MTD" value="$186,400" subColor="text-blue-500" />
+        <KpiCard icon={CheckCircle} label="Accepted MTD" value="$138,000" sub="74% of presented" subColor="text-emerald-500" />
+        <KpiCard icon={Clock} label="Pending" value="$32,800" sub="18 pts \u2014 AI following up" subColor="text-amber-500" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">Active Presentations</div>
+            {ACCEPTANCE_PRESENTATIONS.map((p, i) => (
+              <div key={i} className="py-3 border-b last:border-0" data-testid={`acceptance-${i}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-extrabold">{p.patient}</span>
+                    <span className="text-[10px] text-muted-foreground ml-2">{p.days}d ago</span>
+                  </div>
+                  <StatusBadge status={p.status} />
+                </div>
+                <div className="text-[10px] text-muted-foreground mb-2">{p.tx}</div>
+                <div className="grid grid-cols-4 gap-2 text-[10px]">
+                  <div><div className="text-muted-foreground">Total</div><div className="font-bold">{p.total}</div></div>
+                  <div><div className="text-muted-foreground">Insurance</div><div className="font-bold text-emerald-500">{p.ins}</div></div>
+                  <div><div className="text-muted-foreground">OOP</div><div className="font-bold text-amber-500">{p.oop}</div></div>
+                  <div><div className="text-muted-foreground">Monthly</div><div className="font-bold text-cyan-500">{p.mo}</div></div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">Objection Analysis</div>
+            {OBJECTION_ANALYSIS.map((o, i) => (
+              <div key={i} className="mb-3" data-testid={`objection-${i}`}>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-xs">{o.obj}</span>
+                  <span className={`text-xs font-bold ${o.color}`}>{o.pct}%</span>
+                </div>
+                <Progress value={o.pct} className="h-1" />
+                <div className="text-[10px] text-emerald-500 mt-1 flex items-center gap-1">
+                  <Bot className="h-3 w-3" />{o.ai}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function FeesModule() {
+  return (
+    <div>
+      <SectionHeader title="Fee Schedule Optimizer" subtitle="Compare your fees against UCR percentiles and PPO fee schedules" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={Receipt} label="Revenue Opportunity" value="$42,800" sub="Annual if raised to UCR" subColor="text-emerald-500" />
+        <KpiCard icon={TrendingUp} label="Below UCR" value="34" sub="Procedures under 80th" subColor="text-amber-500" />
+        <KpiCard icon={BarChart3} label="Fee vs UCR" value="88%" sub="Avg of UCR 80th" subColor="text-blue-500" />
+        <KpiCard icon={FileText} label="PPO Contracts" value="8" sub="Active negotiations" subColor="text-purple-500" />
+      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="text-sm font-bold mb-3">Fee Schedule Analysis</div>
+          <div className="grid grid-cols-7 gap-2 py-2 border-b text-[10px] font-bold tracking-wider uppercase text-muted-foreground">
+            <div>CDT</div><div className="col-span-2">Procedure</div><div>Your Fee</div><div>UCR 80th</div><div>Delta</div><div>Action</div>
+          </div>
+          {FEE_SCHEDULE.map((f, i) => (
+            <div key={i} className="grid grid-cols-7 gap-2 py-2 border-b last:border-0 items-center text-xs" data-testid={`fee-row-${i}`}>
+              <span className="font-mono text-blue-500">{f.cdt}</span>
+              <span className="font-semibold col-span-2">{f.proc}</span>
+              <span className="font-mono">{f.your}</span>
+              <span className="font-mono text-emerald-500 font-bold">{f.ucr}</span>
+              <span className="font-mono text-muted-foreground">{f.delta}</span>
+              <Badge variant="secondary" className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-400 no-default-hover-elevate no-default-active-elevate">{f.action}</Badge>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ProviderModule() {
+  return (
+    <div>
+      <SectionHeader title="Provider Performance Intelligence" subtitle="Production, case acceptance, and collections by provider" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={Stethoscope} label="Providers" value="3" subColor="text-blue-500" />
+        <KpiCard icon={DollarSign} label="Production MTD" value="$198,200" subColor="text-emerald-500" />
+        <KpiCard icon={TrendingUp} label="Avg Prod/Day" value="$8,260" subColor="text-blue-500" />
+        <KpiCard icon={Target} label="Avg Acceptance" value="74%" subColor="text-emerald-500" />
+      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="text-sm font-bold mb-3">Provider Scorecard</div>
+          <div className="grid grid-cols-8 gap-2 py-2 border-b text-[10px] font-bold tracking-wider uppercase text-muted-foreground">
+            <div>Provider</div><div>Production</div><div>Prod/Day</div><div>Patients</div><div>Accept</div><div>Avg Tx</div><div>Collect</div><div>Score</div>
+          </div>
+          {PROVIDER_SCORECARD.map((p, i) => (
+            <div key={i} className="grid grid-cols-8 gap-2 py-2 border-b last:border-0 items-center text-xs" data-testid={`provider-${i}`}>
+              <span className="font-bold">{p.name}</span>
+              <span className="font-mono text-emerald-500 font-bold">{p.prod}</span>
+              <span className="font-mono">{p.perDay}</span>
+              <span>{p.patients}</span>
+              <span className="font-bold">{p.accept}</span>
+              <span className="font-mono">{p.avgTx}</span>
+              <span className="text-emerald-500">{p.collections}</span>
+              <div className="flex items-center gap-1">
+                <Progress value={p.score} className="h-1.5 flex-1" />
+                <span className="text-[10px] font-bold">{p.score}</span>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function PayerModule() {
+  return (
+    <div>
+      <SectionHeader title="Payer Intelligence Dashboard" subtitle="Approval rates, payment speed, denial patterns by payer" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={Landmark} label="Payer Profiles" value="340+" subColor="text-blue-500" />
+        <KpiCard icon={FileCheck} label="Claims Analyzed" value="12,400+" subColor="text-purple-500" />
+        <KpiCard icon={Clock} label="Avg Days to Pay" value="14.2" subColor="text-blue-500" />
+        <KpiCard icon={DollarSign} label="Opportunities" value="$18,400" subColor="text-emerald-500" />
+      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="text-sm font-bold mb-3">Top Payer Scorecard</div>
+          <div className="grid grid-cols-7 gap-2 py-2 border-b text-[10px] font-bold tracking-wider uppercase text-muted-foreground">
+            <div className="col-span-2">Payer</div><div>Approval</div><div>Days</div><div>Denial</div><div>Reimb.</div><div>Score</div>
+          </div>
+          {PAYER_SCORECARD.map((p, i) => (
+            <div key={i} className="grid grid-cols-7 gap-2 py-2 border-b last:border-0 items-center text-xs" data-testid={`payer-${i}`}>
+              <span className="font-bold col-span-2">{p.payer}</span>
+              <span className="text-emerald-500 font-bold">{p.approval}</span>
+              <span className="font-mono">{p.days}</span>
+              <span className="text-red-500">{p.denial}</span>
+              <span>{p.reimburse}</span>
+              <div className="flex items-center gap-1">
+                <Progress value={p.score} className="h-1.5 flex-1" />
+                <span className="text-[10px] font-bold">{p.score}</span>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function ComplianceModule() {
+  return (
+    <div>
+      <SectionHeader title="Compliance & Coding Audit" subtitle="AI-powered chart auditing, documentation completeness, risk detection" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={ShieldCheck} label="Compliance Score" value="96.4%" subColor="text-emerald-500" />
+        <KpiCard icon={FileText} label="Charts Audited" value="342" subColor="text-blue-500" />
+        <KpiCard icon={AlertTriangle} label="Issues Found" value="12" subColor="text-amber-500" />
+        <KpiCard icon={DollarSign} label="Risk Avoided" value="$28,400" subColor="text-emerald-500" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">Coding Audit Issues</div>
+            <div className="grid grid-cols-5 gap-2 py-2 border-b text-[10px] font-bold tracking-wider uppercase text-muted-foreground">
+              <div className="col-span-2">Issue</div><div>Provider</div><div>Risk</div><div>Action</div>
+            </div>
+            {COMPLIANCE_ISSUES.map((c, i) => (
+              <div key={i} className="grid grid-cols-5 gap-2 py-2 border-b last:border-0 items-center text-xs" data-testid={`compliance-issue-${i}`}>
+                <span className="col-span-2">{c.issue} <span className="text-muted-foreground">({c.cases} cases)</span></span>
+                <span className="text-muted-foreground">{c.provider}</span>
+                <span className="font-mono text-red-500 font-bold">{c.risk}</span>
+                <span className="text-[10px] text-emerald-500">{c.action}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">Documentation Completeness</div>
+            {DOC_COMPLETENESS.map((d, i) => (
+              <div key={i} className="mb-3" data-testid={`doc-complete-${i}`}>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-xs">{d.label}</span>
+                  <span className={`text-xs font-bold font-mono ${d.color}`}>{d.pct}%</span>
+                </div>
+                <Progress value={d.pct} className="h-1.5" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function BiModule() {
+  return (
+    <div>
+      <SectionHeader title="Business Intelligence Dashboard" subtitle="Practice-wide KPIs, trend analysis, AI-powered recommendations" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KpiCard icon={PieChart} label="Practice Score" value="94" sub="Top 6% nationally" subColor="text-emerald-500" />
+        <KpiCard icon={TrendingUp} label="Revenue Growth" value="18%" sub="vs prior year" subColor="text-emerald-500" />
+        <KpiCard icon={Users} label="Patient Growth" value="12%" sub="38 new pts/mo avg" subColor="text-blue-500" />
+        <KpiCard icon={Bot} label="AI ROI" value="14.2x" sub="$284K saved annually" subColor="text-purple-500" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-sm font-bold mb-3">Key Metrics Overview</div>
+            {BI_METRICS.map((m, i) => (
+              <div key={i} className="mb-3" data-testid={`bi-metric-${i}`}>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-xs">{m.label}</span>
+                  <span className={`text-xs font-bold font-mono ${m.color}`}>{m.value}</span>
+                </div>
+                <Progress value={m.pct > 100 ? 100 : m.pct} className="h-1.5" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Brain className="h-4 w-4 text-purple-500" />
+              <span className="text-sm font-bold">AI Strategic Recommendations</span>
+            </div>
+            {BI_RECOMMENDATIONS.map((r, i) => (
+              <div key={i} className="flex items-start gap-2 py-2 border-b last:border-0" data-testid={`bi-rec-${i}`}>
+                <TrendingUp className="h-3.5 w-3.5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                <span className="text-xs text-muted-foreground">{r}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 const MODULE_COMPONENTS: Record<ModuleId, () => JSX.Element> = {
   intake: IntakeModule,
   perio: PerioModule,
@@ -1263,6 +2143,7 @@ const MODULE_COMPONENTS: Record<ModuleId, () => JSX.Element> = {
   imaging: ImagingModule,
   consent: ConsentModule,
   erx: ErxModule,
+  aiclinical: AiClinicalModule,
   ortho: OrthoModule,
   implant: ImplantModule,
   lab: LabModule,
@@ -1270,18 +2151,32 @@ const MODULE_COMPONENTS: Record<ModuleId, () => JSX.Element> = {
   inventory: InventoryModule,
   hr: HrModule,
   sterilization: SterilizationModule,
+  schedule: ScheduleModule,
+  rcm: RcmModule,
+  verify: VerifyModule,
+  claims: ClaimsModule,
+  crosscode: CrosscodeModule,
+  necessity: NecessityModule,
+  denials: DenialsModule,
+  phone: PhoneModule,
+  voice: VoiceModule,
+  txplan: AiTreatmentModule,
+  acceptance: AcceptanceModule,
+  telehealth: TelehealthModule,
   financial: FinancialModule,
   financing: FinancingModule,
   marketing: MarketingModule,
   nps: NpsModule,
+  fees: FeesModule,
+  provider: ProviderModule,
+  payer: PayerModule,
   multiloc: MultilocModule,
-  telehealth: TelehealthModule,
-  aitreatment: AiTreatmentModule,
-  aiclinical: AiClinicalModule,
+  compliance: ComplianceModule,
+  bi: BiModule,
 };
 
 export default function AdvancedModulesPage() {
-  const [activeTab, setActiveTab] = useState<ModuleId>("intake");
+  const [activeTab, setActiveTab] = useState<ModuleId>("rcm");
 
   const ActiveModule = MODULE_COMPONENTS[activeTab];
 
