@@ -44,6 +44,7 @@ import {
   auditLogs,
   consentForms,
   internalMessages,
+  practiceSettings,
   users,
   type Patient,
   type InsertPatient,
@@ -129,6 +130,8 @@ import {
   type InsertConsentForm,
   type InternalMessage,
   type InsertInternalMessage,
+  type PracticeSettings,
+  type InsertPracticeSettings,
   type User,
   type UpsertUser,
 } from "@shared/schema";
@@ -362,6 +365,10 @@ export interface IStorage {
   markMessageRead(id: number, userId: string): Promise<InternalMessage | undefined>;
   getUnreadCount(userId: string): Promise<number>;
   getAllUsers(): Promise<User[]>;
+
+  // Practice Settings (Onboarding)
+  getPracticeSettings(userId: string): Promise<PracticeSettings | undefined>;
+  upsertPracticeSettings(data: Partial<InsertPracticeSettings> & { userId: string }): Promise<PracticeSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1253,6 +1260,26 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return db.select().from(users).orderBy(users.firstName);
+  }
+
+  async getPracticeSettings(userId: string): Promise<PracticeSettings | undefined> {
+    const [settings] = await db.select().from(practiceSettings).where(eq(practiceSettings.userId, userId));
+    return settings;
+  }
+
+  async upsertPracticeSettings(data: Partial<InsertPracticeSettings> & { userId: string }): Promise<PracticeSettings> {
+    const existing = await this.getPracticeSettings(data.userId);
+    if (existing) {
+      const [updated] = await db.update(practiceSettings)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(practiceSettings.userId, data.userId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(practiceSettings)
+      .values({ practiceName: "My Practice", ...data } as InsertPracticeSettings)
+      .returning();
+    return created;
   }
 }
 

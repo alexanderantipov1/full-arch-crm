@@ -40,6 +40,7 @@ import {
   insertConsentFormSchema,
   insertPatientDocumentSchema,
   insertInternalMessageSchema,
+  insertPracticeSettingsSchema,
 } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -2359,6 +2360,77 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     } catch (error) {
       console.error("Error marking message read:", error);
       res.status(500).json({ message: "Failed to mark message as read" });
+    }
+  });
+
+  // ============ PRACTICE SETTINGS / ONBOARDING ============
+  app.get("/api/onboarding/status", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      const settings = await storage.getPracticeSettings(userId);
+      res.json({
+        hasStarted: !!settings,
+        isComplete: settings?.onboardingComplete || false,
+        currentStep: settings?.onboardingStep || 0,
+      });
+    } catch (error) {
+      console.error("Error fetching onboarding status:", error);
+      res.status(500).json({ message: "Failed to fetch onboarding status" });
+    }
+  });
+
+  app.get("/api/practice-settings", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      const settings = await storage.getPracticeSettings(userId);
+      res.json(settings || null);
+    } catch (error) {
+      console.error("Error fetching practice settings:", error);
+      res.status(500).json({ message: "Failed to fetch practice settings" });
+    }
+  });
+
+  app.post("/api/practice-settings", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      const partial = insertPracticeSettingsSchema.partial().parse(req.body);
+      const settings = await storage.upsertPracticeSettings({
+        ...partial,
+        userId,
+      });
+      res.json(settings);
+    } catch (error) {
+      console.error("Error saving practice settings:", error);
+      res.status(500).json({ message: "Failed to save practice settings" });
+    }
+  });
+
+  app.patch("/api/practice-settings", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      const partial = insertPracticeSettingsSchema.partial().parse(req.body);
+      const settings = await storage.upsertPracticeSettings({
+        ...partial,
+        userId,
+      });
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating practice settings:", error);
+      res.status(500).json({ message: "Failed to update practice settings" });
+    }
+  });
+
+  app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      const settings = await storage.upsertPracticeSettings({
+        userId,
+        onboardingComplete: true,
+      });
+      res.json(settings);
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      res.status(500).json({ message: "Failed to complete onboarding" });
     }
   });
 

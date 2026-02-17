@@ -959,6 +959,39 @@ export const internalMessages = pgTable("internal_messages", {
 
 export const insertInternalMessageSchema = createInsertSchema(internalMessages).omit({ id: true, createdAt: true, isRead: true });
 
+// Practice Settings (Onboarding)
+export const practiceSettings = pgTable("practice_settings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  practiceName: text("practice_name").notNull(),
+  practiceType: text("practice_type").default("dental_implant"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  phone: text("phone"),
+  email: text("email"),
+  website: text("website"),
+  npiNumber: text("npi_number"),
+  taxId: text("tax_id"),
+  providerName: text("provider_name"),
+  providerTitle: text("provider_title"),
+  providerLicense: text("provider_license"),
+  providerSpecialty: text("provider_specialty"),
+  providerNpi: text("provider_npi"),
+  billingContactName: text("billing_contact_name"),
+  billingContactEmail: text("billing_contact_email"),
+  billingContactPhone: text("billing_contact_phone"),
+  defaultBillingType: text("default_billing_type").default("medical"),
+  primaryPayers: text("primary_payers").array(),
+  onboardingStep: integer("onboarding_step").default(0),
+  onboardingComplete: boolean("onboarding_complete").default(false),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertPracticeSettingsSchema = createInsertSchema(practiceSettings).omit({ id: true, createdAt: true, updatedAt: true });
+
 // Types
 export type Patient = typeof patients.$inferSelect;
 export type InsertPatient = z.infer<typeof insertPatientSchema>;
@@ -1052,3 +1085,5 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type InternalMessage = typeof internalMessages.$inferSelect;
 export type InsertInternalMessage = z.infer<typeof insertInternalMessageSchema>;
+export type PracticeSettings = typeof practiceSettings.$inferSelect;
+export type InsertPracticeSettings = z.infer<typeof insertPracticeSettingsSchema>;

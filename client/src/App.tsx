@@ -90,6 +90,8 @@ import NpsPage from "@/pages/nps";
 import CompliancePage from "@/pages/compliance";
 import BusinessIntelligencePage from "@/pages/business-intelligence";
 import MessagesPage from "@/pages/messages";
+import OnboardingPage from "@/pages/onboarding";
+import { useQuery } from "@tanstack/react-query";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -119,7 +121,16 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 function Router() {
   const { user, isLoading } = useAuth();
 
-  if (isLoading) {
+  const { data: onboardingStatus, isLoading: onboardingLoading } = useQuery<{
+    hasStarted: boolean;
+    isComplete: boolean;
+    currentStep: number;
+  }>({
+    queryKey: ["/api/onboarding/status"],
+    enabled: !!user,
+  });
+
+  if (isLoading || (user && onboardingLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="space-y-4 text-center">
@@ -132,6 +143,10 @@ function Router() {
 
   if (!user) {
     return <Landing />;
+  }
+
+  if (onboardingStatus && !onboardingStatus.isComplete) {
+    return <OnboardingPage />;
   }
 
   return (
