@@ -5,6 +5,7 @@ import {
   FileText,
   ClipboardList,
   MessageSquare,
+  Mail,
   Settings,
   LayoutDashboard,
   Stethoscope,
@@ -73,6 +74,7 @@ import { useAuth } from "@/hooks/use-auth";
 const homeItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Command Center", url: "/command-center", icon: Zap },
+  { title: "Messages", url: "/messages", icon: Mail },
 ];
 
 const patientsItems = [

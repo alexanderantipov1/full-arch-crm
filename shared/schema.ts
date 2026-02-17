@@ -941,6 +941,24 @@ export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ i
 export const insertMaintenanceAppointmentSchema = createInsertSchema(maintenanceAppointments).omit({ id: true, createdAt: true });
 export const insertPatientJourneyStatusSchema = createInsertSchema(patientJourneyStatus).omit({ id: true, updatedAt: true });
 
+// Internal Messages
+export const internalMessages = pgTable("internal_messages", {
+  id: serial("id").primaryKey(),
+  senderId: varchar("sender_id").notNull(),
+  senderName: text("sender_name").notNull(),
+  recipientId: varchar("recipient_id").notNull(),
+  recipientName: text("recipient_name").notNull(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  priority: text("priority").default("normal"),
+  isRead: boolean("is_read").default(false).notNull(),
+  category: text("category").default("general"),
+  patientId: integer("patient_id"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertInternalMessageSchema = createInsertSchema(internalMessages).omit({ id: true, createdAt: true, isRead: true });
+
 // Types
 export type Patient = typeof patients.$inferSelect;
 export type InsertPatient = z.infer<typeof insertPatientSchema>;
@@ -1032,3 +1050,5 @@ export type PatientJourneyStatus = typeof patientJourneyStatus.$inferSelect;
 export type InsertPatientJourneyStatus = z.infer<typeof insertPatientJourneyStatusSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type InternalMessage = typeof internalMessages.$inferSelect;
+export type InsertInternalMessage = z.infer<typeof insertInternalMessageSchema>;

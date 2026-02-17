@@ -43,6 +43,7 @@ import {
   maintenanceAppointments,
   auditLogs,
   consentForms,
+  internalMessages,
   users,
   type Patient,
   type InsertPatient,
@@ -126,6 +127,8 @@ import {
   type InsertAuditLog,
   type ConsentForm,
   type InsertConsentForm,
+  type InternalMessage,
+  type InsertInternalMessage,
   type User,
   type UpsertUser,
 } from "@shared/schema";
@@ -351,6 +354,14 @@ export interface IStorage {
   getDocumentsByPatient(patientId: number): Promise<PatientDocument[]>;
   createDocument(data: InsertPatientDocument): Promise<PatientDocument>;
   deleteDocument(id: number): Promise<void>;
+
+  // Internal Messages
+  getInboxMessages(userId: string): Promise<InternalMessage[]>;
+  getSentMessages(userId: string): Promise<InternalMessage[]>;
+  createMessage(data: InsertInternalMessage): Promise<InternalMessage>;
+  markMessageRead(id: number, userId: string): Promise<InternalMessage | undefined>;
+  getUnreadCount(userId: string): Promise<number>;
+  getAllUsers(): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1214,6 +1225,34 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDocument(id: number): Promise<void> {
     await db.delete(patientDocuments).where(eq(patientDocuments.id, id));
+  }
+
+  // Internal Messages
+  async getInboxMessages(userId: string): Promise<InternalMessage[]> {
+    return db.select().from(internalMessages).where(eq(internalMessages.recipientId, userId)).orderBy(desc(internalMessages.createdAt));
+  }
+
+  async getSentMessages(userId: string): Promise<InternalMessage[]> {
+    return db.select().from(internalMessages).where(eq(internalMessages.senderId, userId)).orderBy(desc(internalMessages.createdAt));
+  }
+
+  async createMessage(data: InsertInternalMessage): Promise<InternalMessage> {
+    const [message] = await db.insert(internalMessages).values(data).returning();
+    return message;
+  }
+
+  async markMessageRead(id: number, userId: string): Promise<InternalMessage | undefined> {
+    const [message] = await db.update(internalMessages).set({ isRead: true }).where(and(eq(internalMessages.id, id), eq(internalMessages.recipientId, userId))).returning();
+    return message;
+  }
+
+  async getUnreadCount(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` }).from(internalMessages).where(and(eq(internalMessages.recipientId, userId), eq(internalMessages.isRead, false)));
+    return result[0]?.count || 0;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(users.firstName);
   }
 }
 

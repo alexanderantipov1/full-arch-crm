@@ -89,6 +89,7 @@ import MarketingSuitePage from "@/pages/marketing";
 import NpsPage from "@/pages/nps";
 import CompliancePage from "@/pages/compliance";
 import BusinessIntelligencePage from "@/pages/business-intelligence";
+import MessagesPage from "@/pages/messages";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const sidebarStyle = {
@@ -208,6 +209,7 @@ function Router() {
         <Route path="/nps" component={NpsPage} />
         <Route path="/compliance" component={CompliancePage} />
         <Route path="/business-intelligence" component={BusinessIntelligencePage} />
+        <Route path="/messages" component={MessagesPage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>

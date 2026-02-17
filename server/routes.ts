@@ -39,6 +39,7 @@ import {
   insertMaintenanceAppointmentSchema,
   insertConsentFormSchema,
   insertPatientDocumentSchema,
+  insertInternalMessageSchema,
 } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -2278,6 +2279,89 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     }
   };
 
+  // ============ INTERNAL MESSAGES ============
+  const getSessionUserId = (req: any): string => {
+    return req.user?.claims?.sub || req.user?.id;
+  };
+
+  app.get("/api/messages/inbox", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      const messages = await storage.getInboxMessages(userId);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching inbox:", error);
+      res.status(500).json({ message: "Failed to fetch inbox" });
+    }
+  });
+
+  app.get("/api/messages/sent", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      const messages = await storage.getSentMessages(userId);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching sent messages:", error);
+      res.status(500).json({ message: "Failed to fetch sent messages" });
+    }
+  });
+
+  app.get("/api/messages/unread-count", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      const count = await storage.getUnreadCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ message: "Failed to fetch unread count" });
+    }
+  });
+
+  app.get("/api/users/all", isAuthenticated, async (req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post("/api/messages", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      const dbUser = await storage.getUser(userId);
+      const senderName = dbUser
+        ? `${dbUser.firstName || ""} ${dbUser.lastName || ""}`.trim() || dbUser.email || "Unknown"
+        : "Unknown";
+      const parsed = insertInternalMessageSchema.parse({
+        ...req.body,
+        senderId: userId,
+        senderName,
+      });
+      const message = await storage.createMessage(parsed);
+      res.json(message);
+    } catch (error: any) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.patch("/api/messages/:id/read", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getSessionUserId(req);
+      const id = parseInt(req.params.id);
+      const message = await storage.markMessageRead(id, userId);
+      if (!message) {
+        return res.status(404).json({ message: "Message not found or not authorized" });
+      }
+      res.json(message);
+    } catch (error) {
+      console.error("Error marking message read:", error);
+      res.status(500).json({ message: "Failed to mark message as read" });
+    }
+  });
+
   // Comprehensive PHI audit logging middleware
   const phiEndpoints = [
     { pattern: /^\/api\/patients\/(\d+)/, resourceType: "patient" },
@@ -2316,9 +2400,11 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
         const patientIdFromUrl = endpoint.resourceType === "patient" ? parseInt(match[1]) : undefined;
         const patientIdFromQuery = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
         
+        const auditUserId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "unknown";
+        const auditEmail = (req.user as any)?.claims?.email || (req.user as any)?.email || "unknown";
         logAudit(
-          req.user.id,
-          req.user.email,
+          auditUserId,
+          auditEmail,
           action,
           endpoint.resourceType,
           resourceId,
