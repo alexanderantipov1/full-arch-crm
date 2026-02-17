@@ -55,6 +55,7 @@ import {
   ThumbsUp,
   ShieldCheck,
   PieChart,
+  CircleDot,
 } from "lucide-react";
 import {
   Sidebar,
@@ -91,6 +92,7 @@ const clinicalItems = [
   { title: "Treatment Progress", url: "/treatment-progress", icon: ClipboardList },
   { title: "Clinical Notes", url: "/notes", icon: FileText },
   { title: "Exams & Evaluations", url: "/evaluations", icon: Stethoscope },
+  { title: "Dental Charting", url: "/dental-charting", icon: CircleDot },
   { title: "Perio Charting", url: "/perio", icon: BarChart3 },
   { title: "AI Diagnostics", url: "/ai-diagnostics", icon: Microscope },
   { title: "Patient Documents", url: "/documents", icon: FileText },

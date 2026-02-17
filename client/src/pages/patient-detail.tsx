@@ -103,6 +103,12 @@ export default function PatientDetailPage() {
             Edit
           </Link>
         </Button>
+        <Button variant="outline" asChild>
+          <Link href={`/dental-charting/${patient.id}`}>
+            <Activity className="mr-2 h-4 w-4" />
+            Dental Chart
+          </Link>
+        </Button>
         <Button asChild>
           <Link href={`/treatment-plans/new?patientId=${patient.id}`}>
             <Plus className="mr-2 h-4 w-4" />

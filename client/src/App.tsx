@@ -90,6 +90,7 @@ import NpsPage from "@/pages/nps";
 import CompliancePage from "@/pages/compliance";
 import BusinessIntelligencePage from "@/pages/business-intelligence";
 import MessagesPage from "@/pages/messages";
+import DentalChartingPage from "@/pages/dental-charting";
 import OnboardingPage from "@/pages/onboarding";
 import { useQuery } from "@tanstack/react-query";
 
@@ -201,6 +202,7 @@ function Router() {
         <Route path="/advanced-modules" component={AdvancedModulesPage} />
         <Route path="/content-engine" component={ContentEnginePage} />
         <Route path="/reputation" component={ReputationManagerPage} />
+        <Route path="/dental-charting/:id?" component={DentalChartingPage} />
         <Route path="/perio" component={PerioChartingPage} />
         <Route path="/ai-diagnostics" component={AIDiagnosticsPage} />
         <Route path="/e-prescribing" component={EPrescribingPage} />
