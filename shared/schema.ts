@@ -992,6 +992,45 @@ export const practiceSettings = pgTable("practice_settings", {
 
 export const insertPracticeSettingsSchema = createInsertSchema(practiceSettings).omit({ id: true, createdAt: true, updatedAt: true });
 
+// Tooth Conditions (per-tooth charting)
+export const toothConditions = pgTable("tooth_conditions", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull(),
+  toothNumber: integer("tooth_number").notNull(),
+  conditionType: text("condition_type").notNull(),
+  surface: text("surface"),
+  severity: text("severity"),
+  status: text("status").default("active").notNull(),
+  notes: text("notes"),
+  observedDate: timestamp("observed_date").default(sql`CURRENT_TIMESTAMP`),
+  resolvedDate: timestamp("resolved_date"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertToothConditionSchema = createInsertSchema(toothConditions).omit({ id: true, createdAt: true });
+
+// Treatment Plan Procedures (line items)
+export const treatmentPlanProcedures = pgTable("treatment_plan_procedures", {
+  id: serial("id").primaryKey(),
+  treatmentPlanId: integer("treatment_plan_id").notNull(),
+  patientId: integer("patient_id").notNull(),
+  toothNumber: integer("tooth_number"),
+  quadrant: text("quadrant"),
+  cdtCode: text("cdt_code").notNull(),
+  description: text("description").notNull(),
+  surface: text("surface"),
+  fee: text("fee").notNull(),
+  insuranceEstimate: text("insurance_estimate"),
+  patientCost: text("patient_cost"),
+  status: text("status").default("planned").notNull(),
+  priority: integer("priority").default(1),
+  notes: text("notes"),
+  completedDate: timestamp("completed_date"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertTreatmentPlanProcedureSchema = createInsertSchema(treatmentPlanProcedures).omit({ id: true, createdAt: true });
+
 // Types
 export type Patient = typeof patients.$inferSelect;
 export type InsertPatient = z.infer<typeof insertPatientSchema>;
@@ -1087,3 +1126,7 @@ export type InternalMessage = typeof internalMessages.$inferSelect;
 export type InsertInternalMessage = z.infer<typeof insertInternalMessageSchema>;
 export type PracticeSettings = typeof practiceSettings.$inferSelect;
 export type InsertPracticeSettings = z.infer<typeof insertPracticeSettingsSchema>;
+export type ToothCondition = typeof toothConditions.$inferSelect;
+export type InsertToothCondition = z.infer<typeof insertToothConditionSchema>;
+export type TreatmentPlanProcedure = typeof treatmentPlanProcedures.$inferSelect;
+export type InsertTreatmentPlanProcedure = z.infer<typeof insertTreatmentPlanProcedureSchema>;

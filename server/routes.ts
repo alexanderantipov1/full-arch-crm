@@ -41,6 +41,8 @@ import {
   insertPatientDocumentSchema,
   insertInternalMessageSchema,
   insertPracticeSettingsSchema,
+  insertToothConditionSchema,
+  insertTreatmentPlanProcedureSchema,
 } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -2431,6 +2433,113 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     } catch (error) {
       console.error("Error completing onboarding:", error);
       res.status(500).json({ message: "Failed to complete onboarding" });
+    }
+  });
+
+  // Tooth Conditions (Dental Charting)
+  app.get("/api/patients/:patientId/tooth-conditions", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const conditions = await storage.getToothConditions(patientId);
+      res.json(conditions);
+    } catch (error) {
+      console.error("Error fetching tooth conditions:", error);
+      res.status(500).json({ message: "Failed to fetch tooth conditions" });
+    }
+  });
+
+  app.post("/api/patients/:patientId/tooth-conditions", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const data = insertToothConditionSchema.parse({ ...req.body, patientId });
+      const condition = await storage.createToothCondition(data);
+      res.json(condition);
+    } catch (error) {
+      console.error("Error creating tooth condition:", error);
+      res.status(500).json({ message: "Failed to create tooth condition" });
+    }
+  });
+
+  app.patch("/api/tooth-conditions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = insertToothConditionSchema.partial().parse(req.body);
+      const condition = await storage.updateToothCondition(id, data);
+      if (!condition) return res.status(404).json({ message: "Tooth condition not found" });
+      res.json(condition);
+    } catch (error) {
+      console.error("Error updating tooth condition:", error);
+      res.status(500).json({ message: "Failed to update tooth condition" });
+    }
+  });
+
+  app.delete("/api/tooth-conditions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteToothCondition(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting tooth condition:", error);
+      res.status(500).json({ message: "Failed to delete tooth condition" });
+    }
+  });
+
+  // Treatment Plan Procedures
+  app.get("/api/treatment-plans/:planId/procedures", isAuthenticated, async (req, res) => {
+    try {
+      const planId = parseInt(req.params.planId);
+      const procedures = await storage.getTreatmentPlanProcedures(planId);
+      res.json(procedures);
+    } catch (error) {
+      console.error("Error fetching procedures:", error);
+      res.status(500).json({ message: "Failed to fetch procedures" });
+    }
+  });
+
+  app.get("/api/patients/:patientId/procedures", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const procedures = await storage.getPatientProcedures(patientId);
+      res.json(procedures);
+    } catch (error) {
+      console.error("Error fetching patient procedures:", error);
+      res.status(500).json({ message: "Failed to fetch patient procedures" });
+    }
+  });
+
+  app.post("/api/treatment-plans/:planId/procedures", isAuthenticated, async (req, res) => {
+    try {
+      const treatmentPlanId = parseInt(req.params.planId);
+      const data = insertTreatmentPlanProcedureSchema.parse({ ...req.body, treatmentPlanId });
+      const procedure = await storage.createTreatmentPlanProcedure(data);
+      res.json(procedure);
+    } catch (error) {
+      console.error("Error creating procedure:", error);
+      res.status(500).json({ message: "Failed to create procedure" });
+    }
+  });
+
+  app.patch("/api/procedures/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = insertTreatmentPlanProcedureSchema.partial().parse(req.body);
+      const procedure = await storage.updateTreatmentPlanProcedure(id, data);
+      if (!procedure) return res.status(404).json({ message: "Procedure not found" });
+      res.json(procedure);
+    } catch (error) {
+      console.error("Error updating procedure:", error);
+      res.status(500).json({ message: "Failed to update procedure" });
+    }
+  });
+
+  app.delete("/api/procedures/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteTreatmentPlanProcedure(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting procedure:", error);
+      res.status(500).json({ message: "Failed to delete procedure" });
     }
   });
 

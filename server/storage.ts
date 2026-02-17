@@ -132,6 +132,12 @@ import {
   type InsertInternalMessage,
   type PracticeSettings,
   type InsertPracticeSettings,
+  toothConditions,
+  treatmentPlanProcedures,
+  type ToothCondition,
+  type InsertToothCondition,
+  type TreatmentPlanProcedure,
+  type InsertTreatmentPlanProcedure,
   type User,
   type UpsertUser,
 } from "@shared/schema";
@@ -369,6 +375,19 @@ export interface IStorage {
   // Practice Settings (Onboarding)
   getPracticeSettings(userId: string): Promise<PracticeSettings | undefined>;
   upsertPracticeSettings(data: Partial<InsertPracticeSettings> & { userId: string }): Promise<PracticeSettings>;
+
+  // Tooth Conditions
+  getToothConditions(patientId: number): Promise<ToothCondition[]>;
+  createToothCondition(data: InsertToothCondition): Promise<ToothCondition>;
+  updateToothCondition(id: number, data: Partial<InsertToothCondition>): Promise<ToothCondition | undefined>;
+  deleteToothCondition(id: number): Promise<void>;
+
+  // Treatment Plan Procedures
+  getTreatmentPlanProcedures(treatmentPlanId: number): Promise<TreatmentPlanProcedure[]>;
+  getPatientProcedures(patientId: number): Promise<TreatmentPlanProcedure[]>;
+  createTreatmentPlanProcedure(data: InsertTreatmentPlanProcedure): Promise<TreatmentPlanProcedure>;
+  updateTreatmentPlanProcedure(id: number, data: Partial<InsertTreatmentPlanProcedure>): Promise<TreatmentPlanProcedure | undefined>;
+  deleteTreatmentPlanProcedure(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1280,6 +1299,46 @@ export class DatabaseStorage implements IStorage {
       .values({ practiceName: "My Practice", ...data } as InsertPracticeSettings)
       .returning();
     return created;
+  }
+
+  async getToothConditions(patientId: number): Promise<ToothCondition[]> {
+    return db.select().from(toothConditions).where(eq(toothConditions.patientId, patientId)).orderBy(toothConditions.toothNumber);
+  }
+
+  async createToothCondition(data: InsertToothCondition): Promise<ToothCondition> {
+    const [created] = await db.insert(toothConditions).values(data).returning();
+    return created;
+  }
+
+  async updateToothCondition(id: number, data: Partial<InsertToothCondition>): Promise<ToothCondition | undefined> {
+    const [updated] = await db.update(toothConditions).set(data).where(eq(toothConditions.id, id)).returning();
+    return updated;
+  }
+
+  async deleteToothCondition(id: number): Promise<void> {
+    await db.delete(toothConditions).where(eq(toothConditions.id, id));
+  }
+
+  async getTreatmentPlanProcedures(treatmentPlanId: number): Promise<TreatmentPlanProcedure[]> {
+    return db.select().from(treatmentPlanProcedures).where(eq(treatmentPlanProcedures.treatmentPlanId, treatmentPlanId)).orderBy(treatmentPlanProcedures.priority);
+  }
+
+  async getPatientProcedures(patientId: number): Promise<TreatmentPlanProcedure[]> {
+    return db.select().from(treatmentPlanProcedures).where(eq(treatmentPlanProcedures.patientId, patientId)).orderBy(treatmentPlanProcedures.priority);
+  }
+
+  async createTreatmentPlanProcedure(data: InsertTreatmentPlanProcedure): Promise<TreatmentPlanProcedure> {
+    const [created] = await db.insert(treatmentPlanProcedures).values(data).returning();
+    return created;
+  }
+
+  async updateTreatmentPlanProcedure(id: number, data: Partial<InsertTreatmentPlanProcedure>): Promise<TreatmentPlanProcedure | undefined> {
+    const [updated] = await db.update(treatmentPlanProcedures).set(data).where(eq(treatmentPlanProcedures.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTreatmentPlanProcedure(id: number): Promise<void> {
+    await db.delete(treatmentPlanProcedures).where(eq(treatmentPlanProcedures.id, id));
   }
 }
 
