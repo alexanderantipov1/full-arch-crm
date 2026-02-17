@@ -2369,7 +2369,18 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
   app.get("/api/onboarding/status", isAuthenticated, async (req, res) => {
     try {
       const userId = getSessionUserId(req);
-      const settings = await storage.getPracticeSettings(userId);
+      let settings = await storage.getPracticeSettings(userId);
+
+      const ownerUsername = process.env.REPL_OWNER;
+      if (!settings?.onboardingComplete && ownerUsername && userId === ownerUsername) {
+        settings = await storage.upsertPracticeSettings({
+          userId,
+          practiceName: "My Practice",
+          onboardingStep: 4,
+          onboardingComplete: true,
+        });
+      }
+
       res.json({
         hasStarted: !!settings,
         isComplete: settings?.onboardingComplete || false,
