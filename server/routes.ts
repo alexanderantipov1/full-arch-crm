@@ -43,6 +43,12 @@ import {
   insertPracticeSettingsSchema,
   insertToothConditionSchema,
   insertTreatmentPlanProcedureSchema,
+  insertUnionOrganizationSchema,
+  insertUnionContactSchema,
+  insertUnionOutreachSchema,
+  insertUnionEventSchema,
+  insertUnionAgreementSchema,
+  insertUnionMemberVisitSchema,
 } from "@shared/schema";
 
 const openai = new OpenAI({
@@ -2577,6 +2583,378 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     PATCH: "update",
     DELETE: "delete",
   };
+
+  // ========== Union Partnership Routes ==========
+  app.get("/api/unions", isAuthenticated, async (req, res) => {
+    try {
+      const unions = await storage.getUnionOrganizations();
+      res.json(unions);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/unions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const union = await storage.getUnionOrganization(parseInt(req.params.id));
+      if (!union) return res.status(404).json({ message: "Union not found" });
+      res.json(union);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/unions", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertUnionOrganizationSchema.parse(req.body);
+      const union = await storage.createUnionOrganization(data);
+      res.status(201).json(union);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/unions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const union = await storage.updateUnionOrganization(parseInt(req.params.id), req.body);
+      if (!union) return res.status(404).json({ message: "Union not found" });
+      res.json(union);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/unions/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteUnionOrganization(parseInt(req.params.id));
+      res.json({ message: "Deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/unions/:id/contacts", isAuthenticated, async (req, res) => {
+    try {
+      const contacts = await storage.getUnionContacts(parseInt(req.params.id));
+      res.json(contacts);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/unions/contacts", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertUnionContactSchema.parse(req.body);
+      const contact = await storage.createUnionContact(data);
+      res.status(201).json(contact);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/unions/contacts/:id", isAuthenticated, async (req, res) => {
+    try {
+      const contact = await storage.updateUnionContact(parseInt(req.params.id), req.body);
+      if (!contact) return res.status(404).json({ message: "Contact not found" });
+      res.json(contact);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/unions/contacts/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteUnionContact(parseInt(req.params.id));
+      res.json({ message: "Deleted" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/unions/outreach/all", isAuthenticated, async (req, res) => {
+    try {
+      const unionId = req.query.unionId ? parseInt(req.query.unionId as string) : undefined;
+      const outreach = await storage.getUnionOutreach(unionId);
+      res.json(outreach);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/unions/outreach", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertUnionOutreachSchema.parse(req.body);
+      const outreach = await storage.createUnionOutreach(data);
+      res.status(201).json(outreach);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/unions/outreach/:id", isAuthenticated, async (req, res) => {
+    try {
+      const outreach = await storage.updateUnionOutreach(parseInt(req.params.id), req.body);
+      if (!outreach) return res.status(404).json({ message: "Outreach not found" });
+      res.json(outreach);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/unions/events/all", isAuthenticated, async (req, res) => {
+    try {
+      const events = await storage.getUnionEvents();
+      res.json(events);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/unions/events", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertUnionEventSchema.parse(req.body);
+      const event = await storage.createUnionEvent(data);
+      res.status(201).json(event);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/unions/events/:id", isAuthenticated, async (req, res) => {
+    try {
+      const event = await storage.updateUnionEvent(parseInt(req.params.id), req.body);
+      if (!event) return res.status(404).json({ message: "Event not found" });
+      res.json(event);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/unions/agreements/all", isAuthenticated, async (req, res) => {
+    try {
+      const unionId = req.query.unionId ? parseInt(req.query.unionId as string) : undefined;
+      const agreements = await storage.getUnionAgreements(unionId);
+      res.json(agreements);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/unions/agreements", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertUnionAgreementSchema.parse(req.body);
+      const agreement = await storage.createUnionAgreement(data);
+      res.status(201).json(agreement);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/unions/agreements/:id", isAuthenticated, async (req, res) => {
+    try {
+      const agreement = await storage.updateUnionAgreement(parseInt(req.params.id), req.body);
+      if (!agreement) return res.status(404).json({ message: "Agreement not found" });
+      res.json(agreement);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/unions/visits/all", isAuthenticated, async (req, res) => {
+    try {
+      const unionId = req.query.unionId ? parseInt(req.query.unionId as string) : undefined;
+      const visits = await storage.getUnionMemberVisits(unionId);
+      res.json(visits);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/unions/visits", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertUnionMemberVisitSchema.parse(req.body);
+      const visit = await storage.createUnionMemberVisit(data);
+      res.status(201).json(visit);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/unions/seed", isAuthenticated, async (req, res) => {
+    try {
+      const existing = await storage.getUnionOrganizations();
+      if (existing.length > 0) {
+        return res.json({ message: "Union data already seeded", count: existing.length });
+      }
+
+      const seedData = [
+        {
+          name: "LIUNA Local 185",
+          localNumber: "185",
+          category: "construction",
+          memberCount: 3000,
+          address: "1320 National Drive",
+          city: "Sacramento",
+          state: "CA",
+          zipCode: "95834",
+          phone: "(916) 928-8300",
+          fax: "(916) 928-8311",
+          website: "laborerslocal185.org",
+          affiliatedWith: "AFL-CIO",
+          pipelineStage: "prospect",
+          priorityScore: 90,
+          notes: "Construction workers with solid benefits and high dental trauma rates. Business Manager: Doyle S. Radford, Jr. Key contacts: Sean Radford, Leonel Barragan, AC Covarrubias. Office hours 6:30am-4:30pm.",
+        },
+        {
+          name: "IBEW Local 340",
+          localNumber: "340",
+          category: "construction",
+          memberCount: 2500,
+          address: "10240 Systems Parkway, Suite 100",
+          city: "Sacramento",
+          state: "CA",
+          zipCode: "95827",
+          phone: "(916) 927-4239",
+          fax: "(916) 927-1074",
+          email: "office@ibewlocal340.org",
+          website: "ibewlocal340.org",
+          affiliatedWith: "AFL-CIO",
+          pipelineStage: "prospect",
+          priorityScore: 95,
+          notes: "Electricians union. Best first call - has actual email addresses for leadership. Bob Ward (Business Manager): bward@ibewlocal340.org. Salma Smiley (Membership Dev): ssmiley@ibewlocal340.org ext 1008.",
+        },
+        {
+          name: "Carpenters Local 46",
+          localNumber: "46",
+          category: "construction",
+          memberCount: 2000,
+          address: "4421 Pell Drive, Suite A",
+          city: "Sacramento",
+          state: "CA",
+          zipCode: "95838",
+          phone: "(916) 614-7901",
+          fax: "(916) 614-7911",
+          website: "carpenters46.org",
+          affiliatedWith: "AFL-CIO",
+          pipelineStage: "prospect",
+          priorityScore: 80,
+          notes: "Covers Sacramento, Yolo, Colusa, Yuba, Sutter, Western Placer and Western El Dorado counties. No public email - use phone or website contact form.",
+        },
+        {
+          name: "UA Local 447",
+          localNumber: "447",
+          category: "construction",
+          memberCount: 1700,
+          address: "5841 Newman Court",
+          city: "Sacramento",
+          state: "CA",
+          zipCode: "95819",
+          phone: "(916) 457-6595",
+          fax: "(916) 454-6151",
+          website: "ualocal447.org",
+          affiliatedWith: "AFL-CIO",
+          pipelineStage: "prospect",
+          priorityScore: 75,
+          notes: "Plumbers & Pipefitters. 1,700 Journeypersons, Retirees and Apprentices. Training Center: (916) 383-1102. Use Contact Us form on website.",
+        },
+        {
+          name: "SEIU Local 1000",
+          localNumber: "1000",
+          category: "public_sector",
+          memberCount: 96000,
+          address: "1808 14th Street",
+          city: "Sacramento",
+          state: "CA",
+          zipCode: "95811",
+          phone: "(866) 471-7348",
+          website: "seiu1000.org",
+          affiliatedWith: "AFL-CIO",
+          pipelineStage: "prospect",
+          priorityScore: 85,
+          notes: "STATE WORKERS - Biggest single target by membership (96,000). Toll-free Member Resource Center. Local: (916) 554-1200. Sacramento is the state capital = tens of thousands within driving distance.",
+        },
+        {
+          name: "Teamsters Local 150",
+          localNumber: "150",
+          category: "transportation",
+          memberCount: 5000,
+          address: "7120 East Parkway",
+          city: "Sacramento",
+          state: "CA",
+          zipCode: "95823",
+          phone: "(916) 392-7070",
+          website: "teamsters150.org",
+          affiliatedWith: "AFL-CIO",
+          pipelineStage: "prospect",
+          priorityScore: 70,
+          notes: "Secretary-Treasurer: Dale Wentz. President: Amber Williams. UPS, Grocery Distribution, Trucking, Medical, Public Agency, Dairy, Beverage workers. No general email - call office.",
+        },
+        {
+          name: "UFCW 8-Golden State",
+          localNumber: "8",
+          category: "retail",
+          memberCount: 30000,
+          address: "2200 Professional Drive",
+          city: "Roseville",
+          state: "CA",
+          zipCode: "95661",
+          phone: "(916) 786-0588",
+          website: "ufcw8.org",
+          affiliatedWith: "AFL-CIO",
+          pipelineStage: "prospect",
+          priorityScore: 88,
+          notes: "GROCERY/RETAIL WORKERS - HQ is in ROSEVILLE, right in your backyard! 30,000+ members across CA. Sacramento office: 1930 9th St Suite 208, (916) 503-8828. Use contact form on ufcw8.org/contact-us.",
+        },
+        {
+          name: "Sacramento Central Labor Council",
+          localNumber: "AFL-CIO",
+          category: "public_sector",
+          memberCount: 200000,
+          address: "2840 El Centro Rd., Suite 111",
+          city: "Sacramento",
+          state: "CA",
+          zipCode: "95833",
+          phone: "(916) 927-9772",
+          email: "ellen@sacramentolabor.org",
+          website: "sacramentolabor.org",
+          affiliatedWith: "AFL-CIO",
+          pipelineStage: "prospect",
+          priorityScore: 60,
+          notes: "UMBRELLA ORG - 98 local unions, ~200,000 members. Exec Director: Fabrizio Sasso. Go here WITH proven results from 2-3 partnerships, not just a pitch. Events contact: ellen@sacramentolabor.org.",
+        },
+      ];
+
+      const created = [];
+      for (const union of seedData) {
+        const org = await storage.createUnionOrganization(union as any);
+        created.push(org);
+      }
+
+      // Seed contacts for IBEW 340 (has known contacts)
+      const ibew = created.find(u => u.name === "IBEW Local 340");
+      if (ibew) {
+        await storage.createUnionContact({ unionId: ibew.id, firstName: "Bob", lastName: "Ward", title: "Business Manager", email: "bward@ibewlocal340.org", isPrimary: true });
+        await storage.createUnionContact({ unionId: ibew.id, firstName: "Salma", lastName: "Smiley", title: "Membership Development", email: "ssmiley@ibewlocal340.org", phone: "(916) 927-4239 ext. 1008", isPrimary: false });
+      }
+
+      const liuna = created.find(u => u.name === "LIUNA Local 185");
+      if (liuna) {
+        await storage.createUnionContact({ unionId: liuna.id, firstName: "Doyle S.", lastName: "Radford Jr.", title: "Business Manager", isPrimary: true });
+        await storage.createUnionContact({ unionId: liuna.id, firstName: "Sean", lastName: "Radford", title: "Business Agent", isPrimary: false });
+        await storage.createUnionContact({ unionId: liuna.id, firstName: "Armando", lastName: "Covarrubias", title: "Secretary-Treasurer", isPrimary: false });
+      }
+
+      const sclc = created.find(u => u.name === "Sacramento Central Labor Council");
+      if (sclc) {
+        await storage.createUnionContact({ unionId: sclc.id, firstName: "Fabrizio", lastName: "Sasso", title: "Executive Director", isPrimary: true });
+        await storage.createUnionContact({ unionId: sclc.id, firstName: "Ellen", lastName: "(Contact)", title: "Events Coordinator", email: "ellen@sacramentolabor.org", isPrimary: false });
+      }
+
+      res.status(201).json({ message: "Seeded union data", count: created.length });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
 
   app.use((req, res, next) => {
     if (!req.user) {

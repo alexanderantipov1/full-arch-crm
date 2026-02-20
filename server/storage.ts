@@ -134,12 +134,30 @@ import {
   type InsertPracticeSettings,
   toothConditions,
   treatmentPlanProcedures,
+  unionOrganizations,
+  unionContacts,
+  unionOutreach,
+  unionEvents,
+  unionAgreements,
+  unionMemberVisits,
   type ToothCondition,
   type InsertToothCondition,
   type TreatmentPlanProcedure,
   type InsertTreatmentPlanProcedure,
   type User,
   type UpsertUser,
+  type UnionOrganization,
+  type InsertUnionOrganization,
+  type UnionContact,
+  type InsertUnionContact,
+  type UnionOutreach,
+  type InsertUnionOutreach,
+  type UnionEvent,
+  type InsertUnionEvent,
+  type UnionAgreement,
+  type InsertUnionAgreement,
+  type UnionMemberVisit,
+  type InsertUnionMemberVisit,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -388,6 +406,38 @@ export interface IStorage {
   createTreatmentPlanProcedure(data: InsertTreatmentPlanProcedure): Promise<TreatmentPlanProcedure>;
   updateTreatmentPlanProcedure(id: number, data: Partial<InsertTreatmentPlanProcedure>): Promise<TreatmentPlanProcedure | undefined>;
   deleteTreatmentPlanProcedure(id: number): Promise<void>;
+
+  // Union Organizations
+  getUnionOrganizations(): Promise<UnionOrganization[]>;
+  getUnionOrganization(id: number): Promise<UnionOrganization | undefined>;
+  createUnionOrganization(data: InsertUnionOrganization): Promise<UnionOrganization>;
+  updateUnionOrganization(id: number, data: Partial<InsertUnionOrganization>): Promise<UnionOrganization | undefined>;
+  deleteUnionOrganization(id: number): Promise<void>;
+
+  // Union Contacts
+  getUnionContacts(unionId: number): Promise<UnionContact[]>;
+  createUnionContact(data: InsertUnionContact): Promise<UnionContact>;
+  updateUnionContact(id: number, data: Partial<InsertUnionContact>): Promise<UnionContact | undefined>;
+  deleteUnionContact(id: number): Promise<void>;
+
+  // Union Outreach
+  getUnionOutreach(unionId?: number): Promise<UnionOutreach[]>;
+  createUnionOutreach(data: InsertUnionOutreach): Promise<UnionOutreach>;
+  updateUnionOutreach(id: number, data: Partial<InsertUnionOutreach>): Promise<UnionOutreach | undefined>;
+
+  // Union Events
+  getUnionEvents(): Promise<UnionEvent[]>;
+  createUnionEvent(data: InsertUnionEvent): Promise<UnionEvent>;
+  updateUnionEvent(id: number, data: Partial<InsertUnionEvent>): Promise<UnionEvent | undefined>;
+
+  // Union Agreements
+  getUnionAgreements(unionId?: number): Promise<UnionAgreement[]>;
+  createUnionAgreement(data: InsertUnionAgreement): Promise<UnionAgreement>;
+  updateUnionAgreement(id: number, data: Partial<InsertUnionAgreement>): Promise<UnionAgreement | undefined>;
+
+  // Union Member Visits
+  getUnionMemberVisits(unionId?: number): Promise<UnionMemberVisit[]>;
+  createUnionMemberVisit(data: InsertUnionMemberVisit): Promise<UnionMemberVisit>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1339,6 +1389,113 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTreatmentPlanProcedure(id: number): Promise<void> {
     await db.delete(treatmentPlanProcedures).where(eq(treatmentPlanProcedures.id, id));
+  }
+
+  // Union Organizations
+  async getUnionOrganizations(): Promise<UnionOrganization[]> {
+    return db.select().from(unionOrganizations).orderBy(desc(unionOrganizations.priorityScore));
+  }
+
+  async getUnionOrganization(id: number): Promise<UnionOrganization | undefined> {
+    const [org] = await db.select().from(unionOrganizations).where(eq(unionOrganizations.id, id));
+    return org;
+  }
+
+  async createUnionOrganization(data: InsertUnionOrganization): Promise<UnionOrganization> {
+    const [created] = await db.insert(unionOrganizations).values(data).returning();
+    return created;
+  }
+
+  async updateUnionOrganization(id: number, data: Partial<InsertUnionOrganization>): Promise<UnionOrganization | undefined> {
+    const [updated] = await db.update(unionOrganizations).set({ ...data, updatedAt: new Date() }).where(eq(unionOrganizations.id, id)).returning();
+    return updated;
+  }
+
+  async deleteUnionOrganization(id: number): Promise<void> {
+    await db.delete(unionOrganizations).where(eq(unionOrganizations.id, id));
+  }
+
+  // Union Contacts
+  async getUnionContacts(unionId: number): Promise<UnionContact[]> {
+    return db.select().from(unionContacts).where(eq(unionContacts.unionId, unionId)).orderBy(desc(unionContacts.isPrimary));
+  }
+
+  async createUnionContact(data: InsertUnionContact): Promise<UnionContact> {
+    const [created] = await db.insert(unionContacts).values(data).returning();
+    return created;
+  }
+
+  async updateUnionContact(id: number, data: Partial<InsertUnionContact>): Promise<UnionContact | undefined> {
+    const [updated] = await db.update(unionContacts).set(data).where(eq(unionContacts.id, id)).returning();
+    return updated;
+  }
+
+  async deleteUnionContact(id: number): Promise<void> {
+    await db.delete(unionContacts).where(eq(unionContacts.id, id));
+  }
+
+  // Union Outreach
+  async getUnionOutreach(unionId?: number): Promise<UnionOutreach[]> {
+    if (unionId) {
+      return db.select().from(unionOutreach).where(eq(unionOutreach.unionId, unionId)).orderBy(desc(unionOutreach.createdAt));
+    }
+    return db.select().from(unionOutreach).orderBy(desc(unionOutreach.createdAt));
+  }
+
+  async createUnionOutreach(data: InsertUnionOutreach): Promise<UnionOutreach> {
+    const [created] = await db.insert(unionOutreach).values(data).returning();
+    return created;
+  }
+
+  async updateUnionOutreach(id: number, data: Partial<InsertUnionOutreach>): Promise<UnionOutreach | undefined> {
+    const [updated] = await db.update(unionOutreach).set(data).where(eq(unionOutreach.id, id)).returning();
+    return updated;
+  }
+
+  // Union Events
+  async getUnionEvents(): Promise<UnionEvent[]> {
+    return db.select().from(unionEvents).orderBy(desc(unionEvents.date));
+  }
+
+  async createUnionEvent(data: InsertUnionEvent): Promise<UnionEvent> {
+    const [created] = await db.insert(unionEvents).values(data).returning();
+    return created;
+  }
+
+  async updateUnionEvent(id: number, data: Partial<InsertUnionEvent>): Promise<UnionEvent | undefined> {
+    const [updated] = await db.update(unionEvents).set(data).where(eq(unionEvents.id, id)).returning();
+    return updated;
+  }
+
+  // Union Agreements
+  async getUnionAgreements(unionId?: number): Promise<UnionAgreement[]> {
+    if (unionId) {
+      return db.select().from(unionAgreements).where(eq(unionAgreements.unionId, unionId)).orderBy(desc(unionAgreements.createdAt));
+    }
+    return db.select().from(unionAgreements).orderBy(desc(unionAgreements.createdAt));
+  }
+
+  async createUnionAgreement(data: InsertUnionAgreement): Promise<UnionAgreement> {
+    const [created] = await db.insert(unionAgreements).values(data).returning();
+    return created;
+  }
+
+  async updateUnionAgreement(id: number, data: Partial<InsertUnionAgreement>): Promise<UnionAgreement | undefined> {
+    const [updated] = await db.update(unionAgreements).set(data).where(eq(unionAgreements.id, id)).returning();
+    return updated;
+  }
+
+  // Union Member Visits
+  async getUnionMemberVisits(unionId?: number): Promise<UnionMemberVisit[]> {
+    if (unionId) {
+      return db.select().from(unionMemberVisits).where(eq(unionMemberVisits.unionId, unionId)).orderBy(desc(unionMemberVisits.visitDate));
+    }
+    return db.select().from(unionMemberVisits).orderBy(desc(unionMemberVisits.visitDate));
+  }
+
+  async createUnionMemberVisit(data: InsertUnionMemberVisit): Promise<UnionMemberVisit> {
+    const [created] = await db.insert(unionMemberVisits).values(data).returning();
+    return created;
   }
 }
 

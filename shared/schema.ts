@@ -1130,3 +1130,118 @@ export type ToothCondition = typeof toothConditions.$inferSelect;
 export type InsertToothCondition = z.infer<typeof insertToothConditionSchema>;
 export type TreatmentPlanProcedure = typeof treatmentPlanProcedures.$inferSelect;
 export type InsertTreatmentPlanProcedure = z.infer<typeof insertTreatmentPlanProcedureSchema>;
+
+// Union Partnerships
+export const unionOrganizations = pgTable("union_organizations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  localNumber: text("local_number"),
+  category: text("category").notNull(), // construction, public_sector, healthcare, transportation, retail
+  memberCount: integer("member_count"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  phone: text("phone"),
+  fax: text("fax"),
+  email: text("email"),
+  website: text("website"),
+  affiliatedWith: text("affiliated_with"), // AFL-CIO, etc.
+  dentalPlan: text("dental_plan"), // Delta Dental, etc.
+  pipelineStage: text("pipeline_stage").notNull().default("prospect"), // prospect, contacted, meeting_scheduled, proposal_sent, negotiating, partner, inactive
+  priorityScore: integer("priority_score").default(50), // 0-100
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const unionContacts = pgTable("union_contacts", {
+  id: serial("id").primaryKey(),
+  unionId: integer("union_id").notNull().references(() => unionOrganizations.id, { onDelete: "cascade" }),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  title: text("title"), // Business Manager, Business Agent, Benefits Coordinator, etc.
+  email: text("email"),
+  phone: text("phone"),
+  isPrimary: boolean("is_primary").default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const unionOutreach = pgTable("union_outreach", {
+  id: serial("id").primaryKey(),
+  unionId: integer("union_id").notNull().references(() => unionOrganizations.id, { onDelete: "cascade" }),
+  contactId: integer("contact_id").references(() => unionContacts.id),
+  type: text("type").notNull(), // email, phone, in_person, mail
+  subject: text("subject"),
+  body: text("body"),
+  status: text("status").notNull().default("draft"), // draft, sent, delivered, opened, replied, no_response
+  sentAt: timestamp("sent_at"),
+  followUpDate: date("follow_up_date"),
+  responseNotes: text("response_notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const unionEvents = pgTable("union_events", {
+  id: serial("id").primaryKey(),
+  unionId: integer("union_id").references(() => unionOrganizations.id),
+  title: text("title").notNull(),
+  type: text("type").notNull(), // health_fair, lunch_learn, screening, open_enrollment, meeting
+  date: date("date").notNull(),
+  time: text("time"),
+  location: text("location"),
+  description: text("description"),
+  status: text("status").notNull().default("planned"), // planned, confirmed, completed, cancelled
+  attendeeCount: integer("attendee_count"),
+  screeningsPerformed: integer("screenings_performed"),
+  leadsGenerated: integer("leads_generated"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const unionAgreements = pgTable("union_agreements", {
+  id: serial("id").primaryKey(),
+  unionId: integer("union_id").notNull().references(() => unionOrganizations.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // preferred_provider, discount_schedule, mou, sponsorship
+  title: text("title").notNull(),
+  status: text("status").notNull().default("draft"), // draft, pending_review, active, expired, terminated
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  discountPercentage: decimal("discount_percentage"),
+  specialPricing: jsonb("special_pricing"), // e.g., { "full_arch": 14995, "implant": 2000 }
+  terms: text("terms"),
+  signedBy: text("signed_by"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const unionMemberVisits = pgTable("union_member_visits", {
+  id: serial("id").primaryKey(),
+  unionId: integer("union_id").notNull().references(() => unionOrganizations.id, { onDelete: "cascade" }),
+  patientId: integer("patient_id").references(() => patients.id),
+  visitDate: date("visit_date").notNull(),
+  serviceType: text("service_type"), // general, implant, ortho, surgery, emergency
+  revenueGenerated: decimal("revenue_generated"),
+  referralSource: text("referral_source"), // health_fair, direct, referral, website
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertUnionOrganizationSchema = createInsertSchema(unionOrganizations).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUnionContactSchema = createInsertSchema(unionContacts).omit({ id: true, createdAt: true });
+export const insertUnionOutreachSchema = createInsertSchema(unionOutreach).omit({ id: true, createdAt: true });
+export const insertUnionEventSchema = createInsertSchema(unionEvents).omit({ id: true, createdAt: true });
+export const insertUnionAgreementSchema = createInsertSchema(unionAgreements).omit({ id: true, createdAt: true });
+export const insertUnionMemberVisitSchema = createInsertSchema(unionMemberVisits).omit({ id: true, createdAt: true });
+
+export type UnionOrganization = typeof unionOrganizations.$inferSelect;
+export type InsertUnionOrganization = z.infer<typeof insertUnionOrganizationSchema>;
+export type UnionContact = typeof unionContacts.$inferSelect;
+export type InsertUnionContact = z.infer<typeof insertUnionContactSchema>;
+export type UnionOutreach = typeof unionOutreach.$inferSelect;
+export type InsertUnionOutreach = z.infer<typeof insertUnionOutreachSchema>;
+export type UnionEvent = typeof unionEvents.$inferSelect;
+export type InsertUnionEvent = z.infer<typeof insertUnionEventSchema>;
+export type UnionAgreement = typeof unionAgreements.$inferSelect;
+export type InsertUnionAgreement = z.infer<typeof insertUnionAgreementSchema>;
+export type UnionMemberVisit = typeof unionMemberVisits.$inferSelect;
+export type InsertUnionMemberVisit = z.infer<typeof insertUnionMemberVisitSchema>;

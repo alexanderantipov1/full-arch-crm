@@ -56,6 +56,7 @@ import {
   ShieldCheck,
   PieChart,
   CircleDot,
+  Handshake,
 } from "lucide-react";
 import {
   Sidebar,
@@ -138,6 +139,7 @@ const aiToolsItems = [
 
 const growthItems = [
   { title: "Marketing Suite", url: "/marketing", icon: Megaphone },
+  { title: "Union Flow", url: "/union-flow", icon: Handshake },
   { title: "Content Engine", url: "/content-engine", icon: PenTool },
   { title: "Reputation Manager", url: "/reputation", icon: Award },
   { title: "Patient NPS", url: "/nps", icon: ThumbsUp },
