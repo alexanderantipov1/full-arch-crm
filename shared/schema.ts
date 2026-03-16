@@ -1226,6 +1226,28 @@ export const unionMemberVisits = pgTable("union_member_visits", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+// ============ PERIO CHARTING ============
+export const perioExams = pgTable("perio_exams", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  providerId: text("provider_id"),
+  providerName: text("provider_name"),
+  examDate: date("exam_date").notNull(),
+  // JSONB: { [toothNum]: { facialProbing:[d,f,m], lingualProbing:[d,l,m], facialBop:[b,b,b], lingualBop:[b,b,b], facialRecession:[n,n,n], lingualRecession:[n,n,n], mobility:0-3, furcation:0-3, missing:bool, implant:bool } }
+  probingData: jsonb("probing_data").default({}),
+  diagnosisStage: text("diagnosis_stage"),   // I, II, III, IV
+  diagnosisGrade: text("diagnosis_grade"),   // A, B, C
+  diagnosisExtent: text("diagnosis_extent"), // Localized, Generalized, Molar-incisor
+  notes: text("notes"),
+  aiAssessment: text("ai_assessment"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertPerioExamSchema = createInsertSchema(perioExams).omit({ id: true, createdAt: true, updatedAt: true });
+export type PerioExam = typeof perioExams.$inferSelect;
+export type InsertPerioExam = z.infer<typeof insertPerioExamSchema>;
+
 export const insertUnionOrganizationSchema = createInsertSchema(unionOrganizations).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertUnionContactSchema = createInsertSchema(unionContacts).omit({ id: true, createdAt: true });
 export const insertUnionOutreachSchema = createInsertSchema(unionOutreach).omit({ id: true, createdAt: true });

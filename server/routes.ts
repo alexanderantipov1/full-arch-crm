@@ -49,6 +49,7 @@ import {
   insertUnionEventSchema,
   insertUnionAgreementSchema,
   insertUnionMemberVisitSchema,
+  insertPerioExamSchema,
 } from "@shared/schema";
 
 const anthropic = new Anthropic({
@@ -2923,6 +2924,75 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
       }
     }
     next();
+  });
+
+  // ============ PERIO CHARTING ============
+  app.get("/api/perio/:patientId", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const exams = await storage.getPerioExams(patientId);
+      res.json(exams);
+    } catch (error) {
+      console.error("Error fetching perio exams:", error);
+      res.json([]);
+    }
+  });
+
+  app.get("/api/perio/exam/:id", isAuthenticated, async (req, res) => {
+    try {
+      const exam = await storage.getPerioExam(parseInt(req.params.id));
+      if (!exam) return res.status(404).json({ message: "Exam not found" });
+      res.json(exam);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch exam" });
+    }
+  });
+
+  app.post("/api/perio", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertPerioExamSchema.parse(req.body);
+      const exam = await storage.createPerioExam(data);
+      res.status(201).json(exam);
+    } catch (error) {
+      console.error("Error creating perio exam:", error);
+      res.status(500).json({ message: "Failed to create perio exam" });
+    }
+  });
+
+  app.put("/api/perio/exam/:id", isAuthenticated, async (req, res) => {
+    try {
+      const updated = await storage.updatePerioExam(parseInt(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Exam not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update perio exam" });
+    }
+  });
+
+  app.post("/api/perio/ai-assessment", isAuthenticated, async (req, res) => {
+    try {
+      const { probingData, patientName } = req.body;
+      const allDepths: number[] = [];
+      let bopCount = 0, totalSites = 0, sitesGt4 = 0, sitesGt6 = 0;
+      Object.values(probingData as Record<string, any>).forEach((t: any) => {
+        if (t.missing) return;
+        const depths = [...(t.facialProbing || []), ...(t.lingualProbing || [])];
+        const bops = [...(t.facialBop || []), ...(t.lingualBop || [])];
+        depths.forEach(d => { allDepths.push(d); totalSites++; if (d >= 4) sitesGt4++; if (d >= 6) sitesGt6++; });
+        bops.forEach(b => { if (b) bopCount++; });
+      });
+      const avgDepth = allDepths.length ? (allDepths.reduce((a, b) => a + b, 0) / allDepths.length).toFixed(1) : "0";
+      const bopPct = totalSites ? Math.round((bopCount / totalSites) * 100) : 0;
+
+      const assessment = await askClaude(
+        "You are a periodontist generating a clinical AI assessment for a perio chart. Be concise, clinical, and specific. Include diagnosis, treatment recommendations (CDT codes D4341/D4342/D4910), and prognosis. Keep under 120 words.",
+        `Patient: ${patientName}. Avg probing: ${avgDepth}mm. Sites ≥4mm: ${sitesGt4}. Sites ≥6mm: ${sitesGt6}. BOP: ${bopPct}%. Generate a periodontal assessment and treatment plan.`,
+        400
+      );
+      res.json({ assessment, stats: { avgDepth, bopPct, sitesGt4, sitesGt6, totalSites } });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate AI assessment" });
+    }
   });
 
   return httpServer;

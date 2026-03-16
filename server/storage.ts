@@ -158,6 +158,9 @@ import {
   type InsertUnionAgreement,
   type UnionMemberVisit,
   type InsertUnionMemberVisit,
+  perioExams,
+  type PerioExam,
+  type InsertPerioExam,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -438,6 +441,12 @@ export interface IStorage {
   // Union Member Visits
   getUnionMemberVisits(unionId?: number): Promise<UnionMemberVisit[]>;
   createUnionMemberVisit(data: InsertUnionMemberVisit): Promise<UnionMemberVisit>;
+
+  // Perio Charting
+  getPerioExams(patientId: number): Promise<PerioExam[]>;
+  getPerioExam(id: number): Promise<PerioExam | undefined>;
+  createPerioExam(data: InsertPerioExam): Promise<PerioExam>;
+  updatePerioExam(id: number, data: Partial<InsertPerioExam>): Promise<PerioExam | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1496,6 +1505,26 @@ export class DatabaseStorage implements IStorage {
   async createUnionMemberVisit(data: InsertUnionMemberVisit): Promise<UnionMemberVisit> {
     const [created] = await db.insert(unionMemberVisits).values(data).returning();
     return created;
+  }
+
+  // ============ PERIO CHARTING ============
+  async getPerioExams(patientId: number): Promise<PerioExam[]> {
+    return db.select().from(perioExams).where(eq(perioExams.patientId, patientId)).orderBy(desc(perioExams.examDate));
+  }
+
+  async getPerioExam(id: number): Promise<PerioExam | undefined> {
+    const [exam] = await db.select().from(perioExams).where(eq(perioExams.id, id));
+    return exam;
+  }
+
+  async createPerioExam(data: InsertPerioExam): Promise<PerioExam> {
+    const [created] = await db.insert(perioExams).values(data).returning();
+    return created;
+  }
+
+  async updatePerioExam(id: number, data: Partial<InsertPerioExam>): Promise<PerioExam | undefined> {
+    const [updated] = await db.update(perioExams).set({ ...data, updatedAt: new Date() }).where(eq(perioExams.id, id)).returning();
+    return updated;
   }
 }
 
