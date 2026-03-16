@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Users,
@@ -193,9 +194,93 @@ const navGroups = [
   { label: "Administration", items: adminItems },
 ];
 
+// Default fallback modules per specialty
+const SPECIALTY_MODULE_MAP: Record<string, { title: string; url: string }[]> = {
+  "General Dentist": [
+    { title: "Patients", url: "/patients" }, { title: "Recall System", url: "/recall" },
+    { title: "Perio Charting", url: "/perio" }, { title: "Billing & Claims", url: "/billing" },
+    { title: "Scheduling", url: "/appointments" }, { title: "Patient Messaging", url: "/patient-messaging" },
+  ],
+  "Oral & Maxillofacial Surgeon": [
+    { title: "Oral Surgery", url: "/oral-surgery" }, { title: "Surgery Day", url: "/surgery" },
+    { title: "Medical Clearance", url: "/medical-clearance" }, { title: "Billing & Claims", url: "/billing" },
+    { title: "AI Documentation", url: "/ai-documentation" }, { title: "Coding Engine", url: "/coding" },
+  ],
+  "Orthodontist": [
+    { title: "Ortho Tracker", url: "/ortho" }, { title: "Patients", url: "/patients" },
+    { title: "Recall System", url: "/recall" }, { title: "Treatment Plans", url: "/treatment-plans" },
+    { title: "Scheduling", url: "/appointments" }, { title: "Billing & Claims", url: "/billing" },
+  ],
+  "Endodontist": [
+    { title: "Endo / RCT Tracker", url: "/endo" }, { title: "Patients", url: "/patients" },
+    { title: "Coding Engine", url: "/coding" }, { title: "AI Documentation", url: "/ai-documentation" },
+    { title: "Billing & Claims", url: "/billing" }, { title: "Appeals Engine", url: "/appeals" },
+  ],
+  "Periodontist": [
+    { title: "Perio Charting", url: "/perio" }, { title: "Patients", url: "/patients" },
+    { title: "Recall System", url: "/recall" }, { title: "Billing & Claims", url: "/billing" },
+    { title: "Coding Engine", url: "/coding" }, { title: "AI Documentation", url: "/ai-documentation" },
+  ],
+  "Pediatric Dentist": [
+    { title: "Pediatric Module", url: "/pediatric" }, { title: "Patients", url: "/patients" },
+    { title: "Recall System", url: "/recall" }, { title: "Consent Forms", url: "/consent-forms" },
+    { title: "Scheduling", url: "/appointments" }, { title: "Patient Messaging", url: "/patient-messaging" },
+  ],
+  "Prosthodontist": [
+    { title: "Treatment Plans", url: "/treatment-plans" }, { title: "Implant Tracker", url: "/implant-tracker" },
+    { title: "Lab & Design", url: "/lab" }, { title: "Billing & Claims", url: "/billing" },
+    { title: "Coding Engine", url: "/coding" }, { title: "Patients", url: "/patients" },
+  ],
+  "Implant Specialist": [
+    { title: "Implant Tracker", url: "/implant-tracker" }, { title: "Oral Surgery", url: "/oral-surgery" },
+    { title: "Surgery Day", url: "/surgery" }, { title: "Billing & Claims", url: "/billing" },
+    { title: "AI Documentation", url: "/ai-documentation" }, { title: "Coding Engine", url: "/coding" },
+  ],
+  "Multi-Specialty Group / DSO": [
+    { title: "Multi-Location", url: "/multi-location" }, { title: "Patients", url: "/patients" },
+    { title: "Billing & Claims", url: "/billing" }, { title: "Business Intel", url: "/business-intelligence" },
+    { title: "Multi-Provider Schedule", url: "/multi-scheduling" }, { title: "Reports & Analytics", url: "/reports" },
+  ],
+};
+
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const [forYouModules, setForYouModules] = useState<{ title: string; url: string }[]>([]);
+  const [specialtyLabel, setSpecialtyLabel] = useState<string>("");
+
+  useEffect(() => {
+    // Read AI recommendations from localStorage (set during onboarding)
+    const stored = localStorage.getItem("specialty_recommendations");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.modules?.length) {
+          setForYouModules(parsed.modules.slice(0, 6).map((m: any) => ({ title: m.title, url: m.url })));
+        }
+      } catch {}
+    }
+    // Also check for specialty from settings API cache or localStorage
+    const specialtyRaw = localStorage.getItem("provider_specialty");
+    if (specialtyRaw) setSpecialtyLabel(specialtyRaw);
+  }, []);
+
+  // Listen for specialty change events from onboarding
+  useEffect(() => {
+    const handleStorage = () => {
+      const stored = localStorage.getItem("specialty_recommendations");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.modules?.length) {
+            setForYouModules(parsed.modules.slice(0, 6).map((m: any) => ({ title: m.title, url: m.url })));
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   const isActive = (url: string) => {
     if (url === "/") return location === "/";
@@ -217,6 +302,34 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        {/* For You — AI-personalized section */}
+        {forYouModules.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3 text-primary" />
+              For You
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {forYouModules.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.url)}
+                      data-testid={`nav-foryou-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                    >
+                      <Link href={item.url}>
+                        <Star className="h-3.5 w-3.5 text-primary" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         {navGroups.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>

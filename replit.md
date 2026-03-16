@@ -1,220 +1,7 @@
 # Full Arch CRM - HIPAA-Compliant Patient CRM for Dental Implant Practices
 
 ## Overview
-Full Arch CRM is a comprehensive practice management system designed specifically for dental implant practices, with a strong focus on **medical billing for full arch dental implants** (All-on-4, All-on-6) - the highest-ticket dental procedures.
-
-## Core Features
-- **Patient Management**: Complete demographics, medical history, dental info
-- **Treatment Planning**: AI-assisted full arch implant planning (All-on-4, All-on-6) with cost estimation
-- **Medical Billing**: CDT/ICD-10 coding, prior authorizations, claims management, denial tracking with AI appeals
-- **Intelligent Coding Engine**: CDT→CPT/ICD-10 cross-coding with AI-powered suggestions (99.2% accuracy target)
-- **AI Assistant**: Medical necessity letters, appeal letter drafting, insurance coding guidance
-- **AI Documentation Engine**: AI-powered generation of medical necessity letters, operative reports, and progress notes
-- **Smart Appeals Engine**: AI-generated appeals with denial analysis, 78% success rate prediction, escalation pathways
-- **ERA Processing**: Automated payment posting with variance detection and reconciliation dashboard
-- **Predictive Analytics**: Collection forecasting, at-risk claim identification, performance benchmarking
-- **Insurance Verification**: Real-time eligibility checking with benefits breakdown
-- **Training Center**: Interactive onboarding modules with progress tracking for new staff
-- **Scheduling**: Appointment calendar for surgeries, consultations, follow-ups
-- **Insurance Strategy**: Medical vs dental billing guidance, approval optimization
-- **Provider Portal**: Referring dentist/orthodontist management, care reports
-- **HIPAA Audit Logging**: Complete audit trail of PHI access with filtering and compliance reporting
-- **Session Timeout**: 15-minute inactivity timeout with warning dialog for HIPAA compliance
-- **Payment Tracking**: Revenue metrics dashboard with insurance vs patient payment breakdown, trend analysis
-- **Digital Consent Forms**: 8 template types (general treatment, implant surgery, sedation, HIPAA, financial, photo release, bone graft, extraction) with digital signing
-- **Reports & Analytics**: Revenue trends, claims approval rates, patient growth metrics, provider productivity
-- **Patient Documents**: Photo/X-ray attachment management with categorization and preview
-- **Treatment Progress**: 12-phase treatment timeline visualization with progress tracking
-- **Patient Intake Forms**: Multi-step wizard with personal info, medical/dental history, insurance, and consent sections
-- **AI Content Engine**: Blog post generator, social media content, case studies, SEO keyword planner, content calendar
-- **Reputation Manager**: Review monitoring (Google/Healthgrades/Yelp/Facebook), campaign management, AI sentiment analysis, automated response drafts, reputation analytics
-- **SEO Landing Pages**: Public pages for All-on-4 billing, All-on-6 billing, and general dental implant billing with CDT code references
-- **About/Marketplace Page**: Platform showcase, competitor comparison, integration ecosystem, leadership team, trust certifications
-- **Revenue Cycle Command Center**: Real-time pipeline from verification to payment, claims tracking, engine performance metrics
-- **Financial Command Center**: P&L summary, overhead breakdown, cash flow, budget tracking, financial forecasting
-- **Marketing Suite**: Channel performance, campaign management, content calendar, marketing analytics with ROI tracking
-- **Patient NPS**: Net Promoter Score tracking, survey responses, satisfaction trends, action items
-- **AI Compliance & Coding Audit**: Compliance scoring, coding accuracy auditing, documentation completeness, OSHA training
-- **Unified Business Intelligence**: Cross-module analytics, AI value attribution, competitive benchmarking, strategic recommendations
-- **Fee Optimizer**: Fee comparison analysis, percentile benchmarking, payer comparison, optimization recommendations
-- **Payer Intelligence**: Payer profiles, contract analysis, reimbursement trends, denial pattern tracking
-- **Case Acceptance**: Acceptance rate tracking, objection analysis with AI counter-strategies, follow-up queue
-- **Smart Scheduling**: AI-powered scheduling with no-show prediction, waitlist management, production-based scheduling
-- **AI Phone Agent**: 24/7 AI receptionist with live call feed, multilingual support, auto-callback
-- **Teledentistry**: HIPAA video consults, photo triage, post-op monitoring, D9995/D9996 billing
-
-## Technology Stack
-- **Frontend**: React + TypeScript, Vite, TailwindCSS, Shadcn/UI
-- **Backend**: Express.js, TypeScript
-- **Database**: PostgreSQL with Drizzle ORM
-- **Auth**: Replit Auth (OIDC)
-- **AI**: OpenAI GPT-5.2 via Replit AI Integrations
-
-## Project Structure
-```
-├── client/                    # Frontend React application
-│   ├── src/
-│   │   ├── components/        # UI components
-│   │   │   ├── ui/           # Shadcn UI components
-│   │   │   ├── app-sidebar.tsx
-│   │   │   ├── session-timeout.tsx  # HIPAA session timeout component
-│   │   │   ├── theme-provider.tsx
-│   │   │   └── theme-toggle.tsx
-│   │   ├── pages/            # Page components
-│   │   │   ├── landing.tsx   # Public landing page
-│   │   │   ├── dashboard.tsx
-│   │   │   ├── patients.tsx
-│   │   │   ├── patient-form.tsx
-│   │   │   ├── patient-detail.tsx
-│   │   │   ├── treatment-plans.tsx
-│   │   │   ├── appointments.tsx
-│   │   │   ├── billing.tsx   # Claims & insurance management
-│   │   │   ├── coding-engine.tsx  # CDT→CPT/ICD-10 cross-coding
-│   │   │   ├── providers.tsx  # Referring providers management
-│   │   │   ├── ai-assistant.tsx
-│   │   │   ├── ai-documentation.tsx  # AI document generation
-│   │   │   ├── appeals-engine.tsx    # Smart appeals with AI
-│   │   │   ├── era-processing.tsx    # ERA auto-posting
-│   │   │   ├── insurance-verification.tsx  # Eligibility checks
-│   │   │   ├── predictive-analytics.tsx    # Analytics dashboard
-│   │   │   ├── training.tsx          # Training center
-│   │   │   ├── payments.tsx          # Payment tracking dashboard
-│   │   │   ├── consent-forms.tsx     # Digital consent forms
-│   │   │   ├── reports.tsx           # Reports & analytics
-│   │   │   ├── patient-documents.tsx # Photo/X-ray attachments
-│   │   │   ├── treatment-progress.tsx # Treatment progress tracking
-│   │   │   └── intake-form.tsx       # Patient intake wizard
-│   │   ├── hooks/            # Custom React hooks
-│   │   ├── lib/              # Utilities
-│   │   └── App.tsx           # Main app with routing
-├── server/                    # Backend Express server
-│   ├── routes.ts             # All API routes
-│   ├── storage.ts            # Database operations
-│   ├── db.ts                 # Database connection
-│   └── replit_integrations/  # Auth, AI, chat integrations
-├── shared/                   # Shared types and schemas
-│   ├── schema.ts            # Drizzle schema definitions
-│   └── models/              # Auth and chat models
-└── scripts/
-    └── seed.ts              # Database seeding script
-```
-
-## Database Schema
-Key tables:
-- `patients`: Core patient demographics
-- `medical_history`: Medical conditions, allergies, medications
-- `dental_info`: Dental history, missing teeth, existing implants
-- `facial_evaluation`: Arnett & Gunson protocol data, airway assessment
-- `cephalometrics`: Cephalometric measurements (SNA, SNB, ANB, FMA, etc.)
-- `insurance`: Medical/dental coverage
-- `treatment_plans`: Full arch treatment plans with procedures and costs
-- `prior_authorizations`: Prior auth workflow with peer-to-peer tracking
-- `full_arch_exams`: Comprehensive full arch implant evaluations
-- `medical_consults`: Medical clearance and consultation requests
-- `appointments`: Scheduling
-- `billing_claims`: Insurance claims with CDT/ICD codes
-- `clinical_notes`: Clinical documentation
-- `surgery_reports`: Op reports
-- `follow_ups`: Patient follow-up tracking
-- `care_reports`: Continuity of care documentation for referring providers
-- `referring_providers`: Referring dentists and orthodontists
-- `code_cross_reference`: CDT→CPT/ICD-10 code mappings
-- `fee_schedules`: Payer-specific fee schedules
-- `generated_documents`: AI-generated medical documents
-- `appeals`: Insurance appeal tracking
-- `eligibility_checks`: Insurance verification results
-- `payment_postings`: ERA payment reconciliation
-- `training_progress`: Staff training completion tracking
-- `audit_logs`: HIPAA audit trail with userId, action, resourceType, PHI access tracking
-- `consent_forms`: Digital consent forms with status and signing capability
-- `patient_documents`: Photo/X-ray attachments with categorization
-
-## Key API Endpoints
-- `GET/POST /api/patients` - Patient CRUD
-- `GET /api/patients/:id` - Patient with full details
-- `GET/POST /api/treatment-plans` - Treatment planning
-- `GET /api/billing/stats` - Billing dashboard stats
-- `GET/POST /api/billing/claims` - Claims management
-- `POST /api/ai/chat` - AI assistant chat
-- `POST /api/ai/diagnosis` - AI treatment recommendations
-- `POST /api/ai/medical-necessity-letter` - Generate letters
-- `POST /api/ai/appeal-letter` - Generate denial appeals
-- `GET/POST /api/coding/cross-references` - Code cross-reference management
-- `GET/POST /api/coding/fee-schedules` - Fee schedule management
-- `POST /api/coding/suggest` - AI-powered code suggestions
-- `GET/POST /api/ai/generate-document` - AI document generation
-- `GET/POST /api/appeals` - Appeals management
-- `GET/POST /api/eligibility` - Insurance verification
-- `GET/POST /api/era` - ERA payment processing
-- `GET /api/analytics/predictive` - Predictive analytics
-- `GET/POST /api/training` - Training progress tracking
-- `GET /api/audit-logs` - HIPAA audit logs
-- `GET /api/audit-logs/patient/:patientId` - Patient-specific audit logs
-- `GET/POST /api/consent-forms` - Consent form management
-- `POST /api/consent-forms/:id/sign` - Sign consent form
-- `GET/POST/DELETE /api/documents` - Patient document management
-
-## Design Theme
-Medical professional theme with:
-- Primary: Clinical blue (#0EA5E9)
-- Accent: Teal/green for success states
-- Clean, professional interface
-- HIPAA compliance messaging
-- Light/dark mode support
-
-## Running the Application
-- Development: `npm run dev`
-- Database push: `npm run db:push`
-- Seed data: `npx tsx scripts/seed.ts`
-
-## CDT Codes Reference (Full Arch Implants)
-- D6010: Surgical placement of implant body ($2,200)
-- D6056: Prefabricated abutment ($650)
-- D6058: Abutment supported crown ($1,400)
-- D6114: Implant supported fixed denture per arch ($28,500)
-- D7210: Extraction with flap elevation ($285)
-- D7953: Bone replacement graft ($875)
-
-## CareStack-Style Module Build Plan
-### ✅ Module 1: Full Periodontal Charting (COMPLETE)
-- Interactive 32-tooth chart, 6-point probing, BOP, mobility/furcation, color-coded, exam history, AI assessment
-- Backend: `perio_exams` table, full CRUD API routes
-
-### ✅ Module 2: Orthodontics Tracker (COMPLETE)
-- Case management (Invisalign/braces/retention), progress timeline, compliance tracking, financial summary, status workflow
-- Backend: `ortho_cases` table, full CRUD API routes
-
-### ✅ Module 3: Endodontics / RCT Module (COMPLETE)
-- Case tracking: RCT, retreatment, pulpotomy, pulpectomy, apicoectomy
-- Per-canal data table (working length, MAF, obturation method)
-- Visit log timeline, diagnosis with ICD-10, CDT codes, prognosis
-- Status workflow, KPI cards, case detail view
-- Backend: `endo_cases` table, full CRUD API routes
-### 🔲 Module 4: Recall System
-### 🔲 Module 5: Multi-Provider Scheduling
-### 🔲 Module 6: Patient Portal
-### 🔲 Module 7: Lab Case Management
-### 🔲 Module 8: Inventory Management
-### ✅ Module 9: 2-Way Patient Communication (COMPLETE)
-- Patient messaging via SMS, email, in-app channels
-- Thread view per patient, outbound compose, 6 message templates
-- Backend: `patient_messages` table, full CRUD API routes
-
-### ✅ Module 10: Multi-Location Support (COMPLETE)
-- Practice location cards with operatories, provider count, NPI, contact info
-- Add/edit dialog, HQ designation, KPI dashboard
-- Backend: `practice_locations` table, full CRUD API routes
-
-### ✅ Module 11: Pediatric Module (COMPLETE)
-- 20-tooth primary tooth chart (A–T) with interactive per-tooth status
-- DMFT tracking, oral habits, fluoride treatment, behavior rating (Frankl scale)
-- Backend: `pediatric_exams` table, full CRUD API routes
-
-### ✅ Module 12: Oral Surgery Module (COMPLETE)
-- 15 procedure types (extractions, implants, grafts, wisdom teeth, All-on-4/6, etc.)
-- Pre-op/intra-op/post-op tabbed workflow, CDT auto-fill, consent/clearance tracking
-- Status workflow, follow-up flagging, revenue tracking
-- Backend: `oral_surgery_cases` table, full CRUD API routes
+Full Arch CRM is a comprehensive practice management system specifically designed for dental implant practices. Its primary purpose is to streamline and optimize the complex process of medical billing for high-value full arch dental implant procedures (All-on-4, All-on-6). The platform aims to maximize practice revenue through intelligent coding, AI-powered appeals, and robust patient management, ensuring HIPAA compliance and enhancing operational efficiency for dental practices.
 
 ## User Preferences
 - Focus on medical billing workflow for full arch implants
@@ -222,3 +9,26 @@ Medical professional theme with:
 - AI assistance for insurance approvals, appeals, and coding
 - Medical necessity documentation is key to getting claims approved
 - Professional, clinical appearance
+
+## System Architecture
+The system is built with a modern web stack: React with TypeScript, Vite, TailwindCSS, and Shadcn/UI for the frontend, and Express.js with TypeScript for the backend. PostgreSQL with Drizzle ORM is used for data persistence, and Replit Auth handles authentication. AI capabilities are powered by OpenAI GPT-5.2 via Replit AI Integrations.
+
+Key architectural decisions and features include:
+- **HIPAA Compliance**: Implemented through comprehensive audit logging for PHI access, 15-minute inactivity session timeouts, and secure handling of sensitive patient data.
+- **AI-Powered Automation**: Integrates AI for critical functions such as:
+    - Intelligent Coding Engine: Cross-coding CDT to CPT/ICD-10 with high accuracy.
+    - Smart Appeals Engine: AI-generated appeals and denial analysis.
+    - AI Documentation Engine: Generation of medical necessity letters, operative reports, and progress notes.
+    - Predictive Analytics: Collection forecasting and at-risk claim identification.
+    - AI Phone Agent, Smart Scheduling, and Fee Optimizer for operational enhancements.
+- **Modular Design**: The system is designed with distinct modules for various dental specialties and operational functions (e.g., Periodontal Charting, Orthodontics Tracker, Endodontics, Oral Surgery, Multi-Location Support, 2-Way Patient Communication).
+- **Patient Workflow Management**: Comprehensive features for patient intake, treatment planning, digital consent forms, appointment scheduling, and patient document management.
+- **Revenue Cycle Management**: Tools for insurance verification, claims management, ERA processing, payment tracking, and financial analytics.
+- **User Interface**: A professional, clinical design theme featuring a primary clinical blue and accent teal/green for success states, with support for light/dark modes.
+- **Specialty Onboarding & AI Personalization**: Onboarding flow customizes user experience based on dental specialty, leveraging AI to recommend relevant modules.
+
+## External Dependencies
+- **Database**: PostgreSQL
+- **ORM**: Drizzle ORM
+- **Authentication**: Replit Auth (OIDC)
+- **AI Services**: OpenAI GPT-5.2 via Replit AI Integrations

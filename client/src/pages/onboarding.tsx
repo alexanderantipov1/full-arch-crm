@@ -23,6 +23,10 @@ import {
   Shield,
   FileText,
   ChevronRight,
+  Sparkles,
+  Loader2,
+  Star,
+  ChevronDown,
 } from "lucide-react";
 import type { PracticeSettings } from "@shared/schema";
 
@@ -42,6 +46,17 @@ const SPECIALTIES = [
   "General Dentistry",
   "Implant Dentistry",
   "Cosmetic Dentistry",
+];
+
+const SPECIALTY_OPTIONS = [
+  { value: "Oral & Maxillofacial Surgeon", label: "Oral & Maxillofacial Surgery", emoji: "🦷", desc: "Extractions, implants, jaw surgery" },
+  { value: "Orthodontist", label: "Orthodontics", emoji: "😁", desc: "Braces, aligners, retention" },
+  { value: "Endodontist", label: "Endodontics", emoji: "🔬", desc: "Root canals, pulp therapy" },
+  { value: "Periodontist", label: "Periodontics", emoji: "📊", desc: "Gum disease, perio surgery" },
+  { value: "Pediatric Dentist", label: "Pediatric Dentistry", emoji: "👶", desc: "Children's dental care" },
+  { value: "Prosthodontist", label: "Prosthodontics", emoji: "👑", desc: "Crowns, bridges, full arch restorations" },
+  { value: "Implant Specialist", label: "Dental Implant Specialist", emoji: "🏆", desc: "All-on-4, All-on-6, implants" },
+  { value: "Multi-Specialty Group / DSO", label: "Multi-Specialty / DSO", emoji: "🏢", desc: "Group practice or DSO" },
 ];
 
 const PAYER_OPTIONS = [
@@ -73,6 +88,11 @@ export default function OnboardingPage() {
   const [website, setWebsite] = useState("");
   const [npiNumber, setNpiNumber] = useState("");
   const [taxId, setTaxId] = useState("");
+
+  const [specialtyCategory, setSpecialtyCategory] = useState<"" | "general" | "specialist">("");
+  const [selectedSpecialtyOption, setSelectedSpecialtyOption] = useState("");
+  const [aiRecommendations, setAiRecommendations] = useState<{ welcome: string; modules: { title: string; url: string; reason: string }[] } | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const [providerName, setProviderName] = useState("");
   const [providerTitle, setProviderTitle] = useState("DDS");
@@ -143,8 +163,33 @@ export default function OnboardingPage() {
     },
   });
 
+  const fetchSpecialtyRecommendations = async (specialty: string) => {
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai/specialty-recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ specialty }),
+      });
+      const data = await res.json();
+      setAiRecommendations(data);
+      localStorage.setItem("specialty_recommendations", JSON.stringify(data));
+    } catch {
+      // silently fail
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const saveStepAndAdvance = async (nextStep: number) => {
     const data: any = { onboardingStep: nextStep };
+
+    if (step === 0 && (specialtyCategory === "general" || selectedSpecialtyOption)) {
+      const specialty = specialtyCategory === "general" ? "General Dentist" : selectedSpecialtyOption;
+      data.providerSpecialty = specialty;
+      data.practiceType = specialtyCategory === "general" ? "general" : "dental_implant";
+    }
 
     if (step === 1) {
       data.practiceName = practiceName;
@@ -172,7 +217,7 @@ export default function OnboardingPage() {
       data.primaryPayers = selectedPayers;
     }
 
-    if (step >= 1 && step <= 3) {
+    if (step >= 0 && step <= 3) {
       try {
         await saveMutation.mutateAsync(data);
       } catch {
@@ -218,42 +263,133 @@ export default function OnboardingPage() {
         <Card className="w-full max-w-2xl">
           <CardContent className="p-6 sm:p-8">
             {step === 0 && (
-              <div className="text-center space-y-6" data-testid="step-welcome">
-                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                  <Stethoscope className="w-10 h-10 text-primary" />
-                </div>
-                <div className="space-y-2">
-                  <h1 className="text-2xl sm:text-3xl font-bold">Welcome to Your Practice Platform</h1>
-                  <p className="text-muted-foreground text-base sm:text-lg max-w-md mx-auto">
-                    Let's set up your dental implant practice in just a few minutes. You can always update these settings later.
+              <div className="space-y-6" data-testid="step-welcome">
+                <div className="text-center space-y-2">
+                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                    <Stethoscope className="w-8 h-8 text-primary" />
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-bold">Welcome, Doctor!</h1>
+                  <p className="text-muted-foreground text-sm sm:text-base max-w-md mx-auto">
+                    Tell us about your practice so we can personalize your platform with AI.
                   </p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-                  <div className="flex flex-col items-center gap-2 p-4">
-                    <Building2 className="w-8 h-8 text-primary" />
-                    <span className="text-sm font-medium">Practice Info</span>
-                    <span className="text-xs text-muted-foreground text-center">Name, address, NPI</span>
+
+                {/* Category selection */}
+                {!specialtyCategory && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <button
+                      onClick={() => {
+                        setSpecialtyCategory("general");
+                        setSelectedSpecialtyOption("");
+                        fetchSpecialtyRecommendations("General Dentist");
+                      }}
+                      className="group rounded-xl border-2 border-border hover:border-primary p-6 text-left transition-all"
+                      data-testid="btn-general-dentist"
+                    >
+                      <div className="text-3xl mb-2">🦷</div>
+                      <div className="font-semibold text-base">General Dentist</div>
+                      <div className="text-xs text-muted-foreground mt-1">Comprehensive family & general dental care</div>
+                    </button>
+                    <button
+                      onClick={() => setSpecialtyCategory("specialist")}
+                      className="group rounded-xl border-2 border-border hover:border-primary p-6 text-left transition-all"
+                      data-testid="btn-specialist"
+                    >
+                      <div className="text-3xl mb-2">⚕️</div>
+                      <div className="font-semibold text-base">Specialist</div>
+                      <div className="text-xs text-muted-foreground mt-1">Select your specialty for a tailored experience</div>
+                      <div className="flex items-center gap-1 mt-2 text-primary text-xs font-medium">
+                        Choose specialty <ChevronDown className="h-3 w-3" />
+                      </div>
+                    </button>
                   </div>
-                  <div className="flex flex-col items-center gap-2 p-4">
-                    <User className="w-8 h-8 text-primary" />
-                    <span className="text-sm font-medium">Provider Profile</span>
-                    <span className="text-xs text-muted-foreground text-center">Credentials, specialty</span>
+                )}
+
+                {/* Specialist sub-selection */}
+                {specialtyCategory === "specialist" && !selectedSpecialtyOption && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setSpecialtyCategory("")} className="text-xs text-muted-foreground hover:text-foreground">← Back</button>
+                      <p className="text-sm font-medium">Select your specialty:</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {SPECIALTY_OPTIONS.map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => {
+                            setSelectedSpecialtyOption(opt.value);
+                            fetchSpecialtyRecommendations(opt.value);
+                          }}
+                          className="flex items-start gap-3 rounded-lg border border-border hover:border-primary p-3 text-left transition-all"
+                          data-testid={`specialty-${opt.value.replace(/[^a-z]/gi, "-").toLowerCase()}`}
+                        >
+                          <span className="text-xl shrink-0">{opt.emoji}</span>
+                          <div>
+                            <div className="font-medium text-sm">{opt.label}</div>
+                            <div className="text-[11px] text-muted-foreground">{opt.desc}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-col items-center gap-2 p-4">
-                    <CreditCard className="w-8 h-8 text-primary" />
-                    <span className="text-sm font-medium">Billing Setup</span>
-                    <span className="text-xs text-muted-foreground text-center">Payers, preferences</span>
+                )}
+
+                {/* AI Recommendation Card */}
+                {(specialtyCategory === "general" || selectedSpecialtyOption) && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <button onClick={() => { setSpecialtyCategory(""); setSelectedSpecialtyOption(""); setAiRecommendations(null); }} className="hover:text-foreground">← Change</button>
+                      <span>·</span>
+                      <span className="font-medium text-foreground">
+                        {specialtyCategory === "general" ? "🦷 General Dentist" : SPECIALTY_OPTIONS.find(o => o.value === selectedSpecialtyOption)?.emoji + " " + selectedSpecialtyOption}
+                      </span>
+                    </div>
+
+                    <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+                      <div className="flex items-start gap-2">
+                        <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <div>
+                          {aiLoading ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" /> AI is personalizing your platform…
+                            </div>
+                          ) : aiRecommendations ? (
+                            <>
+                              <p className="text-sm font-medium">{aiRecommendations.welcome}</p>
+                              {aiRecommendations.modules.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wider">Your recommended modules</p>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                                    {aiRecommendations.modules.slice(0, 6).map(m => (
+                                      <div key={m.url} className="bg-background rounded-lg border px-2.5 py-1.5">
+                                        <div className="font-medium text-xs">{m.title}</div>
+                                        <div className="text-[10px] text-muted-foreground line-clamp-1">{m.reason}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">Your platform is being personalized…</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      size="lg"
+                      className="w-full"
+                      onClick={() => saveStepAndAdvance(1)}
+                      disabled={saveMutation.isPending || aiLoading}
+                      data-testid="button-get-started"
+                    >
+                      {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                      Continue Setup
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
                   </div>
-                </div>
-                <Button
-                  size="lg"
-                  className="mt-4"
-                  onClick={() => setStep(1)}
-                  data-testid="button-get-started"
-                >
-                  Get Started
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
+                )}
               </div>
             )}
 
