@@ -81,6 +81,7 @@ import OralSurgeryModulePage from "@/pages/oral-surgery-module";
 import ImplantTrackerPage from "@/pages/implant-tracker";
 import InventoryPage from "@/pages/inventory";
 import HRPayrollPage from "@/pages/hr-payroll";
+import TeamKPIsPage from "@/pages/team-kpis";
 import SterilizationPage from "@/pages/sterilization";
 import AIPhonePage from "@/pages/ai-phone";
 import VoiceToCodePage from "@/pages/voice-to-code";
@@ -226,6 +227,7 @@ function Router() {
         <Route path="/implant-tracker" component={ImplantTrackerPage} />
         <Route path="/inventory" component={InventoryPage} />
         <Route path="/hr" component={HRPayrollPage} />
+        <Route path="/team-kpis" component={TeamKPIsPage} />
         <Route path="/sterilization" component={SterilizationPage} />
         <Route path="/ai-phone" component={AIPhonePage} />
         <Route path="/voice-to-code" component={VoiceToCodePage} />

@@ -172,6 +172,7 @@ const adminItems = [
   { title: "Advanced Modules", url: "/advanced-modules", icon: Layers },
   { title: "SaaS Admin", url: "/saas-admin", icon: Cog },
   { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "Team KPIs & Org", url: "/team-kpis", icon: BarChart3 },
   { title: "HR & Payroll", url: "/hr", icon: Users },
   { title: "Sterilization", url: "/sterilization", icon: FlaskConical },
   { title: "Warranty", url: "/warranty", icon: Shield },
