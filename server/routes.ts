@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replit_integrations/auth/replitAuth";
 import { registerAuthRoutes } from "./replit_integrations/auth/routes";
 import { registerChatRoutes } from "./replit_integrations/chat";
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import {
   insertPatientSchema,
   insertMedicalHistorySchema,
@@ -51,10 +51,20 @@ import {
   insertUnionMemberVisitSchema,
 } from "@shared/schema";
 
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+async function askClaude(systemPrompt: string, userMessage: string, maxTokens = 1500): Promise<string> {
+  const response = await anthropic.messages.create({
+    model: "claude-opus-4-5",
+    max_tokens: maxTokens,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userMessage }],
+  });
+  const block = response.content[0];
+  return block.type === "text" ? block.text : "";
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -750,16 +760,7 @@ export async function registerRoutes(
 
 Always provide accurate, professional guidance. When discussing billing codes or insurance, note that practices should verify with their specific payers.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content },
-        ],
-        max_completion_tokens: 1500,
-      });
-
-      const assistantResponse = response.choices[0]?.message?.content || "I apologize, I couldn't generate a response. Please try again.";
+      const assistantResponse = await askClaude(systemPrompt, content, 1500) || "I apologize, I couldn't generate a response. Please try again.";
 
       res.json({ response: assistantResponse });
     } catch (error: any) {
@@ -786,19 +787,10 @@ Please provide:
 4. Key considerations for treatment planning
 5. Suggested pre-operative requirements`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert dental implant treatment planning assistant. Provide detailed, clinically accurate recommendations.",
-          },
-          { role: "user", content: prompt },
-        ],
-        max_completion_tokens: 2000,
-      });
-
-      const diagnosis = response.choices[0]?.message?.content || "";
+      const diagnosis = await askClaude(
+        "You are an expert dental implant treatment planning assistant. Provide detailed, clinically accurate recommendations.",
+        prompt, 2000
+      );
       res.json({ diagnosis });
     } catch (error) {
       console.error("Error in AI diagnosis:", error);
@@ -826,19 +818,10 @@ The letter should:
 4. Reference clinical evidence for implant therapy
 5. Be suitable for insurance submission`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert at writing medical necessity letters for dental implant procedures. Create compelling, evidence-based letters.",
-          },
-          { role: "user", content: prompt },
-        ],
-        max_completion_tokens: 2000,
-      });
-
-      const letter = response.choices[0]?.message?.content || "";
+      const letter = await askClaude(
+        "You are an expert at writing medical necessity letters for dental implant procedures. Create compelling, evidence-based letters.",
+        prompt, 2000
+      );
       res.json({ letter });
     } catch (error) {
       console.error("Error generating medical necessity letter:", error);
@@ -866,19 +849,10 @@ The appeal should:
 4. Include strong medical necessity arguments
 5. Request reconsideration with specific action items`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert at writing insurance appeal letters for dental procedures. Create persuasive, evidence-based appeals.",
-          },
-          { role: "user", content: prompt },
-        ],
-        max_completion_tokens: 2000,
-      });
-
-      const letter = response.choices[0]?.message?.content || "";
+      const letter = await askClaude(
+        "You are an expert at writing insurance appeal letters for dental procedures. Create persuasive, evidence-based appeals.",
+        prompt, 2000
+      );
       res.json({ letter });
     } catch (error) {
       console.error("Error generating appeal letter:", error);
@@ -956,12 +930,7 @@ The appeal should:
         return res.status(400).json({ message: "Procedures is required" });
       }
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert dental billing coder specializing in full arch dental implants. Your role is to suggest the most appropriate CDT codes, CPT codes (for medical insurance cross-coding), and ICD-10 diagnosis codes that maximize insurance approval rates while maintaining compliance.
+      const codeSystemPrompt = `You are an expert dental billing coder specializing in full arch dental implants. Your role is to suggest the most appropriate CDT codes, CPT codes (for medical insurance cross-coding), and ICD-10 diagnosis codes that maximize insurance approval rates while maintaining compliance.
 
 For full arch dental implants, focus on:
 - Medical necessity documentation (functional impairment, nutritional concerns, airway issues)
@@ -983,29 +952,15 @@ Common ICD-10 codes for medical necessity:
 - G47.33: Obstructive sleep apnea (if applicable)
 - E11.x: Type 2 diabetes mellitus (if applicable for bone healing)
 
-Return your response as JSON with this structure:
-{
-  "suggestedCDT": [{"code": "D6010", "description": "...", "fee": 2200}],
-  "suggestedCPT": [{"code": "21248", "description": "...", "medicalCrossCode": true}],
-  "suggestedICD10": [{"code": "K08.1", "description": "...", "priority": 1}],
-  "medicalNecessityNotes": "...",
-  "confidenceScore": 95,
-  "warnings": []
-}`
-          },
-          {
-            role: "user",
-            content: `Suggest appropriate billing codes for:
+Return your response as valid JSON only (no markdown, no code blocks) with this structure:
+{"suggestedCDT": [{"code": "D6010", "description": "...", "fee": 2200}], "suggestedCPT": [{"code": "21248", "description": "...", "medicalCrossCode": true}], "suggestedICD10": [{"code": "K08.1", "description": "...", "priority": 1}], "medicalNecessityNotes": "...", "confidenceScore": 95, "warnings": []}`;
+
+      const codeRaw = await askClaude(codeSystemPrompt, `Suggest appropriate billing codes for:
 Diagnosis: ${diagnosis || "Not specified"}
 Procedures: ${procedures || "Not specified"}
-Clinical Notes: ${clinicalNotes || "Not provided"}`
-          }
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 1500
-      });
+Clinical Notes: ${clinicalNotes || "Not provided"}`, 1500);
 
-      const suggestions = JSON.parse(response.choices[0]?.message?.content || "{}");
+      const suggestions = JSON.parse(codeRaw || "{}");
       res.json(suggestions);
     } catch (error) {
       console.error("Error generating code suggestions:", error);
@@ -1211,19 +1166,10 @@ ${additionalContext ? `\nAdditional Context: ${additionalContext}` : ""}
 
 Please generate professional, HIPAA-compliant clinical documentation.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert dental billing specialist generating clinical documentation for full arch dental implant procedures. Generate professional, compliant documentation that supports medical necessity and insurance claims."
-          },
-          { role: "user", content: prompt }
-        ],
-        max_completion_tokens: 2000
-      });
-
-      const content = response.choices[0]?.message?.content || "";
+      const content = await askClaude(
+        "You are an expert dental billing specialist generating clinical documentation for full arch dental implant procedures. Generate professional, compliant documentation that supports medical necessity and insurance claims.",
+        prompt, 2000
+      );
       
       const savedDoc = await storage.createGeneratedDocument({
         patientId,
@@ -1309,19 +1255,10 @@ ${additionalInfo ? `Additional Information: ${additionalInfo}` : ""}
 
 Generate a compelling appeal letter that addresses the denial reason with clinical evidence and medical necessity documentation.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5.2",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert dental billing appeals specialist with a 78% success rate in overturning denials. Generate compelling, evidence-based appeal letters that address specific denial reasons."
-          },
-          { role: "user", content: prompt }
-        ],
-        max_completion_tokens: 1500
-      });
-
-      const appealLetter = response.choices[0]?.message?.content || "";
+      const appealLetter = await askClaude(
+        "You are an expert dental billing appeals specialist with a 78% success rate in overturning denials. Generate compelling, evidence-based appeal letters that address specific denial reasons.",
+        prompt, 1500
+      );
       res.json({ appealLetter, successProbability: 78 });
     } catch (error) {
       console.error("Error generating appeal:", error);
