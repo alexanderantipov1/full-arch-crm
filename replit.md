@@ -177,26 +177,44 @@ Medical professional theme with:
 
 ## CareStack-Style Module Build Plan
 ### ✅ Module 1: Full Periodontal Charting (COMPLETE)
-- Interactive 32-tooth chart with editable 6-point probing depths
-- BOP (bleeding on probing) toggle per site
-- Mobility (0-3) per tooth, Furcation (0-III) per tooth
-- Missing/implant markers, color-coded depths (green/amber/red)
-- Patient selector, exam date, diagnosis stage/grade/extent
-- Save/load exam history with historical comparison
-- AI assessment via Claude (CDT D4341/D4342/D4910 recommendations)
+- Interactive 32-tooth chart, 6-point probing, BOP, mobility/furcation, color-coded, exam history, AI assessment
 - Backend: `perio_exams` table, full CRUD API routes
 
-### 🔲 Module 2: Ortho Tracking (next)
-### 🔲 Module 3: Endo Module
+### ✅ Module 2: Orthodontics Tracker (COMPLETE)
+- Case management (Invisalign/braces/retention), progress timeline, compliance tracking, financial summary, status workflow
+- Backend: `ortho_cases` table, full CRUD API routes
+
+### ✅ Module 3: Endodontics / RCT Module (COMPLETE)
+- Case tracking: RCT, retreatment, pulpotomy, pulpectomy, apicoectomy
+- Per-canal data table (working length, MAF, obturation method)
+- Visit log timeline, diagnosis with ICD-10, CDT codes, prognosis
+- Status workflow, KPI cards, case detail view
+- Backend: `endo_cases` table, full CRUD API routes
 ### 🔲 Module 4: Recall System
 ### 🔲 Module 5: Multi-Provider Scheduling
 ### 🔲 Module 6: Patient Portal
 ### 🔲 Module 7: Lab Case Management
 ### 🔲 Module 8: Inventory Management
-### 🔲 Module 9: 2-Way Patient Communication (SMS/Email)
-### 🔲 Module 10: Multi-Location Support
-### 🔲 Module 11: Pediatric Module
-### 🔲 Module 12: Oral Surgery Module
+### ✅ Module 9: 2-Way Patient Communication (COMPLETE)
+- Patient messaging via SMS, email, in-app channels
+- Thread view per patient, outbound compose, 6 message templates
+- Backend: `patient_messages` table, full CRUD API routes
+
+### ✅ Module 10: Multi-Location Support (COMPLETE)
+- Practice location cards with operatories, provider count, NPI, contact info
+- Add/edit dialog, HQ designation, KPI dashboard
+- Backend: `practice_locations` table, full CRUD API routes
+
+### ✅ Module 11: Pediatric Module (COMPLETE)
+- 20-tooth primary tooth chart (A–T) with interactive per-tooth status
+- DMFT tracking, oral habits, fluoride treatment, behavior rating (Frankl scale)
+- Backend: `pediatric_exams` table, full CRUD API routes
+
+### ✅ Module 12: Oral Surgery Module (COMPLETE)
+- 15 procedure types (extractions, implants, grafts, wisdom teeth, All-on-4/6, etc.)
+- Pre-op/intra-op/post-op tabbed workflow, CDT auto-fill, consent/clearance tracking
+- Status workflow, follow-up flagging, revenue tracking
+- Backend: `oral_surgery_cases` table, full CRUD API routes
 
 ## User Preferences
 - Focus on medical billing workflow for full arch implants

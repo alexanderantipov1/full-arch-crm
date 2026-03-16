@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, inArray } from "drizzle-orm";
 import {
   patients,
   medicalHistory,
@@ -161,6 +161,33 @@ import {
   perioExams,
   type PerioExam,
   type InsertPerioExam,
+  orthoCases,
+  type OrthoCase,
+  type InsertOrthoCase,
+  endoCases,
+  type EndoCase,
+  type InsertEndoCase,
+  recallPatients,
+  recallContactLog,
+  type RecallPatient,
+  type InsertRecallPatient,
+  type RecallContactLog,
+  type InsertRecallContactLog,
+  practiceProviders,
+  type PracticeProvider,
+  type InsertPracticeProvider,
+  patientMessages,
+  type PatientMessage,
+  type InsertPatientMessage,
+  practiceLocations,
+  type PracticeLocation,
+  type InsertPracticeLocation,
+  pediatricExams,
+  type PediatricExam,
+  type InsertPediatricExam,
+  oralSurgeryCases,
+  type OralSurgeryCase,
+  type InsertOralSurgeryCase,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -447,6 +474,51 @@ export interface IStorage {
   getPerioExam(id: number): Promise<PerioExam | undefined>;
   createPerioExam(data: InsertPerioExam): Promise<PerioExam>;
   updatePerioExam(id: number, data: Partial<InsertPerioExam>): Promise<PerioExam | undefined>;
+
+  // Orthodontics
+  getOrthoCases(patientId?: number): Promise<OrthoCase[]>;
+  getOrthoCase(id: number): Promise<OrthoCase | undefined>;
+  createOrthoCase(data: InsertOrthoCase): Promise<OrthoCase>;
+  updateOrthoCase(id: number, data: Partial<InsertOrthoCase>): Promise<OrthoCase | undefined>;
+
+  // Endodontics
+  getEndoCases(patientId?: number): Promise<EndoCase[]>;
+  getEndoCase(id: number): Promise<EndoCase | undefined>;
+  createEndoCase(data: InsertEndoCase): Promise<EndoCase>;
+  updateEndoCase(id: number, data: Partial<InsertEndoCase>): Promise<EndoCase | undefined>;
+
+  // Patient Messaging
+  getPatientMessages(patientId?: number): Promise<PatientMessage[]>;
+  createPatientMessage(data: InsertPatientMessage): Promise<PatientMessage>;
+
+  // Practice Locations
+  getPracticeLocations(): Promise<PracticeLocation[]>;
+  createPracticeLocation(data: InsertPracticeLocation): Promise<PracticeLocation>;
+  updatePracticeLocation(id: number, data: Partial<InsertPracticeLocation>): Promise<PracticeLocation | undefined>;
+
+  // Pediatric Exams
+  getPediatricExams(patientId?: number): Promise<PediatricExam[]>;
+  createPediatricExam(data: InsertPediatricExam): Promise<PediatricExam>;
+  updatePediatricExam(id: number, data: Partial<InsertPediatricExam>): Promise<PediatricExam | undefined>;
+
+  // Oral Surgery
+  getOralSurgeryCases(patientId?: number): Promise<OralSurgeryCase[]>;
+  createOralSurgeryCase(data: InsertOralSurgeryCase): Promise<OralSurgeryCase>;
+  updateOralSurgeryCase(id: number, data: Partial<InsertOralSurgeryCase>): Promise<OralSurgeryCase | undefined>;
+
+  // Practice Providers
+  getPracticeProviders(): Promise<PracticeProvider[]>;
+  getPracticeProvider(id: number): Promise<PracticeProvider | undefined>;
+  createPracticeProvider(data: InsertPracticeProvider): Promise<PracticeProvider>;
+  updatePracticeProvider(id: number, data: Partial<InsertPracticeProvider>): Promise<PracticeProvider | undefined>;
+
+  // Recall System
+  getRecallPatients(status?: string): Promise<(RecallPatient & { patient?: any })[]>;
+  getRecallPatient(id: number): Promise<RecallPatient | undefined>;
+  createRecallPatient(data: InsertRecallPatient): Promise<RecallPatient>;
+  updateRecallPatient(id: number, data: Partial<InsertRecallPatient>): Promise<RecallPatient | undefined>;
+  getRecallContactLog(recallPatientId: number): Promise<RecallContactLog[]>;
+  addRecallContact(data: InsertRecallContactLog): Promise<RecallContactLog>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1525,6 +1597,169 @@ export class DatabaseStorage implements IStorage {
   async updatePerioExam(id: number, data: Partial<InsertPerioExam>): Promise<PerioExam | undefined> {
     const [updated] = await db.update(perioExams).set({ ...data, updatedAt: new Date() }).where(eq(perioExams.id, id)).returning();
     return updated;
+  }
+
+  // ============ ORTHODONTICS ============
+  async getOrthoCases(patientId?: number): Promise<OrthoCase[]> {
+    if (patientId) {
+      return db.select().from(orthoCases).where(eq(orthoCases.patientId, patientId)).orderBy(desc(orthoCases.createdAt));
+    }
+    return db.select().from(orthoCases).orderBy(desc(orthoCases.createdAt));
+  }
+
+  async getOrthoCase(id: number): Promise<OrthoCase | undefined> {
+    const [c] = await db.select().from(orthoCases).where(eq(orthoCases.id, id));
+    return c;
+  }
+
+  async createOrthoCase(data: InsertOrthoCase): Promise<OrthoCase> {
+    const [created] = await db.insert(orthoCases).values(data).returning();
+    return created;
+  }
+
+  async updateOrthoCase(id: number, data: Partial<InsertOrthoCase>): Promise<OrthoCase | undefined> {
+    const [updated] = await db.update(orthoCases).set({ ...data, updatedAt: new Date() }).where(eq(orthoCases.id, id)).returning();
+    return updated;
+  }
+
+  // ============ ENDODONTICS ============
+  async getEndoCases(patientId?: number): Promise<EndoCase[]> {
+    if (patientId) {
+      return db.select().from(endoCases).where(eq(endoCases.patientId, patientId)).orderBy(desc(endoCases.createdAt));
+    }
+    return db.select().from(endoCases).orderBy(desc(endoCases.createdAt));
+  }
+
+  async getEndoCase(id: number): Promise<EndoCase | undefined> {
+    const [c] = await db.select().from(endoCases).where(eq(endoCases.id, id));
+    return c;
+  }
+
+  async createEndoCase(data: InsertEndoCase): Promise<EndoCase> {
+    const [created] = await db.insert(endoCases).values(data).returning();
+    return created;
+  }
+
+  async updateEndoCase(id: number, data: Partial<InsertEndoCase>): Promise<EndoCase | undefined> {
+    const [updated] = await db.update(endoCases).set({ ...data, updatedAt: new Date() }).where(eq(endoCases.id, id)).returning();
+    return updated;
+  }
+
+  // ============ PATIENT MESSAGING ============
+  async getPatientMessages(patientId?: number): Promise<PatientMessage[]> {
+    if (patientId) return db.select().from(patientMessages).where(eq(patientMessages.patientId, patientId)).orderBy(desc(patientMessages.createdAt));
+    return db.select().from(patientMessages).orderBy(desc(patientMessages.createdAt));
+  }
+
+  async createPatientMessage(data: InsertPatientMessage): Promise<PatientMessage> {
+    const [created] = await db.insert(patientMessages).values(data).returning();
+    return created;
+  }
+
+  // ============ PRACTICE LOCATIONS ============
+  async getPracticeLocations(): Promise<PracticeLocation[]> {
+    return db.select().from(practiceLocations).orderBy(desc(practiceLocations.isMain));
+  }
+
+  async createPracticeLocation(data: InsertPracticeLocation): Promise<PracticeLocation> {
+    const [created] = await db.insert(practiceLocations).values(data).returning();
+    return created;
+  }
+
+  async updatePracticeLocation(id: number, data: Partial<InsertPracticeLocation>): Promise<PracticeLocation | undefined> {
+    const [updated] = await db.update(practiceLocations).set(data).where(eq(practiceLocations.id, id)).returning();
+    return updated;
+  }
+
+  // ============ PEDIATRIC EXAMS ============
+  async getPediatricExams(patientId?: number): Promise<PediatricExam[]> {
+    if (patientId) return db.select().from(pediatricExams).where(eq(pediatricExams.patientId, patientId)).orderBy(desc(pediatricExams.examDate));
+    return db.select().from(pediatricExams).orderBy(desc(pediatricExams.examDate));
+  }
+
+  async createPediatricExam(data: InsertPediatricExam): Promise<PediatricExam> {
+    const [created] = await db.insert(pediatricExams).values(data).returning();
+    return created;
+  }
+
+  async updatePediatricExam(id: number, data: Partial<InsertPediatricExam>): Promise<PediatricExam | undefined> {
+    const [updated] = await db.update(pediatricExams).set({ ...data, updatedAt: new Date() }).where(eq(pediatricExams.id, id)).returning();
+    return updated;
+  }
+
+  // ============ ORAL SURGERY ============
+  async getOralSurgeryCases(patientId?: number): Promise<OralSurgeryCase[]> {
+    if (patientId) return db.select().from(oralSurgeryCases).where(eq(oralSurgeryCases.patientId, patientId)).orderBy(desc(oralSurgeryCases.createdAt));
+    return db.select().from(oralSurgeryCases).orderBy(desc(oralSurgeryCases.createdAt));
+  }
+
+  async createOralSurgeryCase(data: InsertOralSurgeryCase): Promise<OralSurgeryCase> {
+    const [created] = await db.insert(oralSurgeryCases).values(data).returning();
+    return created;
+  }
+
+  async updateOralSurgeryCase(id: number, data: Partial<InsertOralSurgeryCase>): Promise<OralSurgeryCase | undefined> {
+    const [updated] = await db.update(oralSurgeryCases).set({ ...data, updatedAt: new Date() }).where(eq(oralSurgeryCases.id, id)).returning();
+    return updated;
+  }
+
+  // ============ PRACTICE PROVIDERS ============
+  async getPracticeProviders(): Promise<PracticeProvider[]> {
+    return db.select().from(practiceProviders).where(eq(practiceProviders.isActive, true)).orderBy(practiceProviders.name);
+  }
+
+  async getPracticeProvider(id: number): Promise<PracticeProvider | undefined> {
+    const [p] = await db.select().from(practiceProviders).where(eq(practiceProviders.id, id));
+    return p;
+  }
+
+  async createPracticeProvider(data: InsertPracticeProvider): Promise<PracticeProvider> {
+    const [created] = await db.insert(practiceProviders).values(data).returning();
+    return created;
+  }
+
+  async updatePracticeProvider(id: number, data: Partial<InsertPracticeProvider>): Promise<PracticeProvider | undefined> {
+    const [updated] = await db.update(practiceProviders).set(data).where(eq(practiceProviders.id, id)).returning();
+    return updated;
+  }
+
+  // ============ RECALL SYSTEM ============
+  async getRecallPatients(status?: string): Promise<(RecallPatient & { patient?: any })[]> {
+    const rows = status
+      ? await db.select().from(recallPatients).where(eq(recallPatients.status, status)).orderBy(recallPatients.nextDueDate)
+      : await db.select().from(recallPatients).orderBy(recallPatients.nextDueDate);
+
+    // Enrich with patient info
+    const patientIds = [...new Set(rows.map(r => r.patientId))];
+    const pts = patientIds.length
+      ? await db.select().from(patients).where(inArray(patients.id, patientIds))
+      : [];
+    const ptMap = Object.fromEntries(pts.map(p => [p.id, p]));
+    return rows.map(r => ({ ...r, patient: ptMap[r.patientId] }));
+  }
+
+  async getRecallPatient(id: number): Promise<RecallPatient | undefined> {
+    const [r] = await db.select().from(recallPatients).where(eq(recallPatients.id, id));
+    return r;
+  }
+
+  async createRecallPatient(data: InsertRecallPatient): Promise<RecallPatient> {
+    const [created] = await db.insert(recallPatients).values(data).returning();
+    return created;
+  }
+
+  async updateRecallPatient(id: number, data: Partial<InsertRecallPatient>): Promise<RecallPatient | undefined> {
+    const [updated] = await db.update(recallPatients).set({ ...data, updatedAt: new Date() }).where(eq(recallPatients.id, id)).returning();
+    return updated;
+  }
+
+  async getRecallContactLog(recallPatientId: number): Promise<RecallContactLog[]> {
+    return db.select().from(recallContactLog).where(eq(recallContactLog.recallPatientId, recallPatientId)).orderBy(desc(recallContactLog.createdAt));
+  }
+
+  async addRecallContact(data: InsertRecallContactLog): Promise<RecallContactLog> {
+    const [created] = await db.insert(recallContactLog).values(data).returning();
+    return created;
   }
 }
 

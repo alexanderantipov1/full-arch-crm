@@ -71,6 +71,13 @@ import AIDiagnosticsPage from "@/pages/ai-diagnostics";
 import EPrescribingPage from "@/pages/e-prescribing";
 import DecisionSupportPage from "@/pages/decision-support";
 import OrthoTrackerPage from "@/pages/ortho-tracker";
+import EndoTrackerPage from "@/pages/endo-tracker";
+import RecallSystemPage from "@/pages/recall-system";
+import MultiProviderSchedulingPage from "@/pages/multi-provider-scheduling";
+import PatientPortalPage from "@/pages/patient-portal";
+import PatientMessagingPage from "@/pages/patient-messaging";
+import PediatricModulePage from "@/pages/pediatric-module";
+import OralSurgeryModulePage from "@/pages/oral-surgery-module";
 import ImplantTrackerPage from "@/pages/implant-tracker";
 import InventoryPage from "@/pages/inventory";
 import HRPayrollPage from "@/pages/hr-payroll";
@@ -209,6 +216,13 @@ function Router() {
         <Route path="/e-prescribing" component={EPrescribingPage} />
         <Route path="/decision-support" component={DecisionSupportPage} />
         <Route path="/ortho" component={OrthoTrackerPage} />
+        <Route path="/endo" component={EndoTrackerPage} />
+        <Route path="/recall" component={RecallSystemPage} />
+        <Route path="/multi-scheduling" component={MultiProviderSchedulingPage} />
+        <Route path="/patient-portal" component={PatientPortalPage} />
+        <Route path="/patient-messaging" component={PatientMessagingPage} />
+        <Route path="/pediatric" component={PediatricModulePage} />
+        <Route path="/oral-surgery" component={OralSurgeryModulePage} />
         <Route path="/implant-tracker" component={ImplantTrackerPage} />
         <Route path="/inventory" component={InventoryPage} />
         <Route path="/hr" component={HRPayrollPage} />

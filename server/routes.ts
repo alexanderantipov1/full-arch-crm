@@ -50,6 +50,15 @@ import {
   insertUnionAgreementSchema,
   insertUnionMemberVisitSchema,
   insertPerioExamSchema,
+  insertOrthoCaseSchema,
+  insertEndoCaseSchema,
+  insertRecallPatientSchema,
+  insertRecallContactLogSchema,
+  insertPracticeProviderSchema,
+  insertPatientMessageSchema,
+  insertPracticeLocationSchema,
+  insertPediatricExamSchema,
+  insertOralSurgeryCaseSchema,
 } from "@shared/schema";
 
 const anthropic = new Anthropic({
@@ -2924,6 +2933,236 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
       }
     }
     next();
+  });
+
+  // ============ PATIENT MESSAGING ============
+  app.get("/api/messages", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
+      res.json(await storage.getPatientMessages(patientId));
+    } catch { res.json([]); }
+  });
+
+  app.post("/api/messages", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertPatientMessageSchema.parse(req.body);
+      res.status(201).json(await storage.createPatientMessage(data));
+    } catch (error) {
+      console.error("Error creating message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // ============ PRACTICE LOCATIONS ============
+  app.get("/api/locations", isAuthenticated, async (req, res) => {
+    try { res.json(await storage.getPracticeLocations()); } catch { res.json([]); }
+  });
+
+  app.post("/api/locations", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertPracticeLocationSchema.parse(req.body);
+      res.status(201).json(await storage.createPracticeLocation(data));
+    } catch (error) {
+      console.error("Error creating location:", error);
+      res.status(500).json({ message: "Failed to create location" });
+    }
+  });
+
+  app.put("/api/locations/:id", isAuthenticated, async (req, res) => {
+    try {
+      const updated = await storage.updatePracticeLocation(parseInt(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Failed to update" }); }
+  });
+
+  // ============ PEDIATRIC EXAMS ============
+  app.get("/api/pediatric", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
+      res.json(await storage.getPediatricExams(patientId));
+    } catch { res.json([]); }
+  });
+
+  app.post("/api/pediatric", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertPediatricExamSchema.parse(req.body);
+      res.status(201).json(await storage.createPediatricExam(data));
+    } catch (error) {
+      console.error("Error creating pediatric exam:", error);
+      res.status(500).json({ message: "Failed to create pediatric exam" });
+    }
+  });
+
+  app.put("/api/pediatric/:id", isAuthenticated, async (req, res) => {
+    try {
+      const updated = await storage.updatePediatricExam(parseInt(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Failed to update" }); }
+  });
+
+  // ============ ORAL SURGERY ============
+  app.get("/api/oral-surgery", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
+      res.json(await storage.getOralSurgeryCases(patientId));
+    } catch { res.json([]); }
+  });
+
+  app.post("/api/oral-surgery", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertOralSurgeryCaseSchema.parse(req.body);
+      res.status(201).json(await storage.createOralSurgeryCase(data));
+    } catch (error) {
+      console.error("Error creating oral surgery case:", error);
+      res.status(500).json({ message: "Failed to create oral surgery case" });
+    }
+  });
+
+  app.put("/api/oral-surgery/:id", isAuthenticated, async (req, res) => {
+    try {
+      const updated = await storage.updateOralSurgeryCase(parseInt(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Failed to update" }); }
+  });
+
+  // ============ PRACTICE PROVIDERS ============
+  app.get("/api/practice-providers", isAuthenticated, async (req, res) => {
+    try {
+      res.json(await storage.getPracticeProviders());
+    } catch { res.json([]); }
+  });
+
+  app.post("/api/practice-providers", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertPracticeProviderSchema.parse(req.body);
+      res.status(201).json(await storage.createPracticeProvider(data));
+    } catch (error) {
+      console.error("Error creating provider:", error);
+      res.status(500).json({ message: "Failed to create provider" });
+    }
+  });
+
+  app.put("/api/practice-providers/:id", isAuthenticated, async (req, res) => {
+    try {
+      const updated = await storage.updatePracticeProvider(parseInt(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Failed to update" }); }
+  });
+
+  // ============ RECALL SYSTEM ============
+  app.get("/api/recall", isAuthenticated, async (req, res) => {
+    try {
+      const status = req.query.status as string | undefined;
+      res.json(await storage.getRecallPatients(status));
+    } catch { res.json([]); }
+  });
+
+  app.post("/api/recall", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertRecallPatientSchema.parse(req.body);
+      res.status(201).json(await storage.createRecallPatient(data));
+    } catch (error) {
+      console.error("Error creating recall:", error);
+      res.status(500).json({ message: "Failed to create recall" });
+    }
+  });
+
+  app.put("/api/recall/:id", isAuthenticated, async (req, res) => {
+    try {
+      const updated = await storage.updateRecallPatient(parseInt(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Failed to update" }); }
+  });
+
+  app.get("/api/recall/:id/contacts", isAuthenticated, async (req, res) => {
+    try {
+      res.json(await storage.getRecallContactLog(parseInt(req.params.id)));
+    } catch { res.json([]); }
+  });
+
+  app.post("/api/recall/:id/contacts", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertRecallContactLogSchema.parse({ ...req.body, recallPatientId: parseInt(req.params.id) });
+      res.status(201).json(await storage.addRecallContact(data));
+    } catch (error) {
+      console.error("Error adding contact:", error);
+      res.status(500).json({ message: "Failed to add contact" });
+    }
+  });
+
+  // ============ ENDODONTICS ============
+  app.get("/api/endo", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
+      res.json(await storage.getEndoCases(patientId));
+    } catch { res.json([]); }
+  });
+
+  app.get("/api/endo/:id", isAuthenticated, async (req, res) => {
+    try {
+      const c = await storage.getEndoCase(parseInt(req.params.id));
+      if (!c) return res.status(404).json({ message: "Not found" });
+      res.json(c);
+    } catch { res.status(500).json({ message: "Failed" }); }
+  });
+
+  app.post("/api/endo", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertEndoCaseSchema.parse(req.body);
+      res.status(201).json(await storage.createEndoCase(data));
+    } catch (error) {
+      console.error("Error creating endo case:", error);
+      res.status(500).json({ message: "Failed to create endo case" });
+    }
+  });
+
+  app.put("/api/endo/:id", isAuthenticated, async (req, res) => {
+    try {
+      const updated = await storage.updateEndoCase(parseInt(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Failed to update" }); }
+  });
+
+  // ============ ORTHODONTICS ============
+  app.get("/api/ortho", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
+      const cases = await storage.getOrthoCases(patientId);
+      res.json(cases);
+    } catch (error) { res.json([]); }
+  });
+
+  app.get("/api/ortho/:id", isAuthenticated, async (req, res) => {
+    try {
+      const c = await storage.getOrthoCase(parseInt(req.params.id));
+      if (!c) return res.status(404).json({ message: "Not found" });
+      res.json(c);
+    } catch (error) { res.status(500).json({ message: "Failed" }); }
+  });
+
+  app.post("/api/ortho", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertOrthoCaseSchema.parse(req.body);
+      const created = await storage.createOrthoCase(data);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating ortho case:", error);
+      res.status(500).json({ message: "Failed to create ortho case" });
+    }
+  });
+
+  app.put("/api/ortho/:id", isAuthenticated, async (req, res) => {
+    try {
+      const updated = await storage.updateOrthoCase(parseInt(req.params.id), req.body);
+      if (!updated) return res.status(404).json({ message: "Not found" });
+      res.json(updated);
+    } catch (error) { res.status(500).json({ message: "Failed to update" }); }
   });
 
   // ============ PERIO CHARTING ============

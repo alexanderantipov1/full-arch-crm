@@ -1226,6 +1226,261 @@ export const unionMemberVisits = pgTable("union_member_visits", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+// ============ ENDODONTICS ============
+export const endoCases = pgTable("endo_cases", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  toothNumber: integer("tooth_number").notNull(),
+  toothName: text("tooth_name"), // e.g., "Maxillary Left First Molar"
+  diagnosis: text("diagnosis").notNull(), // irreversible_pulpitis, pulp_necrosis, previously_treated, etc.
+  diagnosisIcd10: text("diagnosis_icd10"),
+  procedure: text("procedure").notNull(), // rct, retreatment, pulpotomy, pulpectomy, apicoectomy
+  procedureCdt: text("procedure_cdt"), // D3310, D3320, D3330, etc.
+  status: text("status").notNull().default("in_progress"), // in_progress, completed, referred_out, failed
+  startDate: date("start_date").notNull(),
+  completionDate: date("completion_date"),
+  referredBy: text("referred_by"),
+  referredTo: text("referred_to"),
+  providerName: text("provider_name"),
+  // Canal data: { mb: { length, file, obturation }, db: { ... }, ml: { ... }, p: { ... } }
+  canalData: jsonb("canal_data").default({}),
+  // JSONB visit log: [{ date, visit, notes, xray }]
+  visitLog: jsonb("visit_log").default([]),
+  preOpDiagnosis: text("pre_op_diagnosis"),
+  workingLength: text("working_length"), // e.g. "MB:21mm, DB:20mm, ML:21.5mm"
+  masterApicalFile: text("master_apical_file"),
+  obturationMethod: text("obturation_method"), // lateral_condensation, warm_vertical, single_cone
+  irrigant: text("irrigant").default("NaOCl + EDTA"),
+  sealer: text("sealer"),
+  restorationPlan: text("restoration_plan"), // crown, buildup, composite
+  prognosis: text("prognosis"), // excellent, good, fair, poor
+  notes: text("notes"),
+  totalFee: decimal("total_fee"),
+  insuranceFiled: boolean("insurance_filed").default(false),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertEndoCaseSchema = createInsertSchema(endoCases).omit({ id: true, createdAt: true, updatedAt: true });
+export type EndoCase = typeof endoCases.$inferSelect;
+export type InsertEndoCase = z.infer<typeof insertEndoCaseSchema>;
+
+// ============ PATIENT MESSAGING (2-Way SMS/Email) ============
+export const patientMessages = pgTable("patient_messages", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  direction: text("direction").notNull().default("outbound"), // inbound, outbound
+  channel: text("channel").notNull().default("sms"), // sms, email, in_app
+  subject: text("subject"),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("sent"), // sent, delivered, failed, read
+  sentBy: text("sent_by"),
+  fromNumber: text("from_number"),
+  toNumber: text("to_number"),
+  appointmentId: integer("appointment_id"),
+  templateUsed: text("template_used"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertPatientMessageSchema = createInsertSchema(patientMessages).omit({ id: true, createdAt: true });
+export type PatientMessage = typeof patientMessages.$inferSelect;
+export type InsertPatientMessage = z.infer<typeof insertPatientMessageSchema>;
+
+// ============ MULTI-LOCATION ============
+export const practiceLocations = pgTable("practice_locations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  city: text("city").notNull(),
+  state: text("state").notNull(),
+  zip: text("zip"),
+  phone: text("phone"),
+  email: text("email"),
+  npi: text("npi"),
+  taxId: text("tax_id"),
+  isMain: boolean("is_main").default(false),
+  isActive: boolean("is_active").default(true),
+  operatories: integer("operatories").default(4),
+  providerCount: integer("provider_count").default(1),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertPracticeLocationSchema = createInsertSchema(practiceLocations).omit({ id: true, createdAt: true });
+export type PracticeLocation = typeof practiceLocations.$inferSelect;
+export type InsertPracticeLocation = z.infer<typeof insertPracticeLocationSchema>;
+
+// ============ PEDIATRIC MODULE ============
+export const pediatricExams = pgTable("pediatric_exams", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  examDate: date("exam_date").notNull(),
+  providerName: text("provider_name"),
+  // Primary teeth present (20 teeth): JSON object { A: {present, caries, filling, extracted}, B: {...}, ... }
+  primaryTeeth: jsonb("primary_teeth").default({}),
+  // Permanent teeth eruption tracking
+  permanentEruption: jsonb("permanent_eruption").default({}),
+  // Oral habits
+  thumbSucking: boolean("thumb_sucking").default(false),
+  pacifierUse: boolean("pacifier_use").default(false),
+  bruxism: boolean("bruxism").default(false),
+  tongueThrustting: boolean("tongue_thrusting").default(false),
+  // DMFT scores
+  dmft: integer("dmft"), // decayed-missing-filled teeth (primary)
+  DMFT: integer("dmft_permanent"), // DMFT permanent
+  // Sealants applied
+  sealants: text("sealants"), // e.g. "3, 14, 19, 30"
+  // Fluoride treatment
+  fluorideTreatment: boolean("fluoride_treatment").default(false),
+  fluorideType: text("fluoride_type"), // varnish, gel, rinse
+  // Radiographs
+  bitewingsTaken: boolean("bitewings_taken").default(false),
+  // Behavior management
+  behaviorRating: text("behavior_rating"), // definitely_positive, positive, negative, definitely_negative
+  behaviorMgmtTechnique: text("behavior_mgmt_technique"), // TSD, nitrous, GA
+  // Next recall
+  nextRecallMonths: integer("next_recall_months").default(6),
+  // Clinical notes
+  clinicalNotes: text("clinical_notes"),
+  treatmentPlan: text("treatment_plan"),
+  parentEducation: text("parent_education"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertPediatricExamSchema = createInsertSchema(pediatricExams).omit({ id: true, createdAt: true, updatedAt: true });
+export type PediatricExam = typeof pediatricExams.$inferSelect;
+export type InsertPediatricExam = z.infer<typeof insertPediatricExamSchema>;
+
+// ============ ORAL SURGERY MODULE ============
+export const oralSurgeryCases = pgTable("oral_surgery_cases", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  procedureType: text("procedure_type").notNull(), // simple_extraction, surgical_extraction, wisdom_tooth, implant_placement, bone_graft, biopsy, frenectomy, alveoloplasty, tori_removal, sinus_lift, all_on_4, all_on_6
+  teeth: text("teeth"), // affected teeth numbers
+  surgeryDate: date("surgery_date").notNull(),
+  surgeon: text("surgeon"),
+  anesthesia: text("anesthesia").notNull().default("local"), // local, local_sedation, iv_sedation, ga
+  anesthesiaDetails: text("anesthesia_details"),
+  status: text("status").notNull().default("planned"), // planned, completed, cancelled, follow_up_needed
+  // Pre-op
+  preOpNotes: text("pre_op_notes"),
+  medicalClearance: boolean("medical_clearance").default(false),
+  consentSigned: boolean("consent_signed").default(false),
+  // Intra-op
+  operativeFindings: text("operative_findings"),
+  complications: text("complications"),
+  implantDetails: jsonb("implant_details").default({}), // { position, brand, size, torque }
+  boneGraftDetails: text("bone_graft_details"),
+  surgeryDuration: integer("surgery_duration"), // minutes
+  // Post-op
+  postOpInstructions: text("post_op_instructions"),
+  medicationsPrescribed: text("medications_prescribed"),
+  followUpDate: date("follow_up_date"),
+  healingStatus: text("healing_status"), // normal, delayed, complications
+  // Billing
+  cdtCode: text("cdt_code"),
+  fee: decimal("fee"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertOralSurgeryCaseSchema = createInsertSchema(oralSurgeryCases).omit({ id: true, createdAt: true, updatedAt: true });
+export type OralSurgeryCase = typeof oralSurgeryCases.$inferSelect;
+export type InsertOralSurgeryCase = z.infer<typeof insertOralSurgeryCaseSchema>;
+
+// ============ PRACTICE PROVIDERS (Multi-Provider Scheduling) ============
+export const practiceProviders = pgTable("practice_providers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  title: text("title").notNull().default("DMD"), // DMD, DDS, RDH, DA, etc.
+  specialty: text("specialty").notNull().default("General Dentistry"),
+  color: text("color").notNull().default("#0EA5E9"), // hex color for calendar
+  npi: text("npi"),
+  licenseNumber: text("license_number"),
+  email: text("email"),
+  phone: text("phone"),
+  isActive: boolean("is_active").default(true),
+  // Default working hours JSON: { monday: { start: "08:00", end: "17:00" }, ... }
+  workingHours: jsonb("working_hours").default({}),
+  // Operatory/chair assignment
+  operatory: text("operatory"),
+  // Production target per day ($)
+  dailyProductionTarget: decimal("daily_production_target"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertPracticeProviderSchema = createInsertSchema(practiceProviders).omit({ id: true, createdAt: true });
+export type PracticeProvider = typeof practiceProviders.$inferSelect;
+export type InsertPracticeProvider = z.infer<typeof insertPracticeProviderSchema>;
+
+// ============ RECALL SYSTEM ============
+export const recallPatients = pgTable("recall_patients", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  recallType: text("recall_type").notNull(), // hygiene, post_op, implant_check, ortho_check, endo_check, perio_maintenance, new_patient_followup
+  intervalMonths: integer("interval_months").notNull().default(6),
+  lastVisitDate: date("last_visit_date"),
+  nextDueDate: date("next_due_date").notNull(),
+  status: text("status").notNull().default("due"), // due, scheduled, completed, overdue, declined
+  priority: text("priority").notNull().default("normal"), // high, normal, low
+  notes: text("notes"),
+  assignedTo: text("assigned_to"),
+  contactPreference: text("contact_preference").default("any"), // phone, email, sms, any
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const recallContactLog = pgTable("recall_contact_log", {
+  id: serial("id").primaryKey(),
+  recallPatientId: integer("recall_patient_id").notNull().references(() => recallPatients.id, { onDelete: "cascade" }),
+  contactDate: date("contact_date").notNull(),
+  method: text("method").notNull(), // phone, email, sms, mail
+  outcome: text("outcome").notNull(), // scheduled, no_answer, left_vm, patient_declined, wrong_number
+  scheduledDate: date("scheduled_date"),
+  notes: text("notes"),
+  contactedBy: text("contacted_by"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertRecallPatientSchema = createInsertSchema(recallPatients).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertRecallContactLogSchema = createInsertSchema(recallContactLog).omit({ id: true, createdAt: true });
+export type RecallPatient = typeof recallPatients.$inferSelect;
+export type InsertRecallPatient = z.infer<typeof insertRecallPatientSchema>;
+export type RecallContactLog = typeof recallContactLog.$inferSelect;
+export type InsertRecallContactLog = z.infer<typeof insertRecallContactLogSchema>;
+
+// ============ ORTHODONTICS ============
+export const orthoCases = pgTable("ortho_cases", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  treatmentType: text("treatment_type").notNull(), // Invisalign Full, Invisalign Lite, Metal Braces, Clear Braces, Lingual Braces, Retainer
+  status: text("status").notNull().default("active"), // active, retention, completed, discontinued
+  startDate: date("start_date").notNull(),
+  estimatedEndDate: date("estimated_end_date"),
+  actualEndDate: date("actual_end_date"),
+  currentStep: integer("current_step").default(1),
+  totalSteps: integer("total_steps"),
+  compliance: integer("compliance").default(100), // 0-100 %
+  totalFee: decimal("total_fee"),
+  amountPaid: decimal("amount_paid").default("0"),
+  insuranceCoverage: decimal("insurance_coverage").default("0"),
+  archesType: text("arches_type").default("both"), // upper, lower, both
+  extractionsRequired: boolean("extractions_required").default(false),
+  providerName: text("provider_name"),
+  notes: text("notes"),
+  // JSONB: [{ phase, date, notes, attachments, xrays, photos }]
+  progressLog: jsonb("progress_log").default([]),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertOrthoCaseSchema = createInsertSchema(orthoCases).omit({ id: true, createdAt: true, updatedAt: true });
+export type OrthoCase = typeof orthoCases.$inferSelect;
+export type InsertOrthoCase = z.infer<typeof insertOrthoCaseSchema>;
+
 // ============ PERIO CHARTING ============
 export const perioExams = pgTable("perio_exams", {
   id: serial("id").primaryKey(),

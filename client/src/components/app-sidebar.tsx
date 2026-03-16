@@ -49,6 +49,7 @@ import {
   Target,
   Video,
   MapPin,
+  Baby,
   Activity,
   Wallet,
   Megaphone,
@@ -57,6 +58,7 @@ import {
   PieChart,
   CircleDot,
   Handshake,
+  Bell,
 } from "lucide-react";
 import {
   Sidebar,
@@ -95,6 +97,14 @@ const clinicalItems = [
   { title: "Exams & Evaluations", url: "/evaluations", icon: Stethoscope },
   { title: "Dental Charting", url: "/dental-charting", icon: CircleDot },
   { title: "Perio Charting", url: "/perio", icon: BarChart3 },
+  { title: "Endo / RCT Tracker", url: "/endo", icon: Zap },
+  { title: "Recall System", url: "/recall", icon: Bell },
+  { title: "Multi-Provider Schedule", url: "/multi-scheduling", icon: Users },
+  { title: "Patient Portal", url: "/patient-portal", icon: UserPlus },
+  { title: "Patient Messaging", url: "/patient-messaging", icon: MessageSquare },
+  { title: "Multi-Location", url: "/multi-location", icon: MapPin },
+  { title: "Pediatric Module", url: "/pediatric", icon: Baby },
+  { title: "Oral Surgery", url: "/oral-surgery", icon: Syringe },
   { title: "AI Diagnostics", url: "/ai-diagnostics", icon: Microscope },
   { title: "Patient Documents", url: "/documents", icon: FileText },
   { title: "E-Prescribing", url: "/e-prescribing", icon: Pill },
@@ -160,7 +170,6 @@ const analyticsItems = [
 const adminItems = [
   { title: "Advanced Modules", url: "/advanced-modules", icon: Layers },
   { title: "SaaS Admin", url: "/saas-admin", icon: Cog },
-  { title: "Multi-Location", url: "/multi-location", icon: MapPin },
   { title: "Inventory", url: "/inventory", icon: Package },
   { title: "HR & Payroll", url: "/hr", icon: Users },
   { title: "Sterilization", url: "/sterilization", icon: FlaskConical },
