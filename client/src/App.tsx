@@ -83,6 +83,9 @@ import InventoryPage from "@/pages/inventory";
 import HRPayrollPage from "@/pages/hr-payroll";
 import TeamKPIsPage from "@/pages/team-kpis";
 import VirtualOfficePage from "@/pages/virtual-office";
+import AnalyticsHubPage from "@/pages/analytics-hub";
+import AIHubPage from "@/pages/ai-hub";
+import MarketingHubPage from "@/pages/marketing-hub";
 import SterilizationPage from "@/pages/sterilization";
 import AIPhonePage from "@/pages/ai-phone";
 import VoiceToCodePage from "@/pages/voice-to-code";
@@ -187,7 +190,7 @@ function Router() {
         <Route path="/providers" component={ProvidersPage} />
         <Route path="/coding" component={CodingEnginePage} />
         <Route path="/calculator" component={CalculatorPage} />
-        <Route path="/analytics" component={AnalyticsPage} />
+        <Route path="/analytics-old" component={AnalyticsPage} />
         <Route path="/ai-assistant" component={AIAssistantPage} />
         <Route path="/ai-documentation" component={AIDocumentationPage} />
         <Route path="/appeals" component={AppealsEnginePage} />
@@ -230,6 +233,9 @@ function Router() {
         <Route path="/hr" component={HRPayrollPage} />
         <Route path="/team-kpis" component={TeamKPIsPage} />
         <Route path="/virtual-office" component={VirtualOfficePage} />
+        <Route path="/analytics" component={AnalyticsHubPage} />
+        <Route path="/ai-hub" component={AIHubPage} />
+        <Route path="/marketing" component={MarketingHubPage} />
         <Route path="/sterilization" component={SterilizationPage} />
         <Route path="/ai-phone" component={AIPhonePage} />
         <Route path="/voice-to-code" component={VoiceToCodePage} />
@@ -241,7 +247,7 @@ function Router() {
         <Route path="/multi-location" component={MultiLocationPage} />
         <Route path="/rcm" component={RcmPage} />
         <Route path="/financial" component={FinancialPage} />
-        <Route path="/marketing" component={MarketingSuitePage} />
+        <Route path="/marketing-classic" component={MarketingSuitePage} />
         <Route path="/nps" component={NpsPage} />
         <Route path="/compliance" component={CompliancePage} />
         <Route path="/business-intelligence" component={BusinessIntelligencePage} />

@@ -141,45 +141,32 @@ const billingItems = [
 ];
 
 const aiToolsItems = [
-  { title: "AI Assistant", url: "/ai-assistant", icon: MessageSquare },
-  { title: "AI Documentation", url: "/ai-documentation", icon: Sparkles },
-  { title: "AI Phone Agent", url: "/ai-phone", icon: Phone },
-  { title: "Voice-to-Code", url: "/voice-to-code", icon: Mic },
-  { title: "DentBot Advisor", url: "/dentbot", icon: Bot },
+  { title: "AI Command Center", url: "/ai-hub", icon: Sparkles },
 ];
 
 const growthItems = [
-  { title: "Marketing Suite", url: "/marketing", icon: Megaphone },
+  { title: "Marketing Hub", url: "/marketing", icon: Megaphone },
   { title: "Union Flow", url: "/union-flow", icon: Handshake },
-  { title: "Content Engine", url: "/content-engine", icon: PenTool },
-  { title: "Reputation Manager", url: "/reputation", icon: Award },
-  { title: "Patient NPS", url: "/nps", icon: ThumbsUp },
-  { title: "Testimonials", url: "/testimonials", icon: Star },
   { title: "Practice Launch Pad", url: "/practice-launchpad", icon: Rocket },
   { title: "Practice CRM", url: "/practice-crm", icon: Contact },
 ];
 
 const analyticsItems = [
-  { title: "Reports & Analytics", url: "/reports", icon: BarChart3 },
-  { title: "Predictive Analytics", url: "/predictive", icon: TrendingUp },
-  { title: "Business Intel", url: "/business-intelligence", icon: PieChart },
-  { title: "Provider Intel", url: "/provider-intel", icon: TrendingUp },
+  { title: "Analytics Hub", url: "/analytics", icon: BarChart3 },
   { title: "Payer Intel", url: "/payer-intel", icon: Building2 },
   { title: "Compliance Audit", url: "/compliance", icon: ShieldCheck },
 ];
 
 const adminItems = [
-  { title: "Advanced Modules", url: "/advanced-modules", icon: Layers },
-  { title: "SaaS Admin", url: "/saas-admin", icon: Cog },
-  { title: "Inventory", url: "/inventory", icon: Package },
   { title: "Virtual Office", url: "/virtual-office", icon: Building2 },
   { title: "Team KPIs & Org", url: "/team-kpis", icon: BarChart3 },
-  { title: "HR & Payroll", url: "/hr", icon: Users },
+  { title: "Inventory", url: "/inventory", icon: Package },
   { title: "Sterilization", url: "/sterilization", icon: FlaskConical },
   { title: "Warranty", url: "/warranty", icon: Shield },
   { title: "Maintenance", url: "/maintenance", icon: RefreshCcw },
-  { title: "Training Center", url: "/training", icon: GraduationCap },
   { title: "Referring Providers", url: "/providers", icon: Building2 },
+  { title: "Advanced Modules", url: "/advanced-modules", icon: Layers },
+  { title: "SaaS Admin", url: "/saas-admin", icon: Cog },
   { title: "HIPAA Audit Logs", url: "/audit-logs", icon: Shield },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
