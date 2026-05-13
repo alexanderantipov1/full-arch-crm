@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -14,7 +15,9 @@ import {
   FlaskConical,
   CheckCircle2,
   Clock,
+  Printer,
 } from "lucide-react";
+import { printPaymentReceipt } from "@/lib/receipt";
 
 interface StripePayment {
   id: number;
@@ -148,32 +151,56 @@ function PaymentActivityFeed() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className={`font-bold font-mono text-sm ${p.status === "succeeded" ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`} data-testid={`payment-amount-${p.id}`}>
-                      ${(p.amount / 100).toFixed(2)}
-                    </div>
-                    <div className="flex items-center justify-end gap-1 mt-0.5">
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] h-4 capitalize ${
-                          p.status === "succeeded"
-                            ? "border-emerald-400/50 text-emerald-600 dark:text-emerald-400"
-                            : "border-red-400/50 text-red-500"
-                        }`}
-                        data-testid={`payment-status-${p.id}`}
-                      >
-                        {p.status}
-                      </Badge>
-                      {p.testMode && (
-                        <Badge variant="outline" className="text-[10px] h-4 border-amber-400/50 text-amber-600 dark:text-amber-400 gap-0.5">
-                          <FlaskConical className="h-2.5 w-2.5" />
-                          TEST
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <div className={`font-bold font-mono text-sm ${p.status === "succeeded" ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`} data-testid={`payment-amount-${p.id}`}>
+                        ${(p.amount / 100).toFixed(2)}
+                      </div>
+                      <div className="flex items-center justify-end gap-1 mt-0.5">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] h-4 capitalize ${
+                            p.status === "succeeded"
+                              ? "border-emerald-400/50 text-emerald-600 dark:text-emerald-400"
+                              : "border-red-400/50 text-red-500"
+                          }`}
+                          data-testid={`payment-status-${p.id}`}
+                        >
+                          {p.status}
                         </Badge>
-                      )}
+                        {p.testMode && (
+                          <Badge variant="outline" className="text-[10px] h-4 border-amber-400/50 text-amber-600 dark:text-amber-400 gap-0.5">
+                            <FlaskConical className="h-2.5 w-2.5" />
+                            TEST
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        {new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </div>
                     </div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">
-                      {new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+                      title="Print Receipt"
+                      onClick={() =>
+                        printPaymentReceipt({
+                          patientName: p.patientName || `Patient #${p.patientId}`,
+                          amount: p.amount,
+                          currency: p.currency,
+                          date: p.createdAt,
+                          stripePaymentIntentId: p.stripePaymentIntentId,
+                          description: p.description,
+                          receiptEmail: p.receiptEmail,
+                          status: p.status,
+                          testMode: p.testMode,
+                        })
+                      }
+                      data-testid={`button-print-receipt-${p.id}`}
+                    >
+                      <Printer className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}

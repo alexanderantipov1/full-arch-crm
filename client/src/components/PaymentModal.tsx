@@ -11,8 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   CreditCard, Lock, CheckCircle2, AlertCircle, Loader2,
-  FlaskConical, ArrowRight,
+  FlaskConical, ArrowRight, Printer,
 } from "lucide-react";
+import { printPaymentReceipt } from "@/lib/receipt";
 
 interface SuccessRecord {
   id: number;
@@ -23,6 +24,7 @@ interface SuccessRecord {
   description: string | null;
   testMode: boolean;
   isSimulated: boolean;
+  createdAt?: string;
 }
 
 interface StripeConfig {
@@ -537,9 +539,33 @@ export function PaymentModal({
               )}
             </div>
 
-            <Button className="w-full" onClick={onClose} data-testid="button-payment-done">
-              Done
-            </Button>
+            <div className="flex gap-2 w-full">
+              <Button
+                variant="outline"
+                className="flex-1 gap-2"
+                onClick={() =>
+                  printPaymentReceipt({
+                    patientName,
+                    amount: successRecord.amount,
+                    currency: successRecord.currency,
+                    date: successRecord.createdAt,
+                    stripePaymentIntentId: successRecord.stripePaymentIntentId,
+                    description: successRecord.description,
+                    status: successRecord.status,
+                    testMode: successRecord.testMode,
+                    isSimulated: successRecord.isSimulated,
+                    receiptEmail: email || undefined,
+                  })
+                }
+                data-testid="button-print-receipt"
+              >
+                <Printer className="h-4 w-4" />
+                Print Receipt
+              </Button>
+              <Button className="flex-1" onClick={onClose} data-testid="button-payment-done">
+                Done
+              </Button>
+            </div>
           </div>
         )}
 
