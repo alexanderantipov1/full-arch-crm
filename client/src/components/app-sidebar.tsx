@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   Users,
   Calendar,
@@ -238,6 +239,12 @@ export function AppSidebar() {
   const [forYouModules, setForYouModules] = useState<{ title: string; url: string }[]>([]);
   const [specialtyLabel, setSpecialtyLabel] = useState<string>("");
 
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ["/api/patient-messages/unread-count"],
+    refetchInterval: 60000,
+  });
+  const patientUnread = unreadData?.count ?? 0;
+
   useEffect(() => {
     // Read AI recommendations from localStorage (set during onboarding)
     const stored = localStorage.getItem("specialty_recommendations");
@@ -333,7 +340,12 @@ export function AppSidebar() {
                     >
                       <Link href={item.url}>
                         <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
+                        <span className="flex-1">{item.title}</span>
+                        {item.url === "/patient-messaging" && patientUnread > 0 && (
+                          <span className="ml-auto text-[10px] font-semibold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 leading-tight">
+                            {patientUnread}
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

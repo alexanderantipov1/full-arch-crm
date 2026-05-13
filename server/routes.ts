@@ -2960,20 +2960,58 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
   });
 
   // ============ PATIENT MESSAGING ============
-  app.get("/api/messages", isAuthenticated, async (req, res) => {
+  app.get("/api/patient-messages/unread-count", isAuthenticated, async (req, res) => {
+    try { res.json({ count: await storage.getPatientUnreadCount() }); } catch { res.json({ count: 0 }); }
+  });
+
+  app.get("/api/patient-messages", isAuthenticated, async (req, res) => {
     try {
       const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
       res.json(await storage.getPatientMessages(patientId));
     } catch { res.json([]); }
   });
 
-  app.post("/api/messages", isAuthenticated, async (req, res) => {
+  app.post("/api/patient-messages", isAuthenticated, async (req, res) => {
     try {
+      const userId = getSessionUserId(req);
       const data = insertPatientMessageSchema.parse(req.body);
-      res.status(201).json(await storage.createPatientMessage(data));
+      const msg = await storage.createPatientMessage(data);
+      await storage.createAuditLog({
+        userId: userId || "system",
+        action: "create",
+        resourceType: "patient_message",
+        resourceId: String(msg.id),
+        patientId: msg.patientId,
+        phiAccessed: true,
+        details: { channel: msg.channel, direction: msg.direction },
+      });
+      res.status(201).json(msg);
     } catch (error) {
-      console.error("Error creating message:", error);
+      console.error("Error creating patient message:", error);
       res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.patch("/api/patient-messages/:id/read", isAuthenticated, async (req, res) => {
+    try {
+      const updated = await storage.markPatientMessageRead(parseInt(req.params.id));
+      res.json(updated);
+    } catch { res.status(500).json({ message: "Failed to mark read" }); }
+  });
+
+  // AI suggest reply for patient messages
+  app.post("/api/ai/suggest-reply", isAuthenticated, async (req, res) => {
+    try {
+      const { patientName, lastMessage, channel } = req.body;
+      const channelCtx = channel === "sms" ? "a brief SMS (under 160 characters if possible)" : channel === "email" ? "a professional email" : "an in-app message";
+      const suggestion = await askClaude(
+        `You are a helpful dental practice assistant. Write professional, empathetic, HIPAA-compliant replies. Do not include placeholders or brackets. Return only the ready-to-send message text with no additional commentary.`,
+        `Draft ${channelCtx} reply for patient ${patientName || "the patient"}.\n\nPatient's last message: "${lastMessage}"`
+      );
+      res.json({ suggestion });
+    } catch (error) {
+      console.error("AI suggest reply error:", error);
+      res.status(500).json({ message: "AI suggestion failed" });
     }
   });
 

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and, gte, lte, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, inArray, not } from "drizzle-orm";
 import {
   patients,
   medicalHistory,
@@ -490,6 +490,8 @@ export interface IStorage {
   // Patient Messaging
   getPatientMessages(patientId?: number): Promise<PatientMessage[]>;
   createPatientMessage(data: InsertPatientMessage): Promise<PatientMessage>;
+  markPatientMessageRead(id: number): Promise<PatientMessage | undefined>;
+  getPatientUnreadCount(): Promise<number>;
 
   // Practice Locations
   getPracticeLocations(): Promise<PracticeLocation[]>;
@@ -1647,13 +1649,25 @@ export class DatabaseStorage implements IStorage {
 
   // ============ PATIENT MESSAGING ============
   async getPatientMessages(patientId?: number): Promise<PatientMessage[]> {
-    if (patientId) return db.select().from(patientMessages).where(eq(patientMessages.patientId, patientId)).orderBy(desc(patientMessages.createdAt));
+    if (patientId) return db.select().from(patientMessages).where(eq(patientMessages.patientId, patientId)).orderBy(patientMessages.createdAt);
     return db.select().from(patientMessages).orderBy(desc(patientMessages.createdAt));
   }
 
   async createPatientMessage(data: InsertPatientMessage): Promise<PatientMessage> {
     const [created] = await db.insert(patientMessages).values(data).returning();
     return created;
+  }
+
+  async markPatientMessageRead(id: number): Promise<PatientMessage | undefined> {
+    const [updated] = await db.update(patientMessages).set({ status: "read" }).where(eq(patientMessages.id, id)).returning();
+    return updated;
+  }
+
+  async getPatientUnreadCount(): Promise<number> {
+    const rows = await db.select().from(patientMessages).where(
+      and(eq(patientMessages.direction, "inbound"), not(eq(patientMessages.status, "read")))
+    );
+    return rows.length;
   }
 
   // ============ PRACTICE LOCATIONS ============
