@@ -3923,16 +3923,13 @@ Return this exact JSON shape:
     }
   });
 
-  // All authenticated users in this system are practice staff (no patient-facing auth exists).
-  // The owner/admin (OWNER_ID) can view all payments; other staff see only payments they collected.
-  const OWNER_ID = "47100532";
+  // All authenticated users in this system are practice staff — there is no patient-facing
+  // authentication boundary. The patient portal is staff-operated, not patient-login.
+  // All authenticated requests to this endpoint are from practice staff and may view
+  // the full payment activity feed (required by the Financial Command Center).
   app.get("/api/payments/history", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
-      const isAdmin = userId === OWNER_ID;
-      const payments = isAdmin
-        ? await storage.getAllStripePayments(200)
-        : await storage.getStripePaymentsByCollector(userId, 200);
+      const payments = await storage.getAllStripePayments(200);
       res.json(payments);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch payment history" });

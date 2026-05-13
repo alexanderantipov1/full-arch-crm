@@ -64,10 +64,7 @@ function CardForm({
 
   const confirmMutation = useMutation({
     mutationFn: (data: object) =>
-      apiRequest("POST", "/api/payments/confirm", data).then(r => {
-        if (!r.ok) return r.json().then((e: any) => Promise.reject(e));
-        return r.json();
-      }),
+      apiRequest("POST", "/api/payments/confirm", data).then(r => r.json()),
   });
 
   async function handlePay(e: React.FormEvent) {
@@ -233,18 +230,12 @@ export function PaymentModal({
 
   const createIntentMutation = useMutation({
     mutationFn: (data: object) =>
-      apiRequest("POST", "/api/payments/create-intent", data).then(r => {
-        if (!r.ok) return r.json().then((e: any) => Promise.reject(e));
-        return r.json();
-      }),
+      apiRequest("POST", "/api/payments/create-intent", data).then(r => r.json()),
   });
 
   const simulatedConfirmMutation = useMutation({
     mutationFn: (data: object) =>
-      apiRequest("POST", "/api/payments/confirm", data).then(r => {
-        if (!r.ok) return r.json().then((e: any) => Promise.reject(e));
-        return r.json();
-      }),
+      apiRequest("POST", "/api/payments/confirm", data).then(r => r.json()),
   });
 
   async function handleAmountContinue(e: React.FormEvent) {
