@@ -562,8 +562,10 @@ export interface IStorage {
 
   // Stripe Payments
   createStripePayment(data: InsertStripePayment): Promise<StripePayment>;
+  getStripePaymentByIntentId(intentId: string): Promise<StripePayment | undefined>;
   getStripePaymentsByPatient(patientId: number): Promise<StripePayment[]>;
   getAllStripePayments(limit?: number): Promise<StripePayment[]>;
+  getStripePaymentsByCollector(collectedBy: string, limit?: number): Promise<StripePayment[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1962,6 +1964,14 @@ export class DatabaseStorage implements IStorage {
     return record;
   }
 
+  async getStripePaymentByIntentId(intentId: string): Promise<StripePayment | undefined> {
+    const [record] = await db
+      .select()
+      .from(stripePayments)
+      .where(eq(stripePayments.stripePaymentIntentId, intentId));
+    return record;
+  }
+
   async getStripePaymentsByPatient(patientId: number): Promise<StripePayment[]> {
     return db
       .select()
@@ -1974,6 +1984,15 @@ export class DatabaseStorage implements IStorage {
     return db
       .select()
       .from(stripePayments)
+      .orderBy(desc(stripePayments.createdAt))
+      .limit(limit);
+  }
+
+  async getStripePaymentsByCollector(collectedBy: string, limit = 200): Promise<StripePayment[]> {
+    return db
+      .select()
+      .from(stripePayments)
+      .where(eq(stripePayments.collectedBy, collectedBy))
       .orderBy(desc(stripePayments.createdAt))
       .limit(limit);
   }

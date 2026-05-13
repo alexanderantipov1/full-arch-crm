@@ -1565,7 +1565,7 @@ export const stripePayments = pgTable("stripe_payments", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
   claimId: integer("claim_id").references(() => billingClaims.id),
-  stripePaymentIntentId: text("stripe_payment_intent_id").notNull(),
+  stripePaymentIntentId: text("stripe_payment_intent_id").notNull().unique(),
   amount: integer("amount").notNull(), // in cents
   currency: text("currency").default("usd").notNull(),
   status: text("status").notNull(), // succeeded, pending, failed

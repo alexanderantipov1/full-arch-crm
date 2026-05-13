@@ -3841,37 +3841,61 @@ Return this exact JSON shape:
 
   app.post("/api/payments/confirm", isAuthenticated, async (req, res) => {
     try {
-      const { paymentIntentId, patientId, amount, description, patientName, receiptEmail, claimId, simulated } = req.body;
+      const { paymentIntentId, patientId, description, patientName, receiptEmail, claimId, simulated } = req.body;
       if (!paymentIntentId || !patientId) {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
       const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "unknown";
-      const amountCents = Math.round(parseFloat(amount) * 100);
       const patientIdInt = parseInt(patientId);
 
+      // ── Idempotency guard: reject duplicate confirms for same PaymentIntent ──
+      const existing = await storage.getStripePaymentByIntentId(paymentIntentId);
+      if (existing) {
+        return res.json(existing); // already recorded — return the existing record
+      }
+
+      let finalAmountCents: number;
+      let finalCurrency: string;
+      let finalReceiptEmail: string | null = receiptEmail || null;
       let finalStatus = "succeeded";
 
       if (!simulated && stripe) {
+        // ── Derive authoritative values from Stripe — never trust client amount ──
         const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
         if (intent.status !== "succeeded") {
           return res.status(400).json({ message: `Payment not confirmed — status: ${intent.status}` });
         }
+
+        // Validate patientId matches what was embedded in intent metadata
+        const intentPatientId = parseInt(intent.metadata?.patientId || "0");
+        if (intentPatientId && intentPatientId !== patientIdInt) {
+          return res.status(400).json({ message: "Patient ID mismatch — payment intent does not belong to this patient" });
+        }
+
+        finalAmountCents = intent.amount; // authoritative from Stripe
+        finalCurrency = intent.currency;
+        finalReceiptEmail = intent.receipt_email || receiptEmail || null;
         finalStatus = "succeeded";
       } else if (!simulated && !stripe) {
         return res.status(500).json({ message: "Stripe not configured" });
+      } else {
+        // Simulated mode: amount comes from req.body (no Stripe to verify against)
+        const { amount } = req.body;
+        finalAmountCents = Math.round(parseFloat(amount) * 100);
+        finalCurrency = "usd";
       }
 
       const record = await storage.createStripePayment({
         patientId: patientIdInt,
         claimId: claimId ? parseInt(claimId) : null,
         stripePaymentIntentId: paymentIntentId,
-        amount: amountCents,
-        currency: "usd",
+        amount: finalAmountCents,
+        currency: finalCurrency,
         status: finalStatus,
         description: description || null,
         patientName: patientName || null,
-        receiptEmail: receiptEmail || null,
+        receiptEmail: finalReceiptEmail,
         collectedBy: userId,
         testMode: STRIPE_TEST_MODE || !!simulated,
       });
@@ -3882,9 +3906,9 @@ Return this exact JSON shape:
         paymentDate: new Date().toISOString().split("T")[0],
         payerName: patientName ? `Patient — ${patientName}` : "Patient — Card",
         checkNumber: paymentIntentId,
-        paymentAmount: (amountCents / 100).toFixed(2),
+        paymentAmount: (finalAmountCents / 100).toFixed(2),
         adjustmentAmount: null,
-        patientResponsibility: (amountCents / 100).toFixed(2),
+        patientResponsibility: (finalAmountCents / 100).toFixed(2),
         postingStatus: "posted",
         autoPosted: true,
         varianceFlag: false,
@@ -3899,9 +3923,16 @@ Return this exact JSON shape:
     }
   });
 
+  // All authenticated users in this system are practice staff (no patient-facing auth exists).
+  // The owner/admin (OWNER_ID) can view all payments; other staff see only payments they collected.
+  const OWNER_ID = "47100532";
   app.get("/api/payments/history", isAuthenticated, async (req, res) => {
     try {
-      const payments = await storage.getAllStripePayments(200);
+      const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "";
+      const isAdmin = userId === OWNER_ID;
+      const payments = isAdmin
+        ? await storage.getAllStripePayments(200)
+        : await storage.getStripePaymentsByCollector(userId, 200);
       res.json(payments);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch payment history" });
