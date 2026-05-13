@@ -1452,7 +1452,13 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
     try {
       const patientId = parseInt(req.params.id);
       const tab: string = req.body?.tab || "portal_open";
-      await storage.upsertPortalAccess(patientId, { enabled: true, lastAccessedAt: new Date() });
+      // Check that portal is still enabled before logging; do NOT mutate enabled status
+      const access = await storage.getPortalAccess(patientId);
+      if (access && access.enabled === false) {
+        return res.status(403).json({ message: "Portal access is disabled for this patient" });
+      }
+      // Only update lastAccessedAt — never force-enable a disabled portal
+      await storage.upsertPortalAccess(patientId, { lastAccessedAt: new Date() });
       await storage.createAuditLog({
         userId: req.user?.claims?.sub || req.user?.id || "unknown",
         action: "portal_view",
@@ -1485,6 +1491,12 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
   app.get("/api/portal/appointment-requests", isAuthenticated, async (req, res) => {
     try {
       const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
+      if (patientId) {
+        const access = await storage.getPortalAccess(patientId);
+        if (access && access.enabled === false) {
+          return res.status(403).json({ message: "Portal access is disabled for this patient" });
+        }
+      }
       const requests = await storage.getPortalAppointmentRequests(patientId);
       res.json(requests);
     } catch (error) {
@@ -1496,6 +1508,12 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
   app.post("/api/portal/appointment-requests", isAuthenticated, async (req, res) => {
     try {
       const data = insertPortalAppointmentRequestSchema.parse(req.body);
+      if (data.patientId) {
+        const access = await storage.getPortalAccess(data.patientId);
+        if (access && access.enabled === false) {
+          return res.status(403).json({ message: "Portal access is disabled for this patient" });
+        }
+      }
       const request = await storage.createPortalAppointmentRequest(data);
       res.status(201).json(request);
     } catch (error: unknown) {
@@ -1522,6 +1540,10 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
   app.get("/api/surgery-reports/patient/:patientId", isAuthenticated, async (req, res) => {
     try {
       const patientId = parseInt(req.params.patientId);
+      const access = await storage.getPortalAccess(patientId);
+      if (access && access.enabled === false) {
+        return res.status(403).json({ message: "Portal access is disabled for this patient" });
+      }
       const reports = await storage.getSurgeryReportsByPatient(patientId);
       res.json(reports);
     } catch (error) {
@@ -1533,6 +1555,10 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
   app.get("/api/payment-postings/patient/:patientId", isAuthenticated, async (req, res) => {
     try {
       const patientId = parseInt(req.params.patientId);
+      const access = await storage.getPortalAccess(patientId);
+      if (access && access.enabled === false) {
+        return res.status(403).json({ message: "Portal access is disabled for this patient" });
+      }
       const postings = await storage.getPaymentPostingsByPatient(patientId);
       res.json(postings);
     } catch (error) {
