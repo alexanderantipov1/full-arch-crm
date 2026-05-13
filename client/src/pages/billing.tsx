@@ -138,6 +138,8 @@ function PreflightDialog({
   onRunCheck,
   onAutoFix,
   isFixing,
+  onSubmitClaim,
+  isSubmitting,
 }: {
   open: boolean;
   onClose: () => void;
@@ -147,6 +149,8 @@ function PreflightDialog({
   onRunCheck: () => void;
   onAutoFix: (issueCode: string, fixValue: string, field: string) => void;
   isFixing: Set<string>;
+  onSubmitClaim: () => void;
+  isSubmitting: boolean;
 }) {
   if (!claim) return null;
 
@@ -353,11 +357,15 @@ function PreflightDialog({
                 Re-run Check
               </Button>
               <Button
-                disabled={!canSubmit}
+                disabled={!canSubmit || isSubmitting}
                 data-testid="button-submit-claim-gated"
-                onClick={onClose}
+                onClick={onSubmitClaim}
               >
-                <Send className="mr-2 h-4 w-4" />
+                {isSubmitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
                 Submit Claim
               </Button>
             </div>
@@ -403,6 +411,9 @@ export default function BillingPage() {
   const [preflightResult, setPreflightResult] = useState<ClaimPreflightResult | null>(null);
   const [preflightLoading, setPreflightLoading] = useState(false);
   const [fixingIssues, setFixingIssues] = useState<Set<string>>(new Set());
+  // Inline detail panel and cached results per claim
+  const [expandedClaimId, setExpandedClaimId] = useState<number | null>(null);
+  const [preflightCache, setPreflightCache] = useState<Record<number, ClaimPreflightResult>>({});
 
   const { toast } = useToast();
 
@@ -482,7 +493,7 @@ export default function BillingPage() {
 
   const autoFixMutation = useMutation({
     mutationFn: async ({ claimId, issueCode, fixValue, field }: { claimId: number; issueCode: string; fixValue: string; field: string }) => {
-      const response = await apiRequest("POST", `/api/billing/claims/${claimId}/autofix`, { issueCode, fixValue, field });
+      const response = await apiRequest("PATCH", `/api/billing/claims/${claimId}/autofix`, { issueCode, fixValue, field });
       return response.json();
     },
     onSuccess: (data, vars) => {
@@ -496,19 +507,60 @@ export default function BillingPage() {
     },
   });
 
+  const submitClaimMutation = useMutation({
+    mutationFn: async (claimId: number) => {
+      const response = await apiRequest("PATCH", `/api/billing/claims/${claimId}`, {
+        claimStatus: "submitted",
+        submittedDate: new Date().toISOString().split("T")[0],
+      });
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(body.message || "Failed to submit claim");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/claims"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/stats"] });
+      toast({ title: "Claim submitted successfully" });
+      setPreflightOpen(false);
+      setPreflightClaim(null);
+      setPreflightResult(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Submission blocked", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleOpenPreflight = async (claim: BillingClaim) => {
     setPreflightClaim(claim);
-    setPreflightResult(null);
+    setPreflightResult(preflightCache[claim.id] ?? null);
     setPreflightOpen(true);
-    // Try to load existing result
+    // Try to load existing result from server
     try {
       const response = await apiRequest("GET", `/api/billing/claims/${claim.id}/preflight`);
       if (response.ok) {
-        const existing = await response.json();
+        const existing: ClaimPreflightResult = await response.json();
         setPreflightResult(existing);
+        setPreflightCache(prev => ({ ...prev, [claim.id]: existing }));
       }
     } catch {
       // No existing result — will prompt user to run
+    }
+  };
+
+  const handleExpandDetail = async (claimId: number) => {
+    setExpandedClaimId(prev => (prev === claimId ? null : claimId));
+    if (!preflightCache[claimId]) {
+      try {
+        const response = await apiRequest("GET", `/api/billing/claims/${claimId}/preflight`);
+        if (response.ok) {
+          const result: ClaimPreflightResult = await response.json();
+          setPreflightCache(prev => ({ ...prev, [claimId]: result }));
+        }
+      } catch {
+        // No result yet
+      }
     }
   };
 
@@ -517,8 +569,9 @@ export default function BillingPage() {
     setPreflightLoading(true);
     try {
       const response = await apiRequest("POST", `/api/billing/claims/${preflightClaim.id}/preflight`);
-      const result = await response.json();
+      const result: ClaimPreflightResult = await response.json();
       setPreflightResult(result);
+      setPreflightCache(prev => ({ ...prev, [preflightClaim.id]: result }));
       toast({ title: "Pre-flight check complete", description: `Risk score: ${result.riskScore}/100` });
     } catch (err) {
       toast({ title: "Pre-flight check failed", description: "Please try again.", variant: "destructive" });
@@ -779,47 +832,157 @@ export default function BillingPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredClaims.map((claim) => (
-                        <TableRow key={claim.id} data-testid={`claim-row-${claim.id}`}>
-                          <TableCell className="font-mono text-sm">
-                            {claim.claimNumber || `CLM-${claim.id}`}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{claim.procedureCode}</p>
-                              <p className="text-sm text-muted-foreground">{claim.description}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {claim.serviceDate && format(new Date(claim.serviceDate), "MMM d, yyyy")}
-                          </TableCell>
-                          <TableCell>{formatCurrency(claim.chargedAmount)}</TableCell>
-                          <TableCell className="text-green-600">
-                            {formatCurrency(claim.paidAmount)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={statusColors[claim.claimStatus] || ""}>
-                              {claim.claimStatus}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOpenPreflight(claim)}
-                                data-testid={`button-preflight-${claim.id}`}
-                              >
-                                <ShieldCheck className="h-4 w-4 mr-1" />
-                                Pre-Flight
-                              </Button>
-                              <Button variant="ghost" size="sm" data-testid={`button-view-claim-${claim.id}`}>
-                                <ArrowRight className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {filteredClaims.map((claim) => {
+                        const cached = preflightCache[claim.id];
+                        const isExpanded = expandedClaimId === claim.id;
+                        const issues = (cached?.issues as PreflightIssue[]) || [];
+                        const criticals = issues.filter(i => i.severity === "critical").length;
+                        return (
+                          <>
+                            <TableRow key={claim.id} data-testid={`claim-row-${claim.id}`}>
+                              <TableCell className="font-mono text-sm">
+                                {claim.claimNumber || `CLM-${claim.id}`}
+                              </TableCell>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{claim.procedureCode}</p>
+                                  <p className="text-sm text-muted-foreground">{claim.description}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {claim.serviceDate && format(new Date(claim.serviceDate), "MMM d, yyyy")}
+                              </TableCell>
+                              <TableCell>{formatCurrency(claim.chargedAmount)}</TableCell>
+                              <TableCell className="text-green-600">
+                                {formatCurrency(claim.paidAmount)}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-1">
+                                  <Badge className={statusColors[claim.claimStatus] || ""}>
+                                    {claim.claimStatus}
+                                  </Badge>
+                                  {cached && (
+                                    <Badge
+                                      className={
+                                        cached.riskScore >= 80
+                                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs"
+                                          : cached.riskScore >= 60
+                                          ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs"
+                                          : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs"
+                                      }
+                                      data-testid={`badge-preflight-score-${claim.id}`}
+                                    >
+                                      <ShieldCheck className="h-2.5 w-2.5 mr-1" />
+                                      {cached.riskScore}/100
+                                    </Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleOpenPreflight(claim)}
+                                    data-testid={`button-preflight-${claim.id}`}
+                                  >
+                                    <ShieldCheck className="h-4 w-4 mr-1" />
+                                    Pre-Flight
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleExpandDetail(claim.id)}
+                                    data-testid={`button-view-claim-${claim.id}`}
+                                  >
+                                    <ArrowRight className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                            {isExpanded && (
+                              <TableRow key={`detail-${claim.id}`} data-testid={`claim-detail-${claim.id}`}>
+                                <TableCell colSpan={7} className="bg-muted/30 p-0">
+                                  <div className="p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Claim Detail</p>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleOpenPreflight(claim)}
+                                        data-testid={`button-detail-preflight-${claim.id}`}
+                                      >
+                                        <Brain className="h-4 w-4 mr-1.5" />
+                                        {cached ? "View Pre-Flight Results" : "Run Pre-Flight Check"}
+                                      </Button>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                      <div>
+                                        <p className="text-xs text-muted-foreground">ICD-10 Code</p>
+                                        <p className="font-medium">{claim.icd10Code || <span className="text-red-500">Missing</span>}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-muted-foreground">Patient ID</p>
+                                        <p className="font-medium">{claim.patientId}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-muted-foreground">Allowed Amount</p>
+                                        <p className="font-medium">{formatCurrency(claim.allowedAmount)}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-muted-foreground">Patient Portion</p>
+                                        <p className="font-medium">{formatCurrency(claim.patientPortion)}</p>
+                                      </div>
+                                    </div>
+                                    {cached ? (
+                                      <div className="flex items-center gap-3 rounded-lg border p-3 bg-background">
+                                        <div className={`flex h-10 w-10 items-center justify-center rounded-full shrink-0 ${
+                                          cached.riskScore >= 80 ? "bg-green-100 dark:bg-green-900/30" :
+                                          cached.riskScore >= 60 ? "bg-yellow-100 dark:bg-yellow-900/30" :
+                                          "bg-red-100 dark:bg-red-900/30"
+                                        }`}>
+                                          <ShieldCheck className={`h-5 w-5 ${
+                                            cached.riskScore >= 80 ? "text-green-600" :
+                                            cached.riskScore >= 60 ? "text-yellow-600" :
+                                            "text-red-600"
+                                          }`} />
+                                        </div>
+                                        <div className="flex-1">
+                                          <p className="text-sm font-medium">
+                                            Last Pre-Flight: Risk Score {cached.riskScore}/100 · {cached.approvalProbability}% approval probability
+                                          </p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {criticals > 0 ? `${criticals} critical issue${criticals > 1 ? "s" : ""} require attention` : "No critical issues found"} ·
+                                            Checked {format(new Date(cached.checkedAt), "MMM d, yyyy")}
+                                          </p>
+                                        </div>
+                                        {cached.riskScore < 70 && (
+                                          <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 shrink-0">
+                                            Blocked
+                                          </Badge>
+                                        )}
+                                        {cached.riskScore >= 70 && (
+                                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 shrink-0">
+                                            Cleared
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-muted-foreground italic">No pre-flight check has been run for this claim.</p>
+                                    )}
+                                    {claim.denialReason && (
+                                      <div className="rounded-lg border border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20 p-3">
+                                        <p className="text-xs font-semibold text-red-700 dark:text-red-400 mb-1">Denial Reason</p>
+                                        <p className="text-sm">{claim.denialReason}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -1471,6 +1634,8 @@ export default function BillingPage() {
         onRunCheck={handleRunPreflight}
         onAutoFix={handleAutoFix}
         isFixing={fixingIssues}
+        onSubmitClaim={() => preflightClaim && submitClaimMutation.mutate(preflightClaim.id)}
+        isSubmitting={submitClaimMutation.isPending}
       />
     </div>
   );

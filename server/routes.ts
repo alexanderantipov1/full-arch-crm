@@ -443,14 +443,28 @@ export async function registerRoutes(
     try {
       const id = parseInt(req.params.id);
       const data = insertBillingClaimSchema.partial().parse(req.body);
+
+      // Preflight gate: block submission if no passing preflight result exists
+      if (data.claimStatus === "submitted") {
+        const preflightResult = await storage.getPreflightResult(id);
+        if (!preflightResult || preflightResult.riskScore < 70) {
+          return res.status(422).json({
+            message: "Claim blocked: a passing pre-flight check (risk score ≥ 70) is required before submission.",
+            preflightRequired: true,
+            currentScore: preflightResult?.riskScore ?? null,
+          });
+        }
+      }
+
       const claim = await storage.updateBillingClaim(id, data);
       if (!claim) {
         return res.status(404).json({ message: "Claim not found" });
       }
       res.json(claim);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating claim:", error);
-      res.status(400).json({ message: error.message || "Failed to update claim" });
+      const msg = error instanceof Error ? error.message : "Failed to update claim";
+      res.status(400).json({ message: msg });
     }
   });
 
@@ -1365,7 +1379,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
     }
   });
 
-  app.post("/api/billing/claims/:id/autofix", isAuthenticated, async (req, res) => {
+  app.patch("/api/billing/claims/:id/autofix", isAuthenticated, async (req, res) => {
     try {
       const claimId = parseInt(req.params.id);
       const { issueCode, fixValue, field } = req.body as { issueCode: string; fixValue: string; field: string };
