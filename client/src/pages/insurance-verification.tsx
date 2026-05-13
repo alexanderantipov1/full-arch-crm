@@ -132,6 +132,9 @@ function EligibilityResultCard({ result, onRefresh, refreshing }: {
           </div>
 
           <DeductibleBar label="Individual Deductible" met={cd.deductibleMet ?? 0} total={cd.deductibleIndividual ?? 0} />
+          {(cd.deductibleFamily ?? 0) > 0 && (
+            <DeductibleBar label="Family Deductible" met={(cd.deductibleFamily ?? 0) - (cd.deductibleRemaining ?? cd.deductibleFamily ?? 0)} total={cd.deductibleFamily ?? 0} />
+          )}
           <DeductibleBar label="Out-of-Pocket Max" met={cd.oopMet ?? 0} total={cd.outOfPocketMax ?? 0} />
         </div>
 

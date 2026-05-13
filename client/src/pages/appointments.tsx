@@ -74,24 +74,41 @@ export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [view, setView] = useState<"day" | "week">("day");
   const [mainTab, setMainTab] = useState<string>("calendar");
-  const [batchResults, setBatchResults] = useState<any[] | null>(null);
+  interface BatchResult { patientId: number; status: string; eligibilityStatus?: string; cached?: boolean; }
+  const [batchResults, setBatchResults] = useState<BatchResult[] | null>(null);
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(0);
 
   const { data: appointments, isLoading } = useQuery<Appointment[]>({
     queryKey: ["/api/appointments"],
   });
 
-  const batchVerifyMut = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/eligibility/batch-tomorrow", {}).then(r => r.json()),
-    onSuccess: (data) => {
+  const runBatchVerify = async () => {
+    setBatchRunning(true);
+    setBatchProgress(0);
+    setBatchResults(null);
+    // Animate progress bar while waiting for AI calls (indeterminate feel)
+    const interval = setInterval(() => {
+      setBatchProgress(p => Math.min(p + 8, 88));
+    }, 400);
+    try {
+      const data = await apiRequest("POST", "/api/eligibility/batch-tomorrow", {}).then(r => r.json());
+      clearInterval(interval);
+      setBatchProgress(100);
       queryClient.invalidateQueries({ queryKey: ["/api/eligibility/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/eligibility/recent"] });
-      setBatchResults(data.results ?? []);
-      const active = (data.results ?? []).filter((r: any) => r.eligibilityStatus === "active").length;
-      const issues = data.checked - active;
-      toast({ title: `Batch Verify Complete`, description: `${active} active, ${issues} need review` });
-    },
-    onError: () => toast({ title: "Batch verify failed", variant: "destructive" }),
-  });
+      const results: BatchResult[] = data.results ?? [];
+      setBatchResults(results);
+      const active = results.filter(r => r.eligibilityStatus === "active").length;
+      const issues = results.length - active;
+      toast({ title: "Batch Verify Complete", description: `${active} active, ${issues} need review` });
+    } catch {
+      clearInterval(interval);
+      toast({ title: "Batch verify failed", variant: "destructive" });
+    } finally {
+      setBatchRunning(false);
+    }
+  };
 
   const filteredAppointments = appointments?.filter((apt) => {
     const aptDate = new Date(apt.startTime);
@@ -125,11 +142,11 @@ export default function AppointmentsPage() {
         <div className="flex gap-2 flex-wrap">
           <Button
             variant="outline"
-            onClick={() => batchVerifyMut.mutate()}
-            disabled={batchVerifyMut.isPending}
+            onClick={runBatchVerify}
+            disabled={batchRunning}
             data-testid="button-batch-verify-tomorrow"
           >
-            {batchVerifyMut.isPending
+            {batchRunning
               ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying…</>
               : <><Shield className="mr-2 h-4 w-4" />Verify Tomorrow's Patients</>}
           </Button>
@@ -142,7 +159,24 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      {batchResults && batchResults.length > 0 && (
+      {/* Progress bar while batch is running */}
+      {batchRunning && (
+        <Card className="border-blue-200 dark:border-blue-800" data-testid="card-batch-progress">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+              Verifying Tomorrow's Patients…
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Progress value={batchProgress} className="h-2" data-testid="progress-batch-verify" />
+            <p className="text-xs text-muted-foreground">Running AI eligibility checks — this may take a moment</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Results after completion */}
+      {!batchRunning && batchResults && batchResults.length > 0 && (
         <Card className="border-blue-200 dark:border-blue-800" data-testid="card-batch-verify-results">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -150,7 +184,8 @@ export default function AppointmentsPage() {
               Tomorrow's Eligibility — {batchResults.length} patients checked
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            <Progress value={100} className="h-2" data-testid="progress-batch-complete" />
             <div className="flex flex-wrap gap-2">
               {batchResults.map((r, i) => (
                 <Badge
@@ -170,7 +205,7 @@ export default function AppointmentsPage() {
           </CardContent>
         </Card>
       )}
-      {batchResults && batchResults.length === 0 && (
+      {!batchRunning && batchResults && batchResults.length === 0 && (
         <Card data-testid="card-batch-verify-empty">
           <CardContent className="py-4 text-center text-sm text-muted-foreground">
             No appointments scheduled for tomorrow.
