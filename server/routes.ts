@@ -1451,6 +1451,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
   app.post("/api/patients/:id/portal-access-log", isAuthenticated, async (req, res) => {
     try {
       const patientId = parseInt(req.params.id);
+      const tab: string = req.body?.tab || "portal_open";
       await storage.upsertPortalAccess(patientId, { enabled: true, lastAccessedAt: new Date() });
       await storage.createAuditLog({
         userId: req.user?.claims?.sub || req.user?.id || "unknown",
@@ -1458,7 +1459,21 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
         resourceType: "patient_portal",
         resourceId: String(patientId),
         patientId,
-        details: { patientId },
+        details: {
+          patientId,
+          tabViewed: tab,
+          dataScope: tab === "eob" ? "payment_postings,billing_claims"
+            : tab === "billing" ? "treatment_plans"
+            : tab === "appointments" ? "appointments"
+            : tab === "post-op" ? "surgery_reports"
+            : tab === "messages" ? "patient_messages"
+            : tab === "documents" ? "documents"
+            : tab === "consent" ? "consent_forms"
+            : tab === "my-info" || tab === "my_info_update" ? "patient_contact_info"
+            : tab === "request" ? "portal_appointment_requests"
+            : "portal",
+          accessedAt: new Date().toISOString(),
+        },
       });
       res.json({ success: true });
     } catch (error) {
@@ -1512,6 +1527,17 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
     } catch (error) {
       console.error("Error fetching surgery reports:", error);
       res.status(500).json({ message: "Failed to fetch surgery reports" });
+    }
+  });
+
+  app.get("/api/payment-postings/patient/:patientId", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const postings = await storage.getPaymentPostingsByPatient(patientId);
+      res.json(postings);
+    } catch (error) {
+      console.error("Error fetching payment postings:", error);
+      res.status(500).json({ message: "Failed to fetch EOBs" });
     }
   });
 

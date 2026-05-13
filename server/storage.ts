@@ -550,6 +550,9 @@ export interface IStorage {
 
   // Surgery Reports
   getSurgeryReportsByPatient(patientId: number): Promise<SurgeryReport[]>;
+
+  // Payment Postings by Patient (EOB)
+  getPaymentPostingsByPatient(patientId: number): Promise<PaymentPosting[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1914,6 +1917,15 @@ export class DatabaseStorage implements IStorage {
       .from(surgeryReports)
       .where(eq(surgeryReports.patientId, patientId))
       .orderBy(desc(surgeryReports.createdAt));
+  }
+
+  // ============ PAYMENT POSTINGS BY PATIENT (EOB) ============
+  async getPaymentPostingsByPatient(patientId: number): Promise<PaymentPosting[]> {
+    return db
+      .select()
+      .from(paymentPostings)
+      .where(eq(paymentPostings.patientId, patientId))
+      .orderBy(desc(paymentPostings.createdAt));
   }
 }
 

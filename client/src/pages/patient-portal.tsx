@@ -13,6 +13,7 @@ import {
   CheckCircle, Clock, AlertCircle, Search,
   Shield, Phone, Mail, Eye, Send, CreditCard,
   MessageSquare, Stethoscope, CalendarPlus, Heart,
+  Edit, Receipt, Download, MapPin,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Patient {
   id: number; firstName: string; lastName: string;
   dateOfBirth: string | null; phone: string | null; email: string | null;
-  address: string | null; city: string | null; state: string | null;
+  address: string | null; city: string | null; state: string | null; zipCode: string | null;
 }
 interface Appointment {
   id: number; patientId: number; title: string; appointmentType: string;
@@ -31,11 +32,18 @@ interface TreatmentPlan {
   id: number; patientId: number; planName: string; status: string;
   totalCost: string | null; insuranceCoverage: string | null; patientResponsibility: string | null;
 }
+interface BillingClaim {
+  id: number; patientId: number; claimNumber: string | null; claimStatus: string;
+  serviceDate: string; procedureCode: string; description: string | null;
+  chargedAmount: string; allowedAmount: string | null; paidAmount: string | null;
+  patientPortion: string | null; denialReason: string | null; paidDate: string | null;
+}
 interface ConsentForm {
   id: number; patientId: number; formType: string; status: string; createdAt: string;
 }
 interface Document {
-  id: number; patientId: number; documentType: string; fileName: string; createdAt: string;
+  id: number; patientId: number; documentType: string; fileName: string;
+  fileUrl: string; createdAt: string;
 }
 interface SurgeryReport {
   id: number; patientId: number; surgeryDate: string; surgeryType: string;
@@ -45,6 +53,12 @@ interface SurgeryReport {
 interface PortalAppointmentRequest {
   id: number; patientId: number; preferredDate: string | null; preferredTime: string | null;
   reason: string; appointmentType: string | null; status: string; createdAt: string;
+}
+interface PaymentPosting {
+  id: number; patientId: number | null; claimId: number | null;
+  paymentDate: string; payerName: string; checkNumber: string | null;
+  paymentAmount: string; adjustmentAmount: string | null;
+  patientResponsibility: string | null; postingStatus: string; createdAt: string;
 }
 
 const APPT_STATUS_CFG: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -62,6 +76,9 @@ const REQUEST_STATUS_CFG: Record<string, { label: string; cls: string }> = {
   cancelled: { label: "Cancelled", cls: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-400/30" },
 };
 
+const fmt$ = (v: string | null | undefined) =>
+  v ? `$${parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—";
+
 // ─── Patient Selector ─────────────────────────────────────────────────────
 function PatientSelector({ patients, selected, onSelect }: {
   patients: Patient[]; selected: Patient | null; onSelect: (p: Patient) => void;
@@ -70,7 +87,6 @@ function PatientSelector({ patients, selected, onSelect }: {
   const filtered = patients.filter(p =>
     `${p.firstName} ${p.lastName}`.toLowerCase().includes(search.toLowerCase())
   );
-
   return (
     <div className="space-y-3">
       <div className="relative">
@@ -103,6 +119,222 @@ function PatientSelector({ patients, selected, onSelect }: {
           <p className="col-span-3 text-center py-6 text-sm text-muted-foreground">No patients found.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── My Info Tab (Contact Update) ─────────────────────────────────────────
+function MyInfoTab({ patient, onAuditLog }: { patient: Patient; onAuditLog: (tab: string) => void }) {
+  const { toast } = useToast();
+  const [form, setForm] = useState({
+    phone: patient.phone || "",
+    email: patient.email || "",
+    address: patient.address || "",
+    city: patient.city || "",
+    state: patient.state || "",
+    zipCode: patient.zipCode || "",
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", `/api/patients/${patient.id}`, form),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      onAuditLog("my_info_update");
+      toast({ title: "Contact info updated", description: "Your information has been saved." });
+    },
+    onError: () => toast({ title: "Update failed", variant: "destructive" }),
+  });
+
+  const field = (label: string, key: keyof typeof form, type = "text", testId = "") => (
+    <div className="space-y-1.5">
+      <Label htmlFor={key}>{label}</Label>
+      <Input
+        id={key}
+        type={type}
+        value={form[key]}
+        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+        data-testid={testId || `input-${key}`}
+      />
+    </div>
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Edit className="h-4 w-4 text-primary" /> My Contact Information
+        </CardTitle>
+        <CardDescription>Keep your contact details up to date for appointment reminders and billing</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {field("Phone Number", "phone", "tel", "input-portal-phone")}
+          {field("Email Address", "email", "email", "input-portal-email")}
+        </div>
+        {field("Street Address", "address", "text", "input-portal-address")}
+        <div className="grid gap-4 sm:grid-cols-3">
+          {field("City", "city")}
+          {field("State", "state")}
+          {field("ZIP Code", "zipCode")}
+        </div>
+        <div className="pt-1">
+          <Button
+            onClick={() => updateMutation.mutate()}
+            disabled={updateMutation.isPending}
+            data-testid="button-save-contact"
+          >
+            {updateMutation.isPending ? "Saving…" : "Save Changes"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── EOB / Explanation of Benefits Tab ────────────────────────────────────
+function EobTab({ patient, onAuditLog }: { patient: Patient; onAuditLog: (tab: string) => void }) {
+  const { data: claims = [], isLoading: claimsLoading } = useQuery<BillingClaim[]>({
+    queryKey: ["/api/billing/claims", { patientId: patient.id }],
+    queryFn: () => fetch(`/api/billing/claims?patientId=${patient.id}`, { credentials: "include" }).then(r => r.json()),
+  });
+  const { data: postings = [], isLoading: postingsLoading } = useQuery<PaymentPosting[]>({
+    queryKey: ["/api/payment-postings/patient", patient.id],
+    queryFn: () => fetch(`/api/payment-postings/patient/${patient.id}`, { credentials: "include" }).then(r => r.json()),
+  });
+
+  const isLoading = claimsLoading || postingsLoading;
+  const paidClaims = claims.filter(c => c.claimStatus === "paid" || c.paidAmount);
+
+  return (
+    <div className="space-y-4">
+      {/* Summary */}
+      {postings.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-primary" /> Insurance Payment Explanations (EOB)
+            </CardTitle>
+            <CardDescription>Payments received from your insurance carrier</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {postings.map(p => (
+              <div key={p.id} className="rounded-lg border p-4" data-testid={`eob-posting-${p.id}`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="font-semibold">{p.payerName}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Payment Date: {new Date(p.paymentDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                      {p.checkNumber && ` · Check #${p.checkNumber}`}
+                    </div>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={`capitalize text-xs ${
+                      p.postingStatus === "posted" ? "border-emerald-400/40 text-emerald-600" : "border-amber-400/40 text-amber-600"
+                    }`}
+                  >
+                    {p.postingStatus}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Insurance Paid</div>
+                    <div className="font-bold text-emerald-600 dark:text-emerald-400">{fmt$(p.paymentAmount)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Adjustment</div>
+                    <div className="font-medium">{fmt$(p.adjustmentAmount)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Patient Portion</div>
+                    <div className={`font-bold ${p.patientResponsibility && parseFloat(p.patientResponsibility) > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+                      {fmt$(p.patientResponsibility)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Claim-level EOB data */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-primary" /> Claim Detail
+          </CardTitle>
+          <CardDescription>Breakdown of each service claim and insurance response</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Loading claims…</p>
+          ) : claims.length === 0 ? (
+            <div className="text-center py-8">
+              <Receipt className="mx-auto h-9 w-9 text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground">No claims on file yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {claims.map(c => (
+                <div
+                  key={c.id}
+                  className="rounded-lg border p-3"
+                  data-testid={`eob-claim-${c.id}`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="font-medium text-sm">
+                        {c.procedureCode}{c.description ? ` — ${c.description}` : ""}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Service: {new Date(c.serviceDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        {c.claimNumber && ` · Claim #${c.claimNumber}`}
+                      </div>
+                    </div>
+                    <Badge
+                      className={`capitalize text-[10px] border ${
+                        c.claimStatus === "paid" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-400/30" :
+                        c.claimStatus === "denied" ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-400/30" :
+                        c.claimStatus === "submitted" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-400/30" :
+                        "bg-muted text-muted-foreground border-border"
+                      }`}
+                    >
+                      {c.claimStatus}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 text-xs">
+                    <div>
+                      <div className="text-muted-foreground">Charged</div>
+                      <div className="font-semibold">{fmt$(c.chargedAmount)}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Allowed</div>
+                      <div className="font-semibold">{fmt$(c.allowedAmount)}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Insurance Paid</div>
+                      <div className="font-semibold text-emerald-600 dark:text-emerald-400">{fmt$(c.paidAmount)}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Patient Owes</div>
+                      <div className={`font-semibold ${c.patientPortion && parseFloat(c.patientPortion) > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+                        {fmt$(c.patientPortion)}
+                      </div>
+                    </div>
+                  </div>
+                  {c.denialReason && (
+                    <div className="mt-2 flex items-start gap-1.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded p-2">
+                      <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span><strong>Denial reason:</strong> {c.denialReason}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -249,12 +481,6 @@ function MessageTab({ patient }: { patient: Patient }) {
   const { toast } = useToast();
   const [message, setMessage] = useState("");
 
-  const { data: threads = [] } = useQuery<Array<{ patientId: number; patientName: string; lastBody: string; lastCreatedAt: string; unreadCount: number }>>({
-    queryKey: ["/api/patient-messages/threads"],
-  });
-
-  const patientThread = threads.find(t => t.patientId === patient.id);
-
   const { data: messages = [] } = useQuery<Array<{ id: number; body: string; direction: string; createdAt: string; isRead: boolean }>>({
     queryKey: ["/api/patient-messages", patient.id],
     queryFn: () => fetch(`/api/patient-messages?patientId=${patient.id}`, { credentials: "include" }).then(r => r.json()),
@@ -278,16 +504,6 @@ function MessageTab({ patient }: { patient: Patient }) {
 
   return (
     <div className="space-y-4">
-      {patientThread && (
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border bg-primary/5 text-sm">
-          <MessageSquare className="h-4 w-4 text-primary" />
-          <span>Last message: <strong>{new Date(patientThread.lastCreatedAt).toLocaleDateString()}</strong></span>
-          {patientThread.unreadCount > 0 && (
-            <Badge className="bg-primary text-primary-foreground text-[10px] ml-auto">{patientThread.unreadCount} unread</Badge>
-          )}
-        </div>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -349,7 +565,6 @@ function PostOpTab({ patient }: { patient: Patient }) {
     queryKey: ["/api/surgery-reports/patient", patient.id],
     queryFn: () => fetch(`/api/surgery-reports/patient/${patient.id}`, { credentials: "include" }).then(r => r.json()),
   });
-
   const withInstructions = reports.filter(r => r.postOpInstructions || r.followUpPlan);
 
   return (
@@ -368,8 +583,7 @@ function PostOpTab({ patient }: { patient: Patient }) {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Stethoscope className="h-4 w-4 text-primary" />
-                  {r.surgeryType}
+                  <Stethoscope className="h-4 w-4 text-primary" />{r.surgeryType}
                 </CardTitle>
                 <CardDescription>
                   {new Date(r.surgeryDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
@@ -474,7 +688,10 @@ function BillingTab({ plans }: { plans: TreatmentPlan[] }) {
 }
 
 // ─── Portal View ───────────────────────────────────────────────────────────
-function PortalView({ patient, onLogAccess }: { patient: Patient; onLogAccess: (id: number) => void }) {
+function PortalView({ patient, onAuditLog }: {
+  patient: Patient;
+  onAuditLog: (tab: string) => void;
+}) {
   const { data: allAppts = [] } = useQuery<Appointment[]>({ queryKey: ["/api/appointments"] });
   const { data: allPlans = [] } = useQuery<TreatmentPlan[]>({ queryKey: ["/api/treatment-plans"] });
   const { data: allConsent = [] } = useQuery<ConsentForm[]>({ queryKey: ["/api/consent-forms"] });
@@ -506,7 +723,11 @@ function PortalView({ patient, onLogAccess }: { patient: Patient; onLogAccess: (
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
                 {patient.phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{patient.phone}</span>}
                 {patient.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{patient.email}</span>}
-                {patient.dateOfBirth && <span>DOB: {patient.dateOfBirth}</span>}
+                {(patient.city || patient.state) && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />{[patient.city, patient.state].filter(Boolean).join(", ")}
+                  </span>
+                )}
               </div>
             </div>
             <Badge variant="outline" className="text-xs border-primary/30 text-primary gap-1 shrink-0">
@@ -537,15 +758,17 @@ function PortalView({ patient, onLogAccess }: { patient: Patient; onLogAccess: (
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="appointments">
+      <Tabs defaultValue="appointments" onValueChange={tab => onAuditLog(tab)}>
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="appointments">Appointments ({appts.length})</TabsTrigger>
           <TabsTrigger value="request">Request Appt.</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="eob">EOB / Payments</TabsTrigger>
           <TabsTrigger value="post-op">Post-Op Care</TabsTrigger>
           <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="documents">Documents ({docs.length})</TabsTrigger>
           <TabsTrigger value="consent">Consent Forms ({consent.length})</TabsTrigger>
+          <TabsTrigger value="my-info">My Info</TabsTrigger>
         </TabsList>
 
         {/* Appointments */}
@@ -602,27 +825,27 @@ function PortalView({ patient, onLogAccess }: { patient: Patient; onLogAccess: (
           )}
         </TabsContent>
 
-        {/* Request Appointment */}
         <TabsContent value="request" className="mt-3">
           <AppointmentRequestTab patient={patient} />
         </TabsContent>
 
-        {/* Billing */}
         <TabsContent value="billing" className="mt-3">
           <BillingTab plans={plans} />
         </TabsContent>
 
-        {/* Post-Op */}
+        <TabsContent value="eob" className="mt-3">
+          <EobTab patient={patient} onAuditLog={onAuditLog} />
+        </TabsContent>
+
         <TabsContent value="post-op" className="mt-3">
           <PostOpTab patient={patient} />
         </TabsContent>
 
-        {/* Messages */}
         <TabsContent value="messages" className="mt-3">
           <MessageTab patient={patient} />
         </TabsContent>
 
-        {/* Documents */}
+        {/* Documents — with download/open action */}
         <TabsContent value="documents" className="mt-3 space-y-2">
           {docs.length === 0 ? (
             <p className="text-sm text-muted-foreground italic py-4 text-center">No documents on file.</p>
@@ -633,9 +856,27 @@ function PortalView({ patient, onLogAccess }: { patient: Patient; onLogAccess: (
                 <div className="font-medium text-sm truncate">{d.fileName}</div>
                 <div className="text-xs text-muted-foreground capitalize">{d.documentType.replace(/_/g, " ")} · {new Date(d.createdAt).toLocaleDateString()}</div>
               </div>
-              <button className="text-muted-foreground hover:text-primary" data-testid={`btn-view-doc-${d.id}`}>
-                <Eye className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  className="text-muted-foreground hover:text-primary p-1 rounded"
+                  title="View document"
+                  onClick={() => window.open(d.fileUrl, "_blank", "noopener,noreferrer")}
+                  data-testid={`btn-view-doc-${d.id}`}
+                >
+                  <Eye className="h-4 w-4" />
+                </button>
+                <a
+                  href={d.fileUrl}
+                  download={d.fileName}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-primary p-1 rounded"
+                  title="Download document"
+                  data-testid={`btn-download-doc-${d.id}`}
+                >
+                  <Download className="h-4 w-4" />
+                </a>
+              </div>
             </div>
           ))}
         </TabsContent>
@@ -657,6 +898,11 @@ function PortalView({ patient, onLogAccess }: { patient: Patient; onLogAccess: (
             </div>
           ))}
         </TabsContent>
+
+        {/* My Info */}
+        <TabsContent value="my-info" className="mt-3">
+          <MyInfoTab patient={patient} onAuditLog={onAuditLog} />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -669,13 +915,18 @@ export default function PatientPortalPage() {
   const { data: patients = [], isLoading } = useQuery<Patient[]>({ queryKey: ["/api/patients"] });
 
   const logAccessMutation = useMutation({
-    mutationFn: (patientId: number) =>
-      apiRequest("POST", `/api/patients/${patientId}/portal-access-log`, {}),
+    mutationFn: ({ patientId, tab }: { patientId: number; tab: string }) =>
+      apiRequest("POST", `/api/patients/${patientId}/portal-access-log`, { tab }),
   });
 
   function handleSelectPatient(p: Patient) {
     setSelectedPatient(p);
-    logAccessMutation.mutate(p.id);
+    logAccessMutation.mutate({ patientId: p.id, tab: "portal_open" });
+  }
+
+  function handleAuditLog(tab: string) {
+    if (!selectedPatient) return;
+    logAccessMutation.mutate({ patientId: selectedPatient.id, tab });
   }
 
   return (
@@ -683,7 +934,7 @@ export default function PatientPortalPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Patient Portal</h1>
         <p className="text-sm text-muted-foreground">
-          Full patient view — appointments, treatment plans, documents, post-op care, messaging, and billing
+          Full patient view — appointments, EOBs, post-op care, messaging, document download, and contact management
         </p>
       </div>
 
@@ -707,7 +958,7 @@ export default function PatientPortalPage() {
           <Button variant="outline" size="sm" onClick={() => setSelectedPatient(null)} data-testid="button-back">
             ← All Patients
           </Button>
-          <PortalView patient={selectedPatient} onLogAccess={logAccessMutation.mutate} />
+          <PortalView patient={selectedPatient} onAuditLog={handleAuditLog} />
         </div>
       )}
     </div>
