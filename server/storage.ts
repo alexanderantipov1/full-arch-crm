@@ -489,6 +489,7 @@ export interface IStorage {
 
   // Patient Messaging
   getPatientMessages(patientId?: number): Promise<PatientMessage[]>;
+  getPatientMessageThreads(): Promise<Array<{ patientId: number; patientName: string; lastBody: string; lastCreatedAt: Date; unreadCount: number }>>;
   createPatientMessage(data: InsertPatientMessage): Promise<PatientMessage>;
   markPatientMessageRead(id: number): Promise<PatientMessage | undefined>;
   getPatientUnreadCount(): Promise<number>;
@@ -1651,6 +1652,25 @@ export class DatabaseStorage implements IStorage {
   async getPatientMessages(patientId?: number): Promise<PatientMessage[]> {
     if (patientId) return db.select().from(patientMessages).where(eq(patientMessages.patientId, patientId)).orderBy(patientMessages.createdAt);
     return db.select().from(patientMessages).orderBy(desc(patientMessages.createdAt));
+  }
+
+  async getPatientMessageThreads(): Promise<Array<{ patientId: number; patientName: string; lastBody: string; lastCreatedAt: Date; unreadCount: number }>> {
+    const allMsgs = await db.select().from(patientMessages).orderBy(desc(patientMessages.createdAt));
+    const byPatient = new Map<number, typeof allMsgs>();
+    for (const m of allMsgs) {
+      if (!byPatient.has(m.patientId)) byPatient.set(m.patientId, []);
+      byPatient.get(m.patientId)!.push(m);
+    }
+    const patientIds = [...byPatient.keys()];
+    if (patientIds.length === 0) return [];
+    const pts = await db.select().from(patients).where(inArray(patients.id, patientIds));
+    const ptMap = Object.fromEntries(pts.map(p => [p.id, `${p.firstName} ${p.lastName}`]));
+    return patientIds.map(pid => {
+      const msgs = byPatient.get(pid)!;
+      const last = msgs[0];
+      const unread = msgs.filter(m => m.direction === "inbound" && m.status !== "read").length;
+      return { patientId: pid, patientName: ptMap[pid] || "Unknown", lastBody: last.body, lastCreatedAt: last.createdAt, unreadCount: unread };
+    }).sort((a, b) => b.lastCreatedAt.getTime() - a.lastCreatedAt.getTime());
   }
 
   async createPatientMessage(data: InsertPatientMessage): Promise<PatientMessage> {

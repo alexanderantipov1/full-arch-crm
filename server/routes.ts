@@ -2964,9 +2964,25 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     try { res.json({ count: await storage.getPatientUnreadCount() }); } catch { res.json({ count: 0 }); }
   });
 
+  app.get("/api/patient-messages/threads", isAuthenticated, async (req, res) => {
+    try { res.json(await storage.getPatientMessageThreads()); } catch { res.json([]); }
+  });
+
   app.get("/api/patient-messages", isAuthenticated, async (req, res) => {
     try {
       const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
+      if (patientId) {
+        const userId = getSessionUserId(req);
+        await storage.createAuditLog({
+          userId: userId || "system",
+          action: "view",
+          resourceType: "patient_message_thread",
+          resourceId: String(patientId),
+          patientId,
+          phiAccessed: true,
+          details: { action: "thread_opened" },
+        });
+      }
       res.json(await storage.getPatientMessages(patientId));
     } catch { res.json([]); }
   });
