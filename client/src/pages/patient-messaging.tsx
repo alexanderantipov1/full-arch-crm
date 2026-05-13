@@ -84,10 +84,13 @@ export default function PatientMessagingPage() {
     const pname = params.get("patientName");
     const compose = params.get("compose");
     if (pid && pname) {
-      setSelectedPatientId(parseInt(pid));
+      const patientId = parseInt(pid);
+      setSelectedPatientId(patientId);
       setSelectedPatientName(decodeURIComponent(pname));
       if (compose === "true") setComposing(true);
+      threadOpenMut.mutate(patientId);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
   const { data: threads = [], isLoading: threadsLoading } = useQuery<ThreadSummary[]>({
