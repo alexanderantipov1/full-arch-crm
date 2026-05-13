@@ -1430,8 +1430,28 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     }
   });
 
+  interface EligibilityAIResponse {
+    eligibilityStatus?: string; planName?: string; planType?: string; groupNumber?: string;
+    subscriberId?: string; subscriberName?: string; effectiveDate?: string;
+    terminationDate?: string | null; networkStatus?: string; deductibleIndividual?: number;
+    deductibleMet?: number; deductibleRemaining?: number; deductibleFamily?: number;
+    outOfPocketMax?: number; oopMet?: number; oopRemaining?: number; annualMaximum?: number;
+    benefitsRemaining?: number; copayPreventive?: number; copayBasic?: number;
+    copayMajor?: number; copayOrtho?: number; coveredServices?: string[];
+    waitingPeriods?: { major?: string | null; orthodontics?: string | null };
+    priorAuthRequired?: string[]; notes?: string;
+  }
+
+  interface BatchEligibilityResult {
+    patientId: number;
+    status: "ok" | "error";
+    eligibilityStatus?: string;
+    cached?: boolean;
+    message?: string;
+  }
+
   // Shared AI eligibility check logic
-  async function runEligibilityCheck(patientId: number, forceRefresh = false): Promise<any> {
+  async function runEligibilityCheck(patientId: number, forceRefresh = false): Promise<Record<string, unknown> & { cached: boolean }> {
     const patient = await storage.getPatient(patientId);
     if (!patient) throw new Error("Patient not found");
 
@@ -1489,12 +1509,12 @@ Return this exact JSON shape:
       800
     );
 
-    let parsed: any = {};
+    let parsed: EligibilityAIResponse = {};
     try {
-      parsed = JSON.parse(aiResponse);
+      parsed = JSON.parse(aiResponse) as EligibilityAIResponse;
     } catch {
       const m = aiResponse.match(/\{[\s\S]*\}/);
-      if (m) parsed = JSON.parse(m[0]);
+      if (m) parsed = JSON.parse(m[0]) as EligibilityAIResponse;
     }
 
     const check = await storage.createEligibilityCheck({
@@ -1549,13 +1569,13 @@ Return this exact JSON shape:
       const allAppts = await storage.getAppointments({ startDate: tStart, endDate: tEnd });
       const uniquePatientIds = [...new Set(allAppts.map(a => a.patientId))];
 
-      const results: any[] = [];
+      const results: BatchEligibilityResult[] = [];
       for (const pid of uniquePatientIds) {
         try {
           const r = await runEligibilityCheck(pid, false);
-          results.push({ patientId: pid, status: "ok", eligibilityStatus: r.eligibilityStatus, cached: r.cached });
-        } catch (e: any) {
-          results.push({ patientId: pid, status: "error", message: e.message });
+          results.push({ patientId: pid, status: "ok", eligibilityStatus: String(r.eligibilityStatus ?? ""), cached: Boolean(r.cached) });
+        } catch (e: unknown) {
+          results.push({ patientId: pid, status: "error", message: e instanceof Error ? e.message : "Unknown error" });
         }
       }
       res.json({ checked: results.length, results });

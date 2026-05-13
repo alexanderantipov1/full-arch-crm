@@ -19,6 +19,13 @@ import {
 
 interface Patient { id: number; firstName: string; lastName: string; dateOfBirth: string; }
 
+interface InsuranceRecord {
+  id: number; patientId: number; providerName: string | null; insuranceType: string | null;
+  policyNumber: string | null; groupNumber: string | null; subscriberName: string | null;
+  effectiveDate: string | null; terminationDate: string | null;
+  annualMaximum: string | null; deductible: string | null; remainingBenefit: string | null;
+}
+
 interface CoverageDetails {
   planName?: string; planType?: string; groupNumber?: string; subscriberId?: string;
   subscriberName?: string; effectiveDate?: string; terminationDate?: string | null;
@@ -210,6 +217,13 @@ export default function InsuranceVerificationPage() {
     enabled: !!selectedPatient,
   });
 
+  const { data: patientInsurance } = useQuery<InsuranceRecord[]>({
+    queryKey: ["/api/patients", selectedPatient, "insurance"],
+    queryFn: () => fetch(`/api/patients/${selectedPatient}/insurance`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!selectedPatient,
+  });
+  const primaryInsurance = patientInsurance?.[0];
+
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/eligibility/stats"] });
     queryClient.invalidateQueries({ queryKey: ["/api/eligibility/recent"] });
@@ -394,6 +408,72 @@ export default function InsuranceVerificationPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* On-file insurance summary — shown before/independent of running a check */}
+          {selectedPatient && primaryInsurance && (
+            <Card data-testid="card-insurance-on-file">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />Insurance On File
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Current coverage record — verify to get real-time status
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Provider</span>
+                  <span className="font-medium">{primaryInsurance.providerName ?? "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Type</span>
+                  <span className="font-medium uppercase">{primaryInsurance.insuranceType ?? "—"}</span>
+                </div>
+                {primaryInsurance.subscriberName && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subscriber</span>
+                    <span className="font-medium">{primaryInsurance.subscriberName}</span>
+                  </div>
+                )}
+                {primaryInsurance.policyNumber && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Policy #</span>
+                    <span className="font-medium font-mono">{primaryInsurance.policyNumber}</span>
+                  </div>
+                )}
+                {primaryInsurance.groupNumber && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Group #</span>
+                    <span className="font-medium font-mono">{primaryInsurance.groupNumber}</span>
+                  </div>
+                )}
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Effective</span>
+                  <span className="font-medium">{fmtDate(primaryInsurance.effectiveDate)}</span>
+                </div>
+                {primaryInsurance.terminationDate && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Terminates</span>
+                    <span className="font-medium text-red-600">{fmtDate(primaryInsurance.terminationDate)}</span>
+                  </div>
+                )}
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Annual Max</span>
+                  <span className="font-medium">{fmt$(primaryInsurance.annualMaximum)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Deductible</span>
+                  <span className="font-medium">{fmt$(primaryInsurance.deductible)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Benefits Remaining</span>
+                  <span className="font-medium text-green-600">{fmt$(primaryInsurance.remainingBenefit)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Patient eligibility history */}
           {selectedPatient && (

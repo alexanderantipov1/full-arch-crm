@@ -38,7 +38,7 @@ import type { Patient, MedicalHistory, DentalInfo, Insurance, TreatmentPlan, App
 
 interface EligibilityCheck {
   id: number; patientId: number; checkDate: string; eligibilityStatus: string | null;
-  benefitsRemaining: string | null; coverageDetails: any;
+  benefitsRemaining: string | null; coverageDetails: Record<string, unknown> | null;
 }
 
 interface PatientDetailData extends Patient {
@@ -125,27 +125,36 @@ export default function PatientDetailPage() {
             Dental Chart
           </Link>
         </Button>
-        {/* Eligibility badge */}
+        {/* Eligibility badge — Active / Inactive / Unknown */}
         <Link href={`/eligibility?patientId=${patient.id}`}>
           <Badge
             className={`cursor-pointer gap-1 px-2.5 py-1 text-xs ${
               latestEligibility?.eligibilityStatus === "active"
                 ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50"
-                : latestEligibility
+                : latestEligibility?.eligibilityStatus === "inactive" || latestEligibility?.eligibilityStatus === "terminated"
                 ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200"
+                : latestEligibility
+                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 hover:bg-yellow-200"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
             data-testid={`badge-eligibility-${patient.id}`}
           >
             {latestEligibility?.eligibilityStatus === "active" ? (
               <CheckCircle2 className="h-3 w-3" />
-            ) : latestEligibility ? (
+            ) : latestEligibility?.eligibilityStatus === "inactive" || latestEligibility?.eligibilityStatus === "terminated" ? (
               <XCircle className="h-3 w-3" />
+            ) : latestEligibility ? (
+              <AlertTriangle className="h-3 w-3" />
             ) : (
               <Shield className="h-3 w-3" />
             )}
             {latestEligibility
-              ? `${latestEligibility.eligibilityStatus === "active" ? "Eligible" : "Ineligible"} · ${new Date(latestEligibility.checkDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+              ? (() => {
+                  const s = latestEligibility.eligibilityStatus;
+                  const label = s === "active" ? "Active" : s === "inactive" || s === "terminated" ? "Inactive" : "Unknown";
+                  const date = new Date(latestEligibility.checkDate).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                  return `${label} · ${date}`;
+                })()
               : "Check Eligibility"}
           </Badge>
         </Link>
