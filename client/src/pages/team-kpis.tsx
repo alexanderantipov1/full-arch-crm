@@ -9,7 +9,9 @@ import {
   ChevronRight, AlertTriangle, CheckCircle, Target, Phone,
   DollarSign, Clock, BarChart3, Zap, Brain, MessageSquare,
   FileText, Shield, Building2, Crown, Stethoscope, Activity,
+  Download,
 } from "lucide-react";
+import { exportToPDF } from "@/lib/export";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface KPI {
@@ -604,6 +606,52 @@ export default function TeamKPIsPage() {
           <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Team KPIs & Org Structure</h1>
           <p className="text-sm text-muted-foreground">Performance scorecards for every team member — from C-suite to AI agents</p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const sorted = [...TEAM].sort((a, b) => b.score - a.score);
+            exportToPDF(
+              [
+                {
+                  type: "title",
+                  title: "Team Performance Scorecard",
+                  subtitle: `${new Date().toLocaleDateString()} — Golden State Dental`,
+                },
+                {
+                  type: "kpis",
+                  heading: "Team Overview",
+                  items: [
+                    { label: "Team Members", value: String(TEAM.length) },
+                    { label: "Avg Team Score", value: `${totalScore}/100` },
+                    { label: "Exceeding KPIs", value: `${exceeding} members` },
+                    { label: "At Risk", value: `${atRisk} members` },
+                    { label: "AI Agents", value: String(aiAgents.length) },
+                    { label: "Avg AI Score", value: `${avgAiScore}/100` },
+                  ],
+                },
+                {
+                  type: "table",
+                  heading: "Performance Leaderboard",
+                  columns: ["Rank", "Name", "Title", "Department", "Score", "Status"],
+                  rows: sorted.map((m, i) => [
+                    i + 1,
+                    m.name,
+                    m.title,
+                    m.department,
+                    `${m.score}/100`,
+                    STATUS_CFG[m.status].label,
+                  ]),
+                },
+              ],
+              "TeamKPIs",
+            );
+          }}
+          data-testid="button-export-kpis-pdf"
+        >
+          <Download className="mr-2 h-3.5 w-3.5" />
+          Export PDF
+        </Button>
       </div>
 
       {/* Summary KPIs */}

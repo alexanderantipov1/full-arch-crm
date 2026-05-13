@@ -12,6 +12,7 @@ import {
   FileText, Download, PieChart, AlertTriangle, Target, Lightbulb,
   Activity, Bot, Brain, Award, CheckCircle, ArrowUpRight, ArrowDownRight,
 } from "lucide-react";
+import { exportToCSV, exportToPDF } from "@/lib/export";
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import type { Patient, BillingClaim, TreatmentPlan, PaymentPosting, Appointment } from "@shared/schema";
 
@@ -524,11 +525,84 @@ function PredictiveTab() {
 
 // ─── Main Hub ─────────────────────────────────────────────────────────────────
 export default function AnalyticsHubPage() {
+  const { data: analytics } = useQuery<{
+    summary: { totalBilled: number; totalCollected: number; totalPending: number; collectionRate: number; denialRate: number; avgDaysToPayment: number };
+    claims: { total: number; paid: number; denied: number; pending: number };
+    trends: { monthlyCollections: number[]; monthlyDenials: number[]; months: string[] };
+  }>({ queryKey: ["/api/analytics/revenue-cycle"] });
+
+  function handleExportCSV() {
+    const a = analytics;
+    const rows = a
+      ? a.trends.months.map((month, i) => ({
+          Month: month,
+          "Collections ($)": a.trends.monthlyCollections[i] ?? 0,
+          "Denials ($)": a.trends.monthlyDenials[i] ?? 0,
+        }))
+      : [{ Month: "—", "Collections ($)": 0, "Denials ($)": 0 }];
+    exportToCSV(rows, "RevenueCycle");
+  }
+
+  function handleExportPDF() {
+    const a = analytics;
+    exportToPDF(
+      [
+        { type: "title", title: "Analytics & Revenue Cycle Report", subtitle: `Generated ${new Date().toLocaleDateString()} — Golden State Dental` },
+        {
+          type: "kpis",
+          heading: "Revenue Summary",
+          items: [
+            { label: "Total Billed", value: a ? fmt$(a.summary.totalBilled) : "—" },
+            { label: "Total Collected", value: a ? fmt$(a.summary.totalCollected) : "—" },
+            { label: "Pending", value: a ? fmt$(a.summary.totalPending) : "—" },
+            { label: "Collection Rate", value: a ? fmtPct(a.summary.collectionRate) : "—" },
+            { label: "Denial Rate", value: a ? fmtPct(a.summary.denialRate) : "—" },
+            { label: "Avg Days to Pay", value: a ? `${a.summary.avgDaysToPayment}d` : "—" },
+          ],
+        },
+        {
+          type: "table",
+          heading: "Monthly Trends",
+          columns: ["Month", "Collections", "Denials"],
+          rows: a
+            ? a.trends.months.map((month, i) => [month, fmt$(a.trends.monthlyCollections[i] ?? 0), fmt$(a.trends.monthlyDenials[i] ?? 0)])
+            : [["No data", "—", "—"]],
+        },
+        {
+          type: "table",
+          heading: "Claims Breakdown",
+          columns: ["Category", "Count"],
+          rows: a
+            ? [
+                ["Total Claims", a.claims.total],
+                ["Paid / Approved", a.claims.paid],
+                ["Denied", a.claims.denied],
+                ["Pending Review", a.claims.pending],
+              ]
+            : [["No data", "—"]],
+        },
+      ],
+      "AnalyticsReport",
+    );
+  }
+
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Analytics & Intelligence Hub</h1>
-        <p className="text-sm text-muted-foreground">Revenue cycle, reports, business intelligence, provider performance, and predictive analytics — all in one place</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Analytics & Intelligence Hub</h1>
+          <p className="text-sm text-muted-foreground">Revenue cycle, reports, business intelligence, provider performance, and predictive analytics — all in one place</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportCSV} data-testid="button-export-csv">
+            <Download className="mr-2 h-3.5 w-3.5" />
+            Export CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportPDF} data-testid="button-export-pdf">
+            <Download className="mr-2 h-3.5 w-3.5" />
+            Export PDF
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="revenue">

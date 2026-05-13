@@ -35,7 +35,9 @@ import {
   ArrowRight,
   Calculator,
   Send,
+  Download,
 } from "lucide-react";
+import { exportToPDF } from "@/lib/export";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -199,6 +201,47 @@ export default function TreatmentPlansPage() {
           </p>
         </div>
         <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={() => {
+              exportToPDF(
+                [
+                  {
+                    type: "title",
+                    title: "Treatment Plans Summary",
+                    subtitle: `${new Date().toLocaleDateString()} — Golden State Dental`,
+                  },
+                  {
+                    type: "kpis",
+                    heading: "Overview",
+                    items: [
+                      { label: "Total Plans", value: String(plans?.length ?? 0) },
+                      { label: "Pending Auth", value: String(plans?.filter((p) => p.priorAuthStatus === "pending").length ?? 0) },
+                      { label: "Total Value", value: plans ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(plans.reduce((s, p) => s + (Number(p.totalCost) || 0), 0)) : "$0" },
+                    ],
+                  },
+                  {
+                    type: "table",
+                    heading: "Treatment Plans",
+                    columns: ["Plan Name", "Diagnosis", "ICD-10", "Status", "Total Cost ($)", "Patient Responsibility ($)"],
+                    rows: (filteredPlans ?? []).map((p) => [
+                      p.planName,
+                      p.diagnosis ?? "",
+                      p.diagnosisCode ?? "",
+                      p.status,
+                      p.totalCost ?? "",
+                      p.patientResponsibility ?? "",
+                    ]),
+                  },
+                ],
+                "TreatmentPlans",
+              );
+            }}
+            data-testid="button-export-plans-pdf"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export PDF
+          </Button>
           <Dialog open={showPackages} onOpenChange={setShowPackages}>
             <DialogTrigger asChild>
               <Button variant="outline" data-testid="button-view-packages">

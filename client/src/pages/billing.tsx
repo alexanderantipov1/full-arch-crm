@@ -45,7 +45,9 @@ import {
   Wrench,
   ChevronRight,
   Info,
+  Download,
 } from "lucide-react";
+import { exportToCSV } from "@/lib/export";
 import { format } from "date-fns";
 import type { BillingClaim, TreatmentPlan, PriorAuthorization, ClaimPreflightResult } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -808,6 +810,30 @@ export default function BillingPage() {
                     data-testid="input-search-claims"
                   />
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const rows = (filteredClaims ?? []).map((c) => ({
+                      "Claim #": c.id,
+                      "Procedure Code": c.procedureCode ?? "",
+                      Description: c.description ?? "",
+                      "CDT Code": c.cdtCode ?? "",
+                      "ICD-10": c.icd10Code ?? "",
+                      "Service Date": c.serviceDate ? new Date(c.serviceDate).toLocaleDateString() : "",
+                      "Billed ($)": c.billedAmount ?? "",
+                      "Allowed ($)": c.allowedAmount ?? "",
+                      "Paid ($)": c.paidAmount ?? "",
+                      Status: c.claimStatus ?? "",
+                      "Submitted Date": c.submittedDate ? new Date(c.submittedDate).toLocaleDateString() : "",
+                    }));
+                    exportToCSV(rows, "Claims");
+                  }}
+                  data-testid="button-export-claims-csv"
+                >
+                  <Download className="mr-2 h-3.5 w-3.5" />
+                  Export CSV
+                </Button>
               </div>
             </CardHeader>
             <CardContent>

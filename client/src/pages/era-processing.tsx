@@ -20,8 +20,10 @@ import {
   TrendingUp,
   Receipt,
   Zap,
-  RefreshCw
+  RefreshCw,
+  Download,
 } from "lucide-react";
+import { exportToCSV } from "@/lib/export";
 
 interface PaymentPosting {
   id: number;
@@ -129,6 +131,35 @@ export default function ERAProcessingPage() {
             Automated payment posting with variance detection
           </p>
         </div>
+        <Button
+          variant="outline"
+          onClick={() => {
+            const allPostings = [
+              ...(pendingPostings ?? []),
+              ...(recentPostings ?? []),
+              ...(variancePostings ?? []),
+            ];
+            const rows = allPostings.map((p) => ({
+              ID: p.id,
+              "Payer Name": p.payerName,
+              "Check #": p.checkNumber ?? "",
+              "Patient Name": p.patientName ?? "",
+              "Payment Date": new Date(p.paymentDate).toLocaleDateString(),
+              "Payment Amount ($)": p.paymentAmount,
+              "Adjustment Amount ($)": p.adjustmentAmount ?? "",
+              "Patient Responsibility ($)": p.patientResponsibility ?? "",
+              "Posting Status": p.postingStatus,
+              "Auto Posted": p.autoPosted ? "Yes" : "No",
+              Variance: p.varianceFlag ? "Yes" : "No",
+              "Variance Reason": p.varianceReason ?? "",
+            }));
+            exportToCSV(rows, "ERA");
+          }}
+          data-testid="button-export-era-csv"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Export CSV
+        </Button>
         <Button 
           onClick={() => autoPostAllMutation.mutate()}
           disabled={autoPostAllMutation.isPending}
