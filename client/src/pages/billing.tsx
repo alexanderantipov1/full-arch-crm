@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -270,7 +270,7 @@ function PreflightDialog({
                           ? "border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20"
                           : issue.severity === "warning"
                           ? "border-yellow-200 bg-yellow-50/50 dark:border-yellow-900 dark:bg-yellow-950/20"
-                          : "border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20"
+                          : "border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20"
                       }`}
                       data-testid={`issue-item-${idx}`}
                     >
@@ -281,7 +281,7 @@ function PreflightDialog({
                           ) : issue.severity === "warning" ? (
                             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-yellow-600" />
                           ) : (
-                            <Info className="h-4 w-4 shrink-0 mt-0.5 text-blue-600" />
+                            <Info className="h-4 w-4 shrink-0 mt-0.5 text-green-600" />
                           )}
                           <div>
                             <p className="text-sm font-medium">{issue.description}</p>
@@ -838,8 +838,8 @@ export default function BillingPage() {
                         const issues = (cached?.issues as PreflightIssue[]) || [];
                         const criticals = issues.filter(i => i.severity === "critical").length;
                         return (
-                          <>
-                            <TableRow key={claim.id} data-testid={`claim-row-${claim.id}`}>
+                          <Fragment key={claim.id}>
+                            <TableRow data-testid={`claim-row-${claim.id}`}>
                               <TableCell className="font-mono text-sm">
                                 {claim.claimNumber || `CLM-${claim.id}`}
                               </TableCell>
@@ -980,7 +980,7 @@ export default function BillingPage() {
                                 </TableCell>
                               </TableRow>
                             )}
-                          </>
+                          </Fragment>
                         );
                       })}
                     </TableBody>
