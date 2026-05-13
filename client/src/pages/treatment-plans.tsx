@@ -124,6 +124,7 @@ export default function TreatmentPlansPage() {
   const [showCosmeticPackages, setShowCosmeticPackages] = useState(false);
   const [showOrthoPreauth, setShowOrthoPreauth] = useState(false);
   const [showNewPlanDialog, setShowNewPlanDialog] = useState(false);
+  const [detailPlan, setDetailPlan] = useState<TreatmentPlan | null>(null);
   const [newPlan, setNewPlan] = useState({
     patientId: "",
     planName: "",
@@ -565,10 +566,14 @@ export default function TreatmentPlansPage() {
                       >
                         <Download className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/treatment-plans/${plan.id}`}>
-                          <ArrowRight className="h-4 w-4" />
-                        </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="View Details"
+                        data-testid={`button-detail-plan-${plan.id}`}
+                        onClick={() => setDetailPlan(plan)}
+                      >
+                        <ArrowRight className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -592,6 +597,148 @@ export default function TreatmentPlansPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Plan Detail Dialog */}
+      <Dialog open={!!detailPlan} onOpenChange={(open) => !open && setDetailPlan(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          {detailPlan && (() => {
+            const patient = patients.find((p) => p.id === detailPlan.patientId);
+            const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Patient";
+            const procedures = Array.isArray(detailPlan.procedures) ? detailPlan.procedures as { name?: string; code?: string; cost?: number }[] : [];
+            const statusCfg = statusConfig[detailPlan.status] || statusConfig.draft;
+            const StatusIcon = statusCfg.icon;
+
+            function doExport() {
+              exportToPDF(
+                [
+                  { type: "title", title: "Treatment Plan Summary", subtitle: `Golden State Dental — Prepared for ${patientName}`, showLogo: true },
+                  {
+                    type: "kpis",
+                    heading: "Plan Overview",
+                    items: [
+                      { label: "Patient", value: patientName },
+                      { label: "Plan Name", value: detailPlan.planName },
+                      { label: "Diagnosis", value: detailPlan.diagnosis ?? "—" },
+                      { label: "ICD-10 Code", value: detailPlan.diagnosisCode ?? "—" },
+                      { label: "Status", value: detailPlan.status },
+                      { label: "Prior Auth", value: detailPlan.priorAuthStatus ?? "Not required" },
+                    ],
+                  },
+                  {
+                    type: "kpis",
+                    heading: "Financial Summary",
+                    items: [
+                      { label: "Total Cost", value: formatCurrency(detailPlan.totalCost) },
+                      { label: "Insurance Coverage", value: formatCurrency(detailPlan.insuranceCoverage) },
+                      { label: "Patient Responsibility", value: formatCurrency(detailPlan.patientResponsibility) },
+                    ],
+                  },
+                  ...(procedures.length > 0
+                    ? [{ type: "table" as const, heading: "Procedure List", columns: ["Procedure", "Code", "Est. Cost ($)"], rows: procedures.map((proc) => [proc.name ?? "—", proc.code ?? "—", proc.cost != null ? formatCurrency(proc.cost) : "—"]) }]
+                    : []),
+                  {
+                    type: "table" as const,
+                    heading: "Treatment Timeline",
+                    columns: ["Phase", "Milestone", "Status"],
+                    rows: [
+                      ["Phase 1", "Initial Consultation & Treatment Planning", detailPlan.status === "draft" ? "In Progress" : "Complete"],
+                      ["Phase 2", "Prior Authorization / Insurance Approval", detailPlan.priorAuthStatus === "approved" ? "Complete" : detailPlan.priorAuthStatus === "pending" ? "In Progress" : "Pending"],
+                      ["Phase 3", "Surgery / Implant Placement", detailPlan.status === "in_progress" || detailPlan.status === "completed" ? "In Progress / Complete" : "Scheduled"],
+                      ["Phase 4", "Healing & Prosthetic Fabrication", detailPlan.status === "completed" ? "Complete" : "Upcoming"],
+                      ["Phase 5", "Final Delivery & Seating", detailPlan.status === "completed" ? "Complete" : "Upcoming"],
+                    ],
+                  },
+                  ...(detailPlan.notes ? [{ type: "table" as const, heading: "Clinical Notes", columns: ["Notes"], rows: [[detailPlan.notes]] }] : []),
+                ],
+                `TreatmentPlan_${detailPlan.id}`,
+              );
+            }
+
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    {detailPlan.planName}
+                  </DialogTitle>
+                  <DialogDescription>{patient ? `Patient: ${patientName}` : "Treatment plan details"}</DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 pt-2">
+                  {/* Status + Auth */}
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className={statusCfg.color}>
+                      <StatusIcon className="mr-1 h-3 w-3" />
+                      {statusCfg.label}
+                    </Badge>
+                    {detailPlan.priorAuthStatus && (
+                      <Badge variant="outline" className="capitalize">{detailPlan.priorAuthStatus.replace("_", " ")} Auth</Badge>
+                    )}
+                    {detailPlan.cosmeticPackage && <Badge variant="outline">Cosmetic Package</Badge>}
+                  </div>
+
+                  {/* Diagnosis */}
+                  {detailPlan.diagnosis && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Diagnosis</p>
+                      <p className="text-sm">{detailPlan.diagnosis} {detailPlan.diagnosisCode && <span className="text-muted-foreground">({detailPlan.diagnosisCode})</span>}</p>
+                    </div>
+                  )}
+
+                  {/* Financials */}
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { label: "Total Cost", value: formatCurrency(detailPlan.totalCost) },
+                      { label: "Insurance", value: formatCurrency(detailPlan.insuranceCoverage) },
+                      { label: "Patient Owes", value: formatCurrency(detailPlan.patientResponsibility) },
+                    ].map((f) => (
+                      <div key={f.label} className="rounded-lg border p-3">
+                        <p className="text-xs text-muted-foreground mb-1">{f.label}</p>
+                        <p className="text-lg font-bold font-mono">{f.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Procedures */}
+                  {procedures.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Procedure List</p>
+                      <div className="rounded-lg border divide-y">
+                        {procedures.map((proc, i) => (
+                          <div key={i} className="flex items-center justify-between px-3 py-2 text-sm">
+                            <div className="flex items-center gap-2">
+                              {proc.code && <Badge variant="outline" className="text-xs font-mono">{proc.code}</Badge>}
+                              <span>{proc.name ?? "—"}</span>
+                            </div>
+                            {proc.cost != null && <span className="text-muted-foreground font-mono">{formatCurrency(proc.cost)}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {detailPlan.notes && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Clinical Notes</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed rounded-lg border p-3">{detailPlan.notes}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setDetailPlan(null)}>Close</Button>
+                  <Button onClick={doExport} data-testid={`button-detail-export-plan-${detailPlan.id}`}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export for Patient
+                  </Button>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

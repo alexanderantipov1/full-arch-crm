@@ -158,7 +158,7 @@ export default function ERAProcessingPage() {
           data-testid="button-export-era-csv"
         >
           <Download className="mr-2 h-4 w-4" />
-          Export CSV
+          Export ERA
         </Button>
         <Button 
           onClick={() => autoPostAllMutation.mutate()}

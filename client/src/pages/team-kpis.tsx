@@ -650,7 +650,7 @@ export default function TeamKPIsPage() {
           data-testid="button-export-kpis-pdf"
         >
           <Download className="mr-2 h-3.5 w-3.5" />
-          Export PDF
+          Export Org Chart
         </Button>
       </div>
 

@@ -153,8 +153,7 @@ function RevenueCycleTab() {
 }
 
 // ─── Reports Tab ──────────────────────────────────────────────────────────────
-function ReportsTab({ onExport }: { onExport?: () => void }) {
-  const [dateRange, setDateRange] = useState("30");
+function ReportsTab({ onExport, dateRange, onDateRangeChange }: { onExport?: () => void; dateRange: string; onDateRangeChange: (v: string) => void }) {
   const { data: patients = [] } = useQuery<Patient[]>({ queryKey: ["/api/patients"] });
   const { data: claims = [] } = useQuery<BillingClaim[]>({ queryKey: ["/api/billing/claims"] });
   const { data: treatmentPlans = [] } = useQuery<TreatmentPlan[]>({ queryKey: ["/api/treatment-plans"] });
@@ -200,7 +199,7 @@ function ReportsTab({ onExport }: { onExport?: () => void }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <Select value={dateRange} onValueChange={setDateRange}>
+        <Select value={dateRange} onValueChange={onDateRangeChange}>
           <SelectTrigger className="w-36 h-8 text-xs" data-testid="filter-date-range">
             <SelectValue />
           </SelectTrigger>
@@ -532,6 +531,7 @@ function PredictiveTab() {
 // ─── Main Hub ─────────────────────────────────────────────────────────────────
 export default function AnalyticsHubPage() {
   const [activeTab, setActiveTab] = useState("revenue");
+  const [reportsDateRange, setReportsDateRange] = useState("30");
 
   const { data: analytics } = useQuery<{
     summary: { totalBilled: number; totalCollected: number; totalPending: number; collectionRate: number; denialRate: number; avgDaysToPayment: number };
@@ -545,7 +545,10 @@ export default function AnalyticsHubPage() {
 
   function handleExportCSV() {
     if (activeTab === "reports") {
-      const rows = payments.slice().reverse().map((p) => ({
+      const days = parseInt(reportsDateRange);
+      const startDate = subDays(new Date(), days);
+      const periodPayments = payments.filter((p) => new Date(p.paymentDate) >= startDate);
+      const rows = periodPayments.map((p) => ({
         "Payment Date": new Date(p.paymentDate).toLocaleDateString(),
         "Payer": p.payerName,
         "Amount ($)": p.paymentAmount,
@@ -568,7 +571,9 @@ export default function AnalyticsHubPage() {
   function handleExportPDF() {
     const a = analytics;
     if (activeTab === "reports") {
-      const startDate = subDays(new Date(), 30);
+      const days = parseInt(reportsDateRange);
+      const startDate = subDays(new Date(), days);
+      const periodLabel = days === 7 ? "Last 7 Days" : days === 30 ? "Last 30 Days" : days === 90 ? "Last 90 Days" : "Last 6 Months";
       const periodPayments = payments.filter((p) => new Date(p.paymentDate) >= startDate);
       const totalRevenue = periodPayments.reduce((s, p) => s + parseFloat(p.paymentAmount || "0"), 0);
       const periodClaims = claims.filter((c) => new Date(c.createdAt) >= startDate);
@@ -578,7 +583,7 @@ export default function AnalyticsHubPage() {
       const newPatients = patients.filter((p) => new Date(p.createdAt) >= startDate);
       exportToPDF(
         [
-          { type: "title", title: "Practice Reports — Last 30 Days", subtitle: `Generated ${new Date().toLocaleDateString()} — Golden State Dental` },
+          { type: "title", title: `Practice Reports — ${periodLabel}`, subtitle: `Generated ${new Date().toLocaleDateString()} — Golden State Dental` },
           {
             type: "kpis",
             heading: "Period Summary",
@@ -691,7 +696,7 @@ export default function AnalyticsHubPage() {
           <TabsTrigger value="predictive" className="text-xs"><TrendingUp className="h-3.5 w-3.5 mr-1" />Predictive AI</TabsTrigger>
         </TabsList>
         <TabsContent value="revenue"    className="mt-4"><RevenueCycleTab /></TabsContent>
-        <TabsContent value="reports"    className="mt-4"><ReportsTab onExport={handleExportCSV} /></TabsContent>
+        <TabsContent value="reports"    className="mt-4"><ReportsTab onExport={handleExportCSV} dateRange={reportsDateRange} onDateRangeChange={setReportsDateRange} /></TabsContent>
         <TabsContent value="bi"         className="mt-4"><BusinessIntelTab /></TabsContent>
         <TabsContent value="providers"  className="mt-4"><ProviderIntelTab /></TabsContent>
         <TabsContent value="predictive" className="mt-4"><PredictiveTab /></TabsContent>
