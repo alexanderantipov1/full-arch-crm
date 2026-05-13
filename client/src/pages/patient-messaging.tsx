@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ export default function PatientMessagingPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const threadEndRef = useRef<HTMLDivElement>(null);
+  const [location] = useLocation();
 
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [selectedPatientName, setSelectedPatientName] = useState<string>("");
@@ -74,6 +76,19 @@ export default function PatientMessagingPage() {
   const [composing, setComposing] = useState(false);
   const [form, setForm] = useState({ channel: "sms", subject: "", body: "", templateUsed: "" });
   const [aiLoading, setAiLoading] = useState(false);
+
+  // Pre-select patient from URL query params (e.g. from patient profile "Message" button)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get("patientId");
+    const pname = params.get("patientName");
+    const compose = params.get("compose");
+    if (pid && pname) {
+      setSelectedPatientId(parseInt(pid));
+      setSelectedPatientName(decodeURIComponent(pname));
+      if (compose === "true") setComposing(true);
+    }
+  }, [location]);
 
   const { data: threads = [], isLoading: threadsLoading } = useQuery<ThreadSummary[]>({
     queryKey: ["/api/patient-messages/threads"],

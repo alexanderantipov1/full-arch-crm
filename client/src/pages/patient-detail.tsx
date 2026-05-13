@@ -29,6 +29,7 @@ import {
   FileCheck,
   RefreshCw,
   Wind,
+  MessageSquare,
 } from "lucide-react";
 import { format } from "date-fns";
 import type { Patient, MedicalHistory, DentalInfo, Insurance, TreatmentPlan, Appointment, FacialEvaluation, Cephalometric, MedicalConsult, FullArchExam } from "@shared/schema";
@@ -107,6 +108,12 @@ export default function PatientDetailPage() {
           <Link href={`/dental-charting/${patient.id}`}>
             <Activity className="mr-2 h-4 w-4" />
             Dental Chart
+          </Link>
+        </Button>
+        <Button variant="outline" asChild data-testid={`button-message-patient-${patient.id}`}>
+          <Link href={`/patient-messaging?patientId=${patient.id}&patientName=${encodeURIComponent(`${patient.firstName} ${patient.lastName}`)}&compose=true`}>
+            <MessageSquare className="mr-2 h-4 w-4" />
+            Message
           </Link>
         </Button>
         <Button asChild>
