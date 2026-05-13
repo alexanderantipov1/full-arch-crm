@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -919,7 +919,6 @@ export default function PatientPortalPage() {
 
   const { data: patients = [], isLoading } = useQuery<Patient[]>({ queryKey: ["/api/patients"] });
 
-  // Always fetch portal access status for the selected patient
   const { data: portalAccess } = useQuery<PortalAccess | null>({
     queryKey: ["/api/patients", selectedPatient?.id, "portal-access"],
     queryFn: () =>
@@ -935,9 +934,19 @@ export default function PatientPortalPage() {
       apiRequest("POST", `/api/patients/${patientId}/portal-access-log`, { tab }),
   });
 
+  // Guaranteed audit log on portal entry — fires once per patient when enabled confirmed
+  const auditedPatientIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (portalAccess?.enabled && selectedPatient) {
+      if (auditedPatientIdRef.current !== selectedPatient.id) {
+        auditedPatientIdRef.current = selectedPatient.id;
+        logAccessMutation.mutate({ patientId: selectedPatient.id, tab: "portal_open" });
+      }
+    }
+  }, [portalAccess?.enabled, selectedPatient?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleSelectPatient(p: Patient) {
     setSelectedPatient(p);
-    // Access log fires only after portal-access check confirms enabled
   }
 
   function handleAuditLog(tab: string) {

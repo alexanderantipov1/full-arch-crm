@@ -1507,13 +1507,16 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
 
   app.post("/api/portal/appointment-requests", isAuthenticated, async (req, res) => {
     try {
-      const data = insertPortalAppointmentRequestSchema.parse(req.body);
-      if (data.patientId) {
-        const access = await storage.getPortalAccess(data.patientId);
+      const raw = insertPortalAppointmentRequestSchema.parse(req.body);
+      if (raw.patientId) {
+        const access = await storage.getPortalAccess(raw.patientId);
         if (access && access.enabled === false) {
           return res.status(403).json({ message: "Portal access is disabled for this patient" });
         }
       }
+      // Enforce server-side defaults — patient-originated requests always start as pending
+      // and strip any client-supplied staff-only fields
+      const data = { ...raw, status: "pending" as const, staffNotes: null };
       const request = await storage.createPortalAppointmentRequest(data);
       res.status(201).json(request);
     } catch (error: unknown) {
