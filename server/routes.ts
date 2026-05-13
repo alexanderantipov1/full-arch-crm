@@ -1471,9 +1471,10 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
           dataScope: tab === "eob" ? "payment_postings,billing_claims"
             : tab === "billing" ? "treatment_plans"
             : tab === "appointments" ? "appointments"
+            : tab === "portal_open" ? "appointments"  // default tab on portal entry
             : tab === "post-op" ? "surgery_reports"
             : tab === "messages" ? "patient_messages"
-            : tab === "documents" ? "documents"
+            : tab === "documents" ? "documents,patient_documents"
             : tab === "consent" ? "consent_forms"
             : tab === "my-info" || tab === "my_info_update" ? "patient_contact_info"
             : tab === "request" ? "portal_appointment_requests"
@@ -1493,8 +1494,8 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
       const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
       if (patientId) {
         const access = await storage.getPortalAccess(patientId);
-        if (access && access.enabled === false) {
-          return res.status(403).json({ message: "Portal access is disabled for this patient" });
+        if (!access || !access.enabled) {
+          return res.status(403).json({ message: "Portal access is not enabled for this patient" });
         }
       }
       const requests = await storage.getPortalAppointmentRequests(patientId);
@@ -1510,7 +1511,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
       const raw = insertPortalAppointmentRequestSchema.parse(req.body);
       if (raw.patientId) {
         const access = await storage.getPortalAccess(raw.patientId);
-        if (access && access.enabled === false) {
+        if (!access || !access.enabled) {
           return res.status(403).json({ message: "Portal access is disabled for this patient" });
         }
       }
@@ -1544,8 +1545,8 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
     try {
       const patientId = parseInt(req.params.patientId);
       const access = await storage.getPortalAccess(patientId);
-      if (access && access.enabled === false) {
-        return res.status(403).json({ message: "Portal access is disabled for this patient" });
+      if (!access || !access.enabled) {
+        return res.status(403).json({ message: "Portal access is not enabled for this patient" });
       }
       const reports = await storage.getSurgeryReportsByPatient(patientId);
       res.json(reports);
@@ -1559,8 +1560,8 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
     try {
       const patientId = parseInt(req.params.patientId);
       const access = await storage.getPortalAccess(patientId);
-      if (access && access.enabled === false) {
-        return res.status(403).json({ message: "Portal access is disabled for this patient" });
+      if (!access || !access.enabled) {
+        return res.status(403).json({ message: "Portal access is not enabled for this patient" });
       }
       const postings = await storage.getPaymentPostingsByPatient(patientId);
       res.json(postings);

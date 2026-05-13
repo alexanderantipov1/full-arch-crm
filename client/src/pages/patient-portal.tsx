@@ -692,18 +692,26 @@ function PortalView({ patient, onAuditLog }: {
   patient: Patient;
   onAuditLog: (tab: string) => void;
 }) {
-  const { data: allAppts = [] } = useQuery<Appointment[]>({ queryKey: ["/api/appointments"] });
-  const { data: allPlans = [] } = useQuery<TreatmentPlan[]>({ queryKey: ["/api/treatment-plans"] });
-  const { data: allConsent = [] } = useQuery<ConsentForm[]>({ queryKey: ["/api/consent-forms"] });
-  const { data: allDocs = [] } = useQuery<Document[]>({ queryKey: ["/api/documents"] });
-
-  const appts = allAppts.filter(a => a.patientId === patient.id).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-  const plans = allPlans.filter(p => p.patientId === patient.id);
-  const consent = allConsent.filter(c => c.patientId === patient.id);
-  const docs = allDocs.filter(d => d.patientId === patient.id);
+  // Patient-scoped queries — data filtered server-side to avoid transmitting other patients' PHI
+  const { data: appts = [] } = useQuery<Appointment[]>({
+    queryKey: ["/api/appointments", { patientId: patient.id }],
+    queryFn: () => fetch(`/api/appointments?patientId=${patient.id}`, { credentials: "include" }).then(r => r.json()),
+  });
+  const { data: plans = [] } = useQuery<TreatmentPlan[]>({
+    queryKey: ["/api/treatment-plans", { patientId: patient.id }],
+    queryFn: () => fetch(`/api/treatment-plans?patientId=${patient.id}`, { credentials: "include" }).then(r => r.json()),
+  });
+  const { data: consent = [] } = useQuery<ConsentForm[]>({
+    queryKey: ["/api/consent-forms/patient", patient.id],
+    queryFn: () => fetch(`/api/consent-forms/patient/${patient.id}`, { credentials: "include" }).then(r => r.json()),
+  });
+  const { data: docs = [] } = useQuery<Document[]>({
+    queryKey: ["/api/documents/patient", patient.id],
+    queryFn: () => fetch(`/api/documents/patient/${patient.id}`, { credentials: "include" }).then(r => r.json()),
+  });
 
   const upcoming = appts.filter(a => new Date(a.startTime) >= new Date() && a.status !== "cancelled");
-  const past = appts.filter(a => new Date(a.startTime) < new Date() || a.status === "completed");
+  const past = appts.filter(a => new Date(a.startTime) < new Date() || a.status === "completed").sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   const totalResponsibility = plans.reduce((acc, p) => acc + parseFloat(p.patientResponsibility || "0"), 0);
   const activePlan = plans.find(p => p.status === "active" || p.status === "approved");
 
