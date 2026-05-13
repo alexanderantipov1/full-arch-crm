@@ -188,6 +188,9 @@ import {
   oralSurgeryCases,
   type OralSurgeryCase,
   type InsertOralSurgeryCase,
+  claimPreflightResults,
+  type ClaimPreflightResult,
+  type InsertClaimPreflightResult,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -524,6 +527,11 @@ export interface IStorage {
   updateRecallPatient(id: number, data: Partial<InsertRecallPatient>): Promise<RecallPatient | undefined>;
   getRecallContactLog(recallPatientId: number): Promise<RecallContactLog[]>;
   addRecallContact(data: InsertRecallContactLog): Promise<RecallContactLog>;
+
+  // Claim Pre-Flight Results
+  getPreflightResult(claimId: number): Promise<ClaimPreflightResult | undefined>;
+  createPreflightResult(data: InsertClaimPreflightResult): Promise<ClaimPreflightResult>;
+  updatePreflightResult(id: number, data: Partial<InsertClaimPreflightResult>): Promise<ClaimPreflightResult | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1810,6 +1818,31 @@ export class DatabaseStorage implements IStorage {
   async addRecallContact(data: InsertRecallContactLog): Promise<RecallContactLog> {
     const [created] = await db.insert(recallContactLog).values(data).returning();
     return created;
+  }
+
+  // ============ CLAIM PRE-FLIGHT RESULTS ============
+  async getPreflightResult(claimId: number): Promise<ClaimPreflightResult | undefined> {
+    const [result] = await db
+      .select()
+      .from(claimPreflightResults)
+      .where(eq(claimPreflightResults.claimId, claimId))
+      .orderBy(desc(claimPreflightResults.checkedAt))
+      .limit(1);
+    return result;
+  }
+
+  async createPreflightResult(data: InsertClaimPreflightResult): Promise<ClaimPreflightResult> {
+    const [result] = await db.insert(claimPreflightResults).values(data).returning();
+    return result;
+  }
+
+  async updatePreflightResult(id: number, data: Partial<InsertClaimPreflightResult>): Promise<ClaimPreflightResult | undefined> {
+    const [result] = await db
+      .update(claimPreflightResults)
+      .set(data)
+      .where(eq(claimPreflightResults.id, id))
+      .returning();
+    return result;
   }
 }
 

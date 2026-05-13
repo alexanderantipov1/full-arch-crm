@@ -441,6 +441,23 @@ export const billingClaims = pgTable("billing_claims", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+// AI Claim Pre-Flight Check Results
+export const claimPreflightResults = pgTable("claim_preflight_results", {
+  id: serial("id").primaryKey(),
+  claimId: integer("claim_id").notNull().references(() => billingClaims.id, { onDelete: "cascade" }),
+  riskScore: integer("risk_score").notNull(),
+  approvalProbability: integer("approval_probability").notNull(),
+  issues: jsonb("issues").notNull(),
+  checklist: jsonb("checklist").notNull(),
+  recommendedActions: text("recommended_actions").array(),
+  checkedAt: timestamp("checked_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+export const insertClaimPreflightResultSchema = createInsertSchema(claimPreflightResults).omit({ id: true, checkedAt: true });
+export type ClaimPreflightResult = typeof claimPreflightResults.$inferSelect;
+export type InsertClaimPreflightResult = z.infer<typeof insertClaimPreflightResultSchema>;
+
 // Relations
 export const patientsRelations = relations(patients, ({ many }) => ({
   medicalHistory: many(medicalHistory),

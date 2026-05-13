@@ -1248,6 +1248,148 @@ Please generate professional, HIPAA-compliant clinical documentation.`;
     }
   });
 
+  // ============ CLAIM PRE-FLIGHT CHECK ENGINE ============
+
+  app.get("/api/billing/claims/:id/preflight", isAuthenticated, async (req, res) => {
+    try {
+      const claimId = parseInt(req.params.id);
+      const result = await storage.getPreflightResult(claimId);
+      if (!result) return res.status(404).json({ message: "No preflight result found" });
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching preflight result:", error);
+      res.status(500).json({ message: "Failed to fetch preflight result" });
+    }
+  });
+
+  app.post("/api/billing/claims/:id/preflight", isAuthenticated, async (req, res) => {
+    try {
+      const claimId = parseInt(req.params.id);
+      const claims = await storage.getBillingClaims();
+      const claim = claims.find(c => c.id === claimId);
+      if (!claim) return res.status(404).json({ message: "Claim not found" });
+
+      const patient = await storage.getPatient(claim.patientId);
+      const insuranceList = await storage.getInsurance(claim.patientId);
+      const primaryInsurance = insuranceList[0];
+
+      const systemPrompt = `You are an expert medical billing compliance specialist for dental implant claims. 
+Analyze the provided claim and return a JSON object with the following exact structure:
+{
+  "riskScore": <integer 0-100, higher means lower denial risk>,
+  "approvalProbability": <integer 0-100>,
+  "issues": [
+    {
+      "code": "<short_code>",
+      "severity": "<critical|warning|info>",
+      "description": "<what is wrong>",
+      "suggestion": "<how to fix it>",
+      "autoFixable": <boolean>,
+      "fixValue": "<corrected value if autoFixable>"
+    }
+  ],
+  "checklist": [
+    { "label": "<check description>", "passed": <boolean> }
+  ],
+  "recommendedActions": ["<action 1>", "<action 2>"]
+}
+Focus on: CDT/CPT code validity, ICD-10 presence and specificity, timely filing windows, medical necessity documentation, modifier requirements, and prior authorization requirements for full arch implants.
+Return ONLY valid JSON, no markdown.`;
+
+      const userMessage = `Analyze this dental implant claim for denial risk:
+
+Claim ID: ${claim.id}
+Claim Number: ${claim.claimNumber || "Not assigned"}
+Procedure Code: ${claim.procedureCode}
+ICD-10 Code: ${claim.icd10Code || "MISSING"}
+Description: ${claim.description || "None provided"}
+Service Date: ${claim.serviceDate}
+Charged Amount: $${claim.chargedAmount}
+Claim Status: ${claim.claimStatus}
+Denial Reason (if any): ${claim.denialReason || "None"}
+
+Patient: ${patient?.firstName || "Unknown"} ${patient?.lastName || "Unknown"}
+Date of Birth: ${patient?.dateOfBirth || "Unknown"}
+
+Insurance: ${primaryInsurance?.providerName || "No insurance on file"}
+Insurance Type: ${primaryInsurance?.insuranceType || "Unknown"}
+Prior Auth Required: ${primaryInsurance?.priorAuthRequired ? "YES" : "No"}
+Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
+
+      const raw = await askClaude(systemPrompt, userMessage, 2000);
+
+      let parsed: {
+        riskScore: number;
+        approvalProbability: number;
+        issues: Array<{
+          code: string;
+          severity: string;
+          description: string;
+          suggestion: string;
+          autoFixable: boolean;
+          fixValue?: string;
+        }>;
+        checklist: Array<{ label: string; passed: boolean }>;
+        recommendedActions: string[];
+      };
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        parsed = {
+          riskScore: 60,
+          approvalProbability: 65,
+          issues: [{ code: "PARSE_ERROR", severity: "warning", description: "Could not fully parse AI analysis", suggestion: "Review claim manually", autoFixable: false }],
+          checklist: [
+            { label: "Procedure code present", passed: !!claim.procedureCode },
+            { label: "ICD-10 code present", passed: !!claim.icd10Code },
+            { label: "Service date present", passed: !!claim.serviceDate },
+            { label: "Charged amount > $0", passed: parseFloat(claim.chargedAmount?.toString() || "0") > 0 },
+          ],
+          recommendedActions: ["Verify procedure code accuracy", "Ensure ICD-10 code is present and specific"],
+        };
+      }
+
+      const result = await storage.createPreflightResult({
+        claimId,
+        riskScore: Math.min(100, Math.max(0, parsed.riskScore)),
+        approvalProbability: Math.min(100, Math.max(0, parsed.approvalProbability)),
+        issues: parsed.issues || [],
+        checklist: parsed.checklist || [],
+        recommendedActions: parsed.recommendedActions || [],
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error running preflight check:", error);
+      res.status(500).json({ message: "Failed to run preflight check" });
+    }
+  });
+
+  app.post("/api/billing/claims/:id/autofix", isAuthenticated, async (req, res) => {
+    try {
+      const claimId = parseInt(req.params.id);
+      const { issueCode, fixValue, field } = req.body as { issueCode: string; fixValue: string; field: string };
+
+      const allowedFields: Record<string, boolean> = {
+        icd10Code: true,
+        procedureCode: true,
+        description: true,
+      };
+
+      if (!allowedFields[field]) {
+        return res.status(400).json({ message: "Field not patchable via auto-fix" });
+      }
+
+      const updated = await storage.updateBillingClaim(claimId, { [field]: fixValue });
+      if (!updated) return res.status(404).json({ message: "Claim not found" });
+
+      res.json({ success: true, claim: updated, issueCode });
+    } catch (error) {
+      console.error("Error applying auto-fix:", error);
+      res.status(500).json({ message: "Failed to apply auto-fix" });
+    }
+  });
+
   app.post("/api/appeals/generate", isAuthenticated, async (req, res) => {
     try {
       const { claimId, patientId, denialReason, denialCode, additionalInfo } = req.body;

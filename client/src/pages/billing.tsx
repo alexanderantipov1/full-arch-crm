@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,9 +40,14 @@ import {
   AlertTriangle,
   Users,
   Loader2,
+  ShieldCheck,
+  ShieldAlert,
+  Wrench,
+  ChevronRight,
+  Info,
 } from "lucide-react";
 import { format } from "date-fns";
-import type { BillingClaim, TreatmentPlan, PriorAuthorization } from "@shared/schema";
+import type { BillingClaim, TreatmentPlan, PriorAuthorization, ClaimPreflightResult } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -52,6 +57,20 @@ interface BillingStats {
   pendingClaims: number;
   deniedClaims: number;
   averageReimbursement: number;
+}
+
+interface PreflightIssue {
+  code: string;
+  severity: "critical" | "warning" | "info";
+  description: string;
+  suggestion: string;
+  autoFixable: boolean;
+  fixValue?: string;
+}
+
+interface PreflightCheckItem {
+  label: string;
+  passed: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -75,6 +94,296 @@ const fullArchCodes = [
   { code: "D7953", description: "Bone replacement graft", fee: 875 },
 ];
 
+function RiskGauge({ score }: { score: number }) {
+  const color = score >= 80 ? "text-green-600" : score >= 60 ? "text-yellow-600" : "text-red-600";
+  const bgColor = score >= 80 ? "bg-green-100 dark:bg-green-900/30" : score >= 60 ? "bg-yellow-100 dark:bg-yellow-900/30" : "bg-red-100 dark:bg-red-900/30";
+  const label = score >= 80 ? "Low Risk" : score >= 60 ? "Moderate Risk" : "High Risk";
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const progress = (score / 100) * circumference;
+
+  return (
+    <div className={`flex flex-col items-center p-4 rounded-xl ${bgColor}`}>
+      <svg width="100" height="60" viewBox="0 0 100 60">
+        <path
+          d={`M 10 50 A 40 40 0 0 1 90 50`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="8"
+          className="text-muted/20"
+        />
+        <path
+          d={`M 10 50 A 40 40 0 0 1 90 50`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="8"
+          strokeDasharray={`${(score / 100) * 125.7} 125.7`}
+          strokeLinecap="round"
+          className={color}
+        />
+        <text x="50" y="48" textAnchor="middle" className={`text-sm font-bold fill-current ${color}`} fontSize="16">{score}</text>
+      </svg>
+      <span className={`text-sm font-semibold ${color}`}>{label}</span>
+      <span className="text-xs text-muted-foreground mt-0.5">Risk Score</span>
+    </div>
+  );
+}
+
+function PreflightDialog({
+  open,
+  onClose,
+  claim,
+  result,
+  isLoading,
+  onRunCheck,
+  onAutoFix,
+  isFixing,
+}: {
+  open: boolean;
+  onClose: () => void;
+  claim: BillingClaim | null;
+  result: ClaimPreflightResult | null;
+  isLoading: boolean;
+  onRunCheck: () => void;
+  onAutoFix: (issueCode: string, fixValue: string, field: string) => void;
+  isFixing: Set<string>;
+}) {
+  if (!claim) return null;
+
+  const issues = (result?.issues as PreflightIssue[]) || [];
+  const checklist = (result?.checklist as PreflightCheckItem[]) || [];
+  const riskScore = result?.riskScore ?? null;
+  const approvalProbability = result?.approvalProbability ?? null;
+  const recommendedActions = result?.recommendedActions ?? [];
+
+  const criticalCount = issues.filter(i => i.severity === "critical").length;
+  const warningCount = issues.filter(i => i.severity === "warning").length;
+  const canSubmit = riskScore !== null && riskScore >= 70;
+
+  const fieldMap: Record<string, string> = {
+    MISSING_ICD10: "icd10Code",
+    INVALID_ICD10: "icd10Code",
+    MISSING_MODIFIER: "procedureCode",
+    WRONG_CODE: "procedureCode",
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-preflight">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            AI Claim Pre-Flight Check
+          </DialogTitle>
+          <DialogDescription>
+            Claim {claim.claimNumber || `CLM-${claim.id}`} — {claim.procedureCode}
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="space-y-3 py-4">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span>AI is analyzing your claim for denial triggers…</span>
+            </div>
+            {[1, 2, 3, 4].map(i => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : result ? (
+          <div className="space-y-5">
+            {/* Score + Approval Row */}
+            <div className="grid grid-cols-3 gap-3">
+              <RiskGauge score={riskScore!} />
+              <div className="col-span-2 flex flex-col justify-center gap-3">
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Approval Probability</p>
+                    <p className="text-2xl font-bold text-primary">{approvalProbability}%</p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-primary/30" />
+                </div>
+                <div className="flex gap-2">
+                  {criticalCount > 0 && (
+                    <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                      <XCircle className="mr-1 h-3 w-3" />
+                      {criticalCount} Critical
+                    </Badge>
+                  )}
+                  {warningCount > 0 && (
+                    <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                      <AlertTriangle className="mr-1 h-3 w-3" />
+                      {warningCount} Warning
+                    </Badge>
+                  )}
+                  {criticalCount === 0 && warningCount === 0 && (
+                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <CheckCircle2 className="mr-1 h-3 w-3" />
+                      All Clear
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Checklist */}
+            {checklist.length > 0 && (
+              <div>
+                <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                  <FileCheck className="h-4 w-4 text-muted-foreground" />
+                  Pre-Submission Checklist
+                </p>
+                <div className="rounded-lg border divide-y">
+                  {checklist.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3 px-3 py-2" data-testid={`checklist-item-${idx}`}>
+                      {item.passed ? (
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
+                      ) : (
+                        <XCircle className="h-4 w-4 shrink-0 text-red-500" />
+                      )}
+                      <span className={`text-sm ${item.passed ? "text-foreground" : "text-red-600 dark:text-red-400"}`}>
+                        {item.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Issues */}
+            {issues.length > 0 && (
+              <div>
+                <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                  Denial Risk Issues
+                </p>
+                <div className="space-y-2">
+                  {issues.map((issue, idx) => (
+                    <div
+                      key={idx}
+                      className={`rounded-lg border p-3 ${
+                        issue.severity === "critical"
+                          ? "border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20"
+                          : issue.severity === "warning"
+                          ? "border-yellow-200 bg-yellow-50/50 dark:border-yellow-900 dark:bg-yellow-950/20"
+                          : "border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20"
+                      }`}
+                      data-testid={`issue-item-${idx}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2 flex-1">
+                          {issue.severity === "critical" ? (
+                            <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5 text-red-600" />
+                          ) : issue.severity === "warning" ? (
+                            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-yellow-600" />
+                          ) : (
+                            <Info className="h-4 w-4 shrink-0 mt-0.5 text-blue-600" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">{issue.description}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{issue.suggestion}</p>
+                          </div>
+                        </div>
+                        {issue.autoFixable && issue.fixValue && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="shrink-0 h-7 text-xs"
+                            disabled={isFixing.has(issue.code)}
+                            onClick={() => {
+                              const field = fieldMap[issue.code] || "icd10Code";
+                              onAutoFix(issue.code, issue.fixValue!, field);
+                            }}
+                            data-testid={`button-autofix-${idx}`}
+                          >
+                            {isFixing.has(issue.code) ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Wrench className="h-3 w-3 mr-1" />
+                            )}
+                            Auto-Fix
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recommended Actions */}
+            {recommendedActions.length > 0 && (
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Recommended Actions</p>
+                <ul className="space-y-1">
+                  {recommendedActions.map((action, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-sm">
+                      <ChevronRight className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+                      {action}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Submit Gate */}
+            <div className={`rounded-lg border p-4 ${canSubmit ? "border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20" : "border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20"}`}>
+              {canSubmit ? (
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-green-700 dark:text-green-400">Claim is cleared for submission</p>
+                    <p className="text-xs text-muted-foreground">Risk score {riskScore}/100 meets the minimum threshold of 70</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <ShieldAlert className="h-5 w-5 text-red-600 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-700 dark:text-red-400">Claim blocked — resolve issues before submitting</p>
+                    <p className="text-xs text-muted-foreground">Risk score {riskScore}/100 is below the minimum threshold of 70</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-between pt-1">
+              <Button variant="outline" onClick={onRunCheck} data-testid="button-rerun-preflight">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Re-run Check
+              </Button>
+              <Button
+                disabled={!canSubmit}
+                data-testid="button-submit-claim-gated"
+                onClick={onClose}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Submit Claim
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 gap-4 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <ShieldCheck className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold">Run AI Pre-Flight Check</h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                Our AI will analyze this claim for coding errors, missing documentation, and denial triggers before you submit.
+              </p>
+            </div>
+            <Button onClick={onRunCheck} data-testid="button-run-preflight">
+              <Brain className="mr-2 h-4 w-4" />
+              Analyze Claim
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function BillingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("claims");
@@ -87,6 +396,14 @@ export default function BillingPage() {
   const [newAuthType, setNewAuthType] = useState<"medical" | "dental">("medical");
   const [p2pNotes, setP2pNotes] = useState("");
   const [p2pOutcome, setP2pOutcome] = useState("");
+
+  // Pre-flight state
+  const [preflightClaim, setPreflightClaim] = useState<BillingClaim | null>(null);
+  const [preflightOpen, setPreflightOpen] = useState(false);
+  const [preflightResult, setPreflightResult] = useState<ClaimPreflightResult | null>(null);
+  const [preflightLoading, setPreflightLoading] = useState(false);
+  const [fixingIssues, setFixingIssues] = useState<Set<string>>(new Set());
+
   const { toast } = useToast();
 
   const { data: stats, isLoading: statsLoading } = useQuery<BillingStats>({
@@ -138,7 +455,7 @@ export default function BillingPage() {
       });
       return response.json();
     },
-    onSuccess: (data, authId) => {
+    onSuccess: (data) => {
       setAppealText(data.appealLetter || "");
       toast({ title: "Appeal letter generated successfully" });
     },
@@ -162,6 +479,59 @@ export default function BillingPage() {
       toast({ title: "Error creating authorization", description: error.message, variant: "destructive" });
     },
   });
+
+  const autoFixMutation = useMutation({
+    mutationFn: async ({ claimId, issueCode, fixValue, field }: { claimId: number; issueCode: string; fixValue: string; field: string }) => {
+      const response = await apiRequest("POST", `/api/billing/claims/${claimId}/autofix`, { issueCode, fixValue, field });
+      return response.json();
+    },
+    onSuccess: (data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/claims"] });
+      setFixingIssues(prev => { const next = new Set(prev); next.delete(vars.issueCode); return next; });
+      toast({ title: "Auto-fix applied", description: `Issue ${vars.issueCode} has been resolved.` });
+    },
+    onError: (error: Error, vars) => {
+      setFixingIssues(prev => { const next = new Set(prev); next.delete(vars.issueCode); return next; });
+      toast({ title: "Auto-fix failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleOpenPreflight = async (claim: BillingClaim) => {
+    setPreflightClaim(claim);
+    setPreflightResult(null);
+    setPreflightOpen(true);
+    // Try to load existing result
+    try {
+      const response = await apiRequest("GET", `/api/billing/claims/${claim.id}/preflight`);
+      if (response.ok) {
+        const existing = await response.json();
+        setPreflightResult(existing);
+      }
+    } catch {
+      // No existing result — will prompt user to run
+    }
+  };
+
+  const handleRunPreflight = async () => {
+    if (!preflightClaim) return;
+    setPreflightLoading(true);
+    try {
+      const response = await apiRequest("POST", `/api/billing/claims/${preflightClaim.id}/preflight`);
+      const result = await response.json();
+      setPreflightResult(result);
+      toast({ title: "Pre-flight check complete", description: `Risk score: ${result.riskScore}/100` });
+    } catch (err) {
+      toast({ title: "Pre-flight check failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setPreflightLoading(false);
+    }
+  };
+
+  const handleAutoFix = (issueCode: string, fixValue: string, field: string) => {
+    if (!preflightClaim) return;
+    setFixingIssues(prev => new Set(prev).add(issueCode));
+    autoFixMutation.mutate({ claimId: preflightClaim.id, issueCode, fixValue, field });
+  };
 
   const handleCreateAuth = () => {
     if (!newAuthPatientId) {
@@ -410,7 +780,7 @@ export default function BillingPage() {
                     </TableHeader>
                     <TableBody>
                       {filteredClaims.map((claim) => (
-                        <TableRow key={claim.id}>
+                        <TableRow key={claim.id} data-testid={`claim-row-${claim.id}`}>
                           <TableCell className="font-mono text-sm">
                             {claim.claimNumber || `CLM-${claim.id}`}
                           </TableCell>
@@ -433,9 +803,20 @@ export default function BillingPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" data-testid={`button-view-claim-${claim.id}`}>
-                              <ArrowRight className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenPreflight(claim)}
+                                data-testid={`button-preflight-${claim.id}`}
+                              >
+                                <ShieldCheck className="h-4 w-4 mr-1" />
+                                Pre-Flight
+                              </Button>
+                              <Button variant="ghost" size="sm" data-testid={`button-view-claim-${claim.id}`}>
+                                <ArrowRight className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -971,35 +1352,36 @@ export default function BillingPage() {
         </TabsContent>
       </Tabs>
 
+      {/* New Authorization Dialog */}
       <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent data-testid="dialog-new-auth">
           <DialogHeader>
-            <DialogTitle>New Prior Authorization</DialogTitle>
+            <DialogTitle>Create Prior Authorization</DialogTitle>
             <DialogDescription>
-              Create a new prior authorization request for a full arch implant case.
+              Submit a new prior authorization request for a full arch implant case
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 pt-2">
             <div className="space-y-2">
-              <Label>Patient</Label>
+              <Label htmlFor="auth-patient">Patient</Label>
               <Select value={newAuthPatientId} onValueChange={setNewAuthPatientId}>
-                <SelectTrigger data-testid="select-auth-patient">
+                <SelectTrigger id="auth-patient" data-testid="select-auth-patient">
                   <SelectValue placeholder="Select patient" />
                 </SelectTrigger>
                 <SelectContent>
-                  {patients?.map((patient) => (
-                    <SelectItem key={patient.id} value={patient.id.toString()}>
-                      {patient.firstName} {patient.lastName}
+                  {patients?.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.firstName} {p.lastName}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Insurance Type</Label>
+              <Label htmlFor="auth-type">Authorization Type</Label>
               <Select value={newAuthType} onValueChange={(v) => setNewAuthType(v as "medical" | "dental")}>
-                <SelectTrigger data-testid="select-auth-type">
-                  <SelectValue placeholder="Select type" />
+                <SelectTrigger id="auth-type" data-testid="select-auth-type">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="medical">Medical Insurance</SelectItem>
@@ -1007,43 +1389,43 @@ export default function BillingPage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowAuthDialog(false)} data-testid="button-cancel-auth">
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleCreateAuth} 
-              disabled={createAuthMutation.isPending}
-              data-testid="button-submit-new-auth"
-            >
-              {createAuthMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Authorization
-            </Button>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowAuthDialog(false)} data-testid="button-cancel-auth">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateAuth}
+                disabled={createAuthMutation.isPending}
+                data-testid="button-confirm-auth"
+              >
+                {createAuthMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Authorization
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* P2P Dialog */}
       <Dialog open={showP2PDialog} onOpenChange={setShowP2PDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent data-testid="dialog-p2p">
           <DialogHeader>
-            <DialogTitle>Peer-to-Peer Review Outcome</DialogTitle>
+            <DialogTitle>Record P2P Outcome</DialogTitle>
             <DialogDescription>
-              Record the outcome of the peer-to-peer review call with the insurance medical director.
+              Document the result of the peer-to-peer review call
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 pt-2">
             <div className="space-y-2">
-              <Label>Outcome</Label>
+              <Label htmlFor="p2p-outcome">Outcome</Label>
               <Select value={p2pOutcome} onValueChange={setP2pOutcome}>
-                <SelectTrigger data-testid="select-p2p-outcome">
+                <SelectTrigger id="p2p-outcome" data-testid="select-p2p-outcome">
                   <SelectValue placeholder="Select outcome" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="denied">Denied</SelectItem>
-                  <SelectItem value="additional_info">Additional Info Requested</SelectItem>
-                  <SelectItem value="pending">Still Pending</SelectItem>
+                  <SelectItem value="pending">Pending Further Review</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1053,27 +1435,43 @@ export default function BillingPage() {
                 id="p2p-notes"
                 value={p2pNotes}
                 onChange={(e) => setP2pNotes(e.target.value)}
-                placeholder="Document key points from the P2P call..."
+                placeholder="Document key points from the call..."
                 className="min-h-[100px]"
                 data-testid="textarea-p2p-notes"
               />
             </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowP2PDialog(false)} data-testid="button-cancel-p2p">
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleP2PSubmit} 
-              disabled={!p2pOutcome || updateAuthMutation.isPending}
-              data-testid="button-submit-p2p"
-            >
-              {updateAuthMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Record Outcome
-            </Button>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowP2PDialog(false)} data-testid="button-cancel-p2p">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleP2PSubmit}
+                disabled={!p2pOutcome || updateAuthMutation.isPending}
+                data-testid="button-confirm-p2p"
+              >
+                {updateAuthMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Outcome
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Pre-Flight Check Dialog */}
+      <PreflightDialog
+        open={preflightOpen}
+        onClose={() => {
+          setPreflightOpen(false);
+          setPreflightClaim(null);
+          setPreflightResult(null);
+        }}
+        claim={preflightClaim}
+        result={preflightResult}
+        isLoading={preflightLoading}
+        onRunCheck={handleRunPreflight}
+        onAutoFix={handleAutoFix}
+        isFixing={fixingIssues}
+      />
     </div>
   );
 }
