@@ -1452,13 +1452,13 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
     try {
       const patientId = parseInt(req.params.id);
       const tab: string = req.body?.tab || "portal_open";
-      // Check that portal is still enabled before logging; do NOT mutate enabled status
+      // Verify portal is enabled — do NOT create or mutate enabled status
       const access = await storage.getPortalAccess(patientId);
-      if (access && access.enabled === false) {
+      if (!access || access.enabled === false) {
         return res.status(403).json({ message: "Portal access is disabled for this patient" });
       }
-      // Only update lastAccessedAt — never force-enable a disabled portal
-      await storage.upsertPortalAccess(patientId, { lastAccessedAt: new Date() });
+      // Only update lastAccessedAt on existing enabled records — touchPortalLastAccessed never re-enables a disabled portal
+      await storage.touchPortalLastAccessed(patientId);
       await storage.createAuditLog({
         userId: req.user?.claims?.sub || req.user?.id || "unknown",
         action: "portal_view",

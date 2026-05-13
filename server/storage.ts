@@ -542,6 +542,8 @@ export interface IStorage {
   // Patient Portal Access
   getPortalAccess(patientId: number): Promise<PatientPortalAccess | undefined>;
   upsertPortalAccess(patientId: number, data: Partial<InsertPatientPortalAccess>): Promise<PatientPortalAccess>;
+  // Only updates lastAccessedAt on existing, enabled records — never creates or re-enables
+  touchPortalLastAccessed(patientId: number): Promise<void>;
 
   // Portal Appointment Requests
   getPortalAppointmentRequests(patientId?: number): Promise<PortalAppointmentRequest[]>;
@@ -1908,6 +1910,19 @@ export class DatabaseStorage implements IStorage {
       .where(eq(portalAppointmentRequests.id, id))
       .returning();
     return record;
+  }
+
+  // ============ TOUCH PORTAL LAST ACCESSED (UPDATE-ONLY, never creates/re-enables) ============
+  async touchPortalLastAccessed(patientId: number): Promise<void> {
+    await db
+      .update(patientPortalAccess)
+      .set({ lastAccessedAt: new Date() })
+      .where(
+        and(
+          eq(patientPortalAccess.patientId, patientId),
+          eq(patientPortalAccess.enabled, true)
+        )
+      );
   }
 
   // ============ SURGERY REPORTS BY PATIENT ============

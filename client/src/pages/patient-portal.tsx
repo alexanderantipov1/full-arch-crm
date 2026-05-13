@@ -908,11 +908,27 @@ function PortalView({ patient, onAuditLog }: {
   );
 }
 
+interface PortalAccess {
+  id: number; patientId: number; enabled: boolean;
+  lastAccessedAt: string | null; linkSentAt: string | null;
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────
 export default function PatientPortalPage() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
   const { data: patients = [], isLoading } = useQuery<Patient[]>({ queryKey: ["/api/patients"] });
+
+  // Always fetch portal access status for the selected patient
+  const { data: portalAccess } = useQuery<PortalAccess | null>({
+    queryKey: ["/api/patients", selectedPatient?.id, "portal-access"],
+    queryFn: () =>
+      selectedPatient
+        ? fetch(`/api/patients/${selectedPatient.id}/portal-access`, { credentials: "include" })
+            .then(r => r.ok ? r.json() : null)
+        : Promise.resolve(null),
+    enabled: !!selectedPatient,
+  });
 
   const logAccessMutation = useMutation({
     mutationFn: ({ patientId, tab }: { patientId: number; tab: string }) =>
@@ -921,13 +937,16 @@ export default function PatientPortalPage() {
 
   function handleSelectPatient(p: Patient) {
     setSelectedPatient(p);
-    logAccessMutation.mutate({ patientId: p.id, tab: "portal_open" });
+    // Access log fires only after portal-access check confirms enabled
   }
 
   function handleAuditLog(tab: string) {
-    if (!selectedPatient) return;
+    if (!selectedPatient || !portalAccess?.enabled) return;
     logAccessMutation.mutate({ patientId: selectedPatient.id, tab });
   }
+
+  const portalEnabled = portalAccess?.enabled === true;
+  const portalChecked = selectedPatient && portalAccess !== undefined;
 
   return (
     <div className="space-y-5">
@@ -958,7 +977,23 @@ export default function PatientPortalPage() {
           <Button variant="outline" size="sm" onClick={() => setSelectedPatient(null)} data-testid="button-back">
             ← All Patients
           </Button>
-          <PortalView patient={selectedPatient} onAuditLog={handleAuditLog} />
+          {!portalChecked ? (
+            <p className="text-sm text-muted-foreground py-4">Checking portal access…</p>
+          ) : !portalEnabled ? (
+            <Card className="border-amber-400/30 bg-amber-50/30 dark:bg-amber-950/20" data-testid="portal-disabled-notice">
+              <CardContent className="pt-6 pb-6 text-center">
+                <Shield className="mx-auto h-10 w-10 text-amber-500 mb-3" />
+                <h3 className="font-semibold text-lg mb-1">Portal Access Disabled</h3>
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                  The patient portal is not currently enabled for{" "}
+                  <strong>{selectedPatient.firstName} {selectedPatient.lastName}</strong>.
+                  Enable access from the patient record and send an invitation link first.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <PortalView patient={selectedPatient} onAuditLog={handleAuditLog} />
+          )}
         </div>
       )}
     </div>
