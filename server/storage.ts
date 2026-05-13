@@ -191,6 +191,12 @@ import {
   claimPreflightResults,
   type ClaimPreflightResult,
   type InsertClaimPreflightResult,
+  patientPortalAccess,
+  type PatientPortalAccess,
+  type InsertPatientPortalAccess,
+  portalAppointmentRequests,
+  type PortalAppointmentRequest,
+  type InsertPortalAppointmentRequest,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -532,6 +538,18 @@ export interface IStorage {
   getPreflightResult(claimId: number): Promise<ClaimPreflightResult | undefined>;
   createPreflightResult(data: InsertClaimPreflightResult): Promise<ClaimPreflightResult>;
   updatePreflightResult(id: number, data: Partial<InsertClaimPreflightResult>): Promise<ClaimPreflightResult | undefined>;
+
+  // Patient Portal Access
+  getPortalAccess(patientId: number): Promise<PatientPortalAccess | undefined>;
+  upsertPortalAccess(patientId: number, data: Partial<InsertPatientPortalAccess>): Promise<PatientPortalAccess>;
+
+  // Portal Appointment Requests
+  getPortalAppointmentRequests(patientId?: number): Promise<PortalAppointmentRequest[]>;
+  createPortalAppointmentRequest(data: InsertPortalAppointmentRequest): Promise<PortalAppointmentRequest>;
+  updatePortalAppointmentRequest(id: number, data: Partial<InsertPortalAppointmentRequest>): Promise<PortalAppointmentRequest | undefined>;
+
+  // Surgery Reports
+  getSurgeryReportsByPatient(patientId: number): Promise<SurgeryReport[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1843,6 +1861,59 @@ export class DatabaseStorage implements IStorage {
       .where(eq(claimPreflightResults.id, id))
       .returning();
     return result;
+  }
+
+  // ============ PATIENT PORTAL ACCESS ============
+  async getPortalAccess(patientId: number): Promise<PatientPortalAccess | undefined> {
+    const [record] = await db.select().from(patientPortalAccess).where(eq(patientPortalAccess.patientId, patientId));
+    return record;
+  }
+
+  async upsertPortalAccess(patientId: number, data: Partial<InsertPatientPortalAccess>): Promise<PatientPortalAccess> {
+    const [record] = await db
+      .insert(patientPortalAccess)
+      .values({ patientId, enabled: true, ...data })
+      .onConflictDoUpdate({
+        target: patientPortalAccess.patientId,
+        set: data,
+      })
+      .returning();
+    return record;
+  }
+
+  // ============ PORTAL APPOINTMENT REQUESTS ============
+  async getPortalAppointmentRequests(patientId?: number): Promise<PortalAppointmentRequest[]> {
+    if (patientId) {
+      return db
+        .select()
+        .from(portalAppointmentRequests)
+        .where(eq(portalAppointmentRequests.patientId, patientId))
+        .orderBy(desc(portalAppointmentRequests.createdAt));
+    }
+    return db.select().from(portalAppointmentRequests).orderBy(desc(portalAppointmentRequests.createdAt));
+  }
+
+  async createPortalAppointmentRequest(data: InsertPortalAppointmentRequest): Promise<PortalAppointmentRequest> {
+    const [record] = await db.insert(portalAppointmentRequests).values(data).returning();
+    return record;
+  }
+
+  async updatePortalAppointmentRequest(id: number, data: Partial<InsertPortalAppointmentRequest>): Promise<PortalAppointmentRequest | undefined> {
+    const [record] = await db
+      .update(portalAppointmentRequests)
+      .set(data)
+      .where(eq(portalAppointmentRequests.id, id))
+      .returning();
+    return record;
+  }
+
+  // ============ SURGERY REPORTS BY PATIENT ============
+  async getSurgeryReportsByPatient(patientId: number): Promise<SurgeryReport[]> {
+    return db
+      .select()
+      .from(surgeryReports)
+      .where(eq(surgeryReports.patientId, patientId))
+      .orderBy(desc(surgeryReports.createdAt));
   }
 }
 

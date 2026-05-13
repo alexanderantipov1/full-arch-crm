@@ -59,6 +59,7 @@ import {
   insertPracticeLocationSchema,
   insertPediatricExamSchema,
   insertOralSurgeryCaseSchema,
+  insertPortalAppointmentRequestSchema,
 } from "@shared/schema";
 
 const anthropic = new Anthropic({
@@ -1401,6 +1402,116 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
     } catch (error) {
       console.error("Error applying auto-fix:", error);
       res.status(500).json({ message: "Failed to apply auto-fix" });
+    }
+  });
+
+  // ============ PATIENT PORTAL ============
+  app.get("/api/patients/:id/portal-access", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const access = await storage.getPortalAccess(patientId);
+      res.json(access || { patientId, enabled: false, lastAccessedAt: null, linkSentAt: null });
+    } catch (error) {
+      console.error("Error fetching portal access:", error);
+      res.status(500).json({ message: "Failed to fetch portal access" });
+    }
+  });
+
+  app.patch("/api/patients/:id/portal-access", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const { enabled } = req.body as { enabled: boolean };
+      const access = await storage.upsertPortalAccess(patientId, { enabled });
+      res.json(access);
+    } catch (error) {
+      console.error("Error updating portal access:", error);
+      res.status(500).json({ message: "Failed to update portal access" });
+    }
+  });
+
+  app.post("/api/patients/:id/portal-link", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      const access = await storage.upsertPortalAccess(patientId, { enabled: true, linkSentAt: new Date() });
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub || req.user?.id || "unknown",
+        action: "portal_link_sent",
+        resourceType: "patient_portal",
+        resourceId: String(patientId),
+        patientId,
+        details: { patientId },
+      });
+      res.json({ success: true, access });
+    } catch (error) {
+      console.error("Error sending portal link:", error);
+      res.status(500).json({ message: "Failed to send portal link" });
+    }
+  });
+
+  app.post("/api/patients/:id/portal-access-log", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.id);
+      await storage.upsertPortalAccess(patientId, { enabled: true, lastAccessedAt: new Date() });
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub || req.user?.id || "unknown",
+        action: "portal_view",
+        resourceType: "patient_portal",
+        resourceId: String(patientId),
+        patientId,
+        details: { patientId },
+      });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error logging portal access:", error);
+      res.status(500).json({ message: "Failed to log portal access" });
+    }
+  });
+
+  app.get("/api/portal/appointment-requests", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
+      const requests = await storage.getPortalAppointmentRequests(patientId);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching portal appointment requests:", error);
+      res.status(500).json({ message: "Failed to fetch appointment requests" });
+    }
+  });
+
+  app.post("/api/portal/appointment-requests", isAuthenticated, async (req, res) => {
+    try {
+      const data = insertPortalAppointmentRequestSchema.parse(req.body);
+      const request = await storage.createPortalAppointmentRequest(data);
+      res.status(201).json(request);
+    } catch (error: unknown) {
+      console.error("Error creating portal appointment request:", error);
+      const msg = error instanceof Error ? error.message : "Failed to create appointment request";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  app.patch("/api/portal/appointment-requests/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = insertPortalAppointmentRequestSchema.partial().parse(req.body);
+      const request = await storage.updatePortalAppointmentRequest(id, data);
+      if (!request) return res.status(404).json({ message: "Request not found" });
+      res.json(request);
+    } catch (error: unknown) {
+      console.error("Error updating portal appointment request:", error);
+      const msg = error instanceof Error ? error.message : "Failed to update appointment request";
+      res.status(400).json({ message: msg });
+    }
+  });
+
+  app.get("/api/surgery-reports/patient/:patientId", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const reports = await storage.getSurgeryReportsByPatient(patientId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching surgery reports:", error);
+      res.status(500).json({ message: "Failed to fetch surgery reports" });
     }
   });
 

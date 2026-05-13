@@ -458,6 +458,37 @@ export const insertClaimPreflightResultSchema = createInsertSchema(claimPrefligh
 export type ClaimPreflightResult = typeof claimPreflightResults.$inferSelect;
 export type InsertClaimPreflightResult = z.infer<typeof insertClaimPreflightResultSchema>;
 
+// Patient Portal Access
+export const patientPortalAccess = pgTable("patient_portal_access", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }).unique(),
+  enabled: boolean("enabled").default(true).notNull(),
+  lastAccessedAt: timestamp("last_accessed_at"),
+  linkSentAt: timestamp("link_sent_at"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertPatientPortalAccessSchema = createInsertSchema(patientPortalAccess).omit({ id: true, createdAt: true });
+export type PatientPortalAccess = typeof patientPortalAccess.$inferSelect;
+export type InsertPatientPortalAccess = z.infer<typeof insertPatientPortalAccessSchema>;
+
+// Portal Appointment Requests
+export const portalAppointmentRequests = pgTable("portal_appointment_requests", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  preferredDate: date("preferred_date"),
+  preferredTime: text("preferred_time"),
+  reason: text("reason").notNull(),
+  appointmentType: text("appointment_type").default("consultation"),
+  status: text("status").default("pending").notNull(),
+  staffNotes: text("staff_notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertPortalAppointmentRequestSchema = createInsertSchema(portalAppointmentRequests).omit({ id: true, createdAt: true });
+export type PortalAppointmentRequest = typeof portalAppointmentRequests.$inferSelect;
+export type InsertPortalAppointmentRequest = z.infer<typeof insertPortalAppointmentRequestSchema>;
+
 // Relations
 export const patientsRelations = relations(patients, ({ many }) => ({
   medicalHistory: many(medicalHistory),

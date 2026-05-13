@@ -1,5 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +34,8 @@ import {
   MessageSquare,
   CheckCircle2,
   XCircle,
+  MonitorSmartphone,
+  Link2,
 } from "lucide-react";
 import { format } from "date-fns";
 import type { Patient, MedicalHistory, DentalInfo, Insurance, TreatmentPlan, Appointment, FacialEvaluation, Cephalometric, MedicalConsult, FullArchExam } from "@shared/schema";
@@ -53,9 +57,15 @@ interface PatientDetailData extends Patient {
   fullArchExams?: FullArchExam[];
 }
 
+interface PortalAccess {
+  patientId: number; enabled: boolean;
+  lastAccessedAt: string | null; linkSentAt: string | null;
+}
+
 export default function PatientDetailPage() {
   const params = useParams();
   const patientId = params.id;
+  const { toast } = useToast();
 
   const { data: patient, isLoading } = useQuery<PatientDetailData>({
     queryKey: ["/api/patients", patientId],
@@ -65,6 +75,29 @@ export default function PatientDetailPage() {
     queryKey: ["/api/eligibility/patient", patientId],
     queryFn: () => fetch(`/api/eligibility/patient/${patientId}`, { credentials: "include" }).then(r => r.json()),
     enabled: !!patientId,
+  });
+
+  const { data: portalAccess } = useQuery<PortalAccess>({
+    queryKey: ["/api/patients", patientId, "portal-access"],
+    queryFn: () => fetch(`/api/patients/${patientId}/portal-access`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!patientId,
+  });
+
+  const sendPortalLinkMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/patients/${patientId}/portal-link`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "portal-access"] });
+      toast({ title: "Portal link sent", description: "The patient portal invite has been recorded." });
+    },
+    onError: () => toast({ title: "Failed to send link", variant: "destructive" }),
+  });
+
+  const togglePortalMutation = useMutation({
+    mutationFn: (enabled: boolean) =>
+      apiRequest("PATCH", `/api/patients/${patientId}/portal-access`, { enabled }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "portal-access"] }),
+    onError: () => toast({ title: "Failed to update portal access", variant: "destructive" }),
   });
 
   const latestEligibility = eligibilityHistory?.[0];
@@ -164,6 +197,45 @@ export default function PatientDetailPage() {
             Message
           </Link>
         </Button>
+
+        {/* Portal Status Badge */}
+        {portalAccess !== undefined && (
+          <Badge
+            className={`cursor-pointer gap-1 px-2.5 py-1 text-xs ${
+              !portalAccess.enabled
+                ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200"
+                : portalAccess.lastAccessedAt
+                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 hover:bg-emerald-200"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+            onClick={() => togglePortalMutation.mutate(!portalAccess.enabled)}
+            data-testid={`badge-portal-${patient.id}`}
+          >
+            {portalAccess.enabled
+              ? (portalAccess.lastAccessedAt ? <CheckCircle2 className="h-3 w-3" /> : <MonitorSmartphone className="h-3 w-3" />)
+              : <XCircle className="h-3 w-3" />
+            }
+            {!portalAccess.enabled
+              ? "Portal Disabled"
+              : portalAccess.lastAccessedAt
+              ? `Portal Active · ${new Date(portalAccess.lastAccessedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+              : "Never Logged In"
+            }
+          </Badge>
+        )}
+
+        {/* Send Portal Link */}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={sendPortalLinkMutation.isPending}
+          onClick={() => sendPortalLinkMutation.mutate()}
+          data-testid={`button-send-portal-link-${patient.id}`}
+        >
+          <Link2 className="mr-2 h-4 w-4" />
+          {portalAccess?.linkSentAt ? "Resend Link" : "Send Portal Link"}
+        </Button>
+
         <Button asChild>
           <Link href={`/treatment-plans/new?patientId=${patient.id}`}>
             <Plus className="mr-2 h-4 w-4" />

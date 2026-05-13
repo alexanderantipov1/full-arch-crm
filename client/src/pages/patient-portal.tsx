@@ -1,15 +1,21 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   User, Calendar, FileText, DollarSign, ClipboardList,
-  ChevronRight, CheckCircle, Clock, AlertCircle, Search,
-  Shield, Phone, Mail, Download, Eye,
+  CheckCircle, Clock, AlertCircle, Search,
+  Shield, Phone, Mail, Eye, Send, CreditCard,
+  MessageSquare, Stethoscope, CalendarPlus, Heart,
 } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface Patient {
@@ -22,7 +28,7 @@ interface Appointment {
   startTime: string; endTime: string; status: string; providerName: string | null;
 }
 interface TreatmentPlan {
-  id: number; patientId: number; title: string; status: string;
+  id: number; patientId: number; planName: string; status: string;
   totalCost: string | null; insuranceCoverage: string | null; patientResponsibility: string | null;
 }
 interface ConsentForm {
@@ -31,13 +37,29 @@ interface ConsentForm {
 interface Document {
   id: number; patientId: number; documentType: string; fileName: string; createdAt: string;
 }
+interface SurgeryReport {
+  id: number; patientId: number; surgeryDate: string; surgeryType: string;
+  surgeon: string | null; postOpInstructions: string | null; followUpPlan: string | null;
+  createdAt: string;
+}
+interface PortalAppointmentRequest {
+  id: number; patientId: number; preferredDate: string | null; preferredTime: string | null;
+  reason: string; appointmentType: string | null; status: string; createdAt: string;
+}
 
-const APPT_STATUS_CFG: Record<string, { label: string; color: string; icon: any }> = {
-  scheduled:   { label: "Scheduled",  color: "text-blue-600 dark:text-blue-400",    icon: Clock },
-  confirmed:   { label: "Confirmed",  color: "text-teal-600 dark:text-teal-400",    icon: CheckCircle },
+const APPT_STATUS_CFG: Record<string, { label: string; color: string; icon: typeof Clock }> = {
+  scheduled:   { label: "Scheduled",  color: "text-blue-600 dark:text-blue-400",       icon: Clock },
+  confirmed:   { label: "Confirmed",  color: "text-teal-600 dark:text-teal-400",       icon: CheckCircle },
   completed:   { label: "Completed",  color: "text-emerald-600 dark:text-emerald-400", icon: CheckCircle },
-  no_show:     { label: "No Show",    color: "text-red-600 dark:text-red-400",       icon: AlertCircle },
-  cancelled:   { label: "Cancelled",  color: "text-orange-600 dark:text-orange-400", icon: AlertCircle },
+  no_show:     { label: "No Show",    color: "text-red-600 dark:text-red-400",         icon: AlertCircle },
+  cancelled:   { label: "Cancelled",  color: "text-orange-600 dark:text-orange-400",   icon: AlertCircle },
+};
+
+const REQUEST_STATUS_CFG: Record<string, { label: string; cls: string }> = {
+  pending:   { label: "Pending",   cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-400/30" },
+  confirmed: { label: "Confirmed", cls: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-400/30" },
+  completed: { label: "Completed", cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-400/30" },
+  cancelled: { label: "Cancelled", cls: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-400/30" },
 };
 
 // ─── Patient Selector ─────────────────────────────────────────────────────
@@ -77,13 +99,382 @@ function PatientSelector({ patients, selected, onSelect }: {
             <div className="text-xs text-muted-foreground mt-0.5">{p.phone || p.email || "—"}</div>
           </button>
         ))}
+        {filtered.length === 0 && (
+          <p className="col-span-3 text-center py-6 text-sm text-muted-foreground">No patients found.</p>
+        )}
       </div>
     </div>
   );
 }
 
+// ─── Appointment Request Form ──────────────────────────────────────────────
+function AppointmentRequestTab({ patient }: { patient: Patient }) {
+  const { toast } = useToast();
+  const [form, setForm] = useState({
+    reason: "",
+    preferredDate: "",
+    preferredTime: "",
+    appointmentType: "consultation",
+  });
+
+  const { data: existingRequests = [], isLoading: reqLoading } = useQuery<PortalAppointmentRequest[]>({
+    queryKey: ["/api/portal/appointment-requests", patient.id],
+    queryFn: () => fetch(`/api/portal/appointment-requests?patientId=${patient.id}`, { credentials: "include" }).then(r => r.json()),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: typeof form) =>
+      apiRequest("POST", "/api/portal/appointment-requests", { ...data, patientId: patient.id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/portal/appointment-requests", patient.id] });
+      setForm({ reason: "", preferredDate: "", preferredTime: "", appointmentType: "consultation" });
+      toast({ title: "Request submitted", description: "Your appointment request has been sent to the practice." });
+    },
+    onError: () => toast({ title: "Failed to submit request", variant: "destructive" }),
+  });
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarPlus className="h-4 w-4 text-primary" /> New Appointment Request
+          </CardTitle>
+          <CardDescription>Tell us when you'd like to come in and why</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="appt-type">Appointment Type</Label>
+              <Select
+                value={form.appointmentType}
+                onValueChange={v => setForm(f => ({ ...f, appointmentType: v }))}
+              >
+                <SelectTrigger id="appt-type" data-testid="select-appt-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="consultation">Consultation</SelectItem>
+                  <SelectItem value="follow_up">Follow-up Visit</SelectItem>
+                  <SelectItem value="post_op">Post-Op Check</SelectItem>
+                  <SelectItem value="emergency">Urgent / Emergency</SelectItem>
+                  <SelectItem value="maintenance">Maintenance Cleaning</SelectItem>
+                  <SelectItem value="imaging">X-Ray / Imaging</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="preferred-date">Preferred Date</Label>
+              <Input
+                id="preferred-date"
+                type="date"
+                value={form.preferredDate}
+                onChange={e => setForm(f => ({ ...f, preferredDate: e.target.value }))}
+                data-testid="input-preferred-date"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="preferred-time">Preferred Time</Label>
+            <Select
+              value={form.preferredTime}
+              onValueChange={v => setForm(f => ({ ...f, preferredTime: v }))}
+            >
+              <SelectTrigger id="preferred-time" data-testid="select-preferred-time">
+                <SelectValue placeholder="Any time" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="morning">Morning (8am – 12pm)</SelectItem>
+                <SelectItem value="afternoon">Afternoon (12pm – 4pm)</SelectItem>
+                <SelectItem value="late_afternoon">Late Afternoon (4pm – 6pm)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="reason">Reason for Visit <span className="text-destructive">*</span></Label>
+            <Textarea
+              id="reason"
+              placeholder="Describe your concern or the reason for your visit…"
+              value={form.reason}
+              onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+              rows={3}
+              data-testid="textarea-reason"
+            />
+          </div>
+          <Button
+            onClick={() => createMutation.mutate(form)}
+            disabled={!form.reason.trim() || createMutation.isPending}
+            data-testid="button-submit-appt-request"
+          >
+            <Send className="mr-2 h-4 w-4" />
+            {createMutation.isPending ? "Submitting…" : "Submit Request"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {(reqLoading || existingRequests.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider">Previous Requests</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {reqLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : existingRequests.map(r => {
+              const cfg = REQUEST_STATUS_CFG[r.status] || REQUEST_STATUS_CFG.pending;
+              return (
+                <div key={r.id} className="flex items-start justify-between gap-3 px-4 py-3 rounded-lg border border-border" data-testid={`req-${r.id}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm capitalize">{(r.appointmentType || "consultation").replace(/_/g, " ")}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{r.reason}</div>
+                    {r.preferredDate && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        Preferred: {r.preferredDate}{r.preferredTime ? ` · ${r.preferredTime.replace(/_/g, " ")}` : ""}
+                      </div>
+                    )}
+                  </div>
+                  <Badge className={`text-[10px] capitalize border shrink-0 ${cfg.cls}`}>{cfg.label}</Badge>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Message Compose ──────────────────────────────────────────────────────
+function MessageTab({ patient }: { patient: Patient }) {
+  const { toast } = useToast();
+  const [message, setMessage] = useState("");
+
+  const { data: threads = [] } = useQuery<Array<{ patientId: number; patientName: string; lastBody: string; lastCreatedAt: string; unreadCount: number }>>({
+    queryKey: ["/api/patient-messages/threads"],
+  });
+
+  const patientThread = threads.find(t => t.patientId === patient.id);
+
+  const { data: messages = [] } = useQuery<Array<{ id: number; body: string; direction: string; createdAt: string; isRead: boolean }>>({
+    queryKey: ["/api/patient-messages", patient.id],
+    queryFn: () => fetch(`/api/patient-messages?patientId=${patient.id}`, { credentials: "include" }).then(r => r.json()),
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/patient-messages", {
+        patientId: patient.id,
+        body: message,
+        direction: "inbound",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patient-messages", patient.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patient-messages/threads"] });
+      setMessage("");
+      toast({ title: "Message sent", description: "Your message has been sent to the care team." });
+    },
+    onError: () => toast({ title: "Failed to send message", variant: "destructive" }),
+  });
+
+  return (
+    <div className="space-y-4">
+      {patientThread && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border bg-primary/5 text-sm">
+          <MessageSquare className="h-4 w-4 text-primary" />
+          <span>Last message: <strong>{new Date(patientThread.lastCreatedAt).toLocaleDateString()}</strong></span>
+          {patientThread.unreadCount > 0 && (
+            <Badge className="bg-primary text-primary-foreground text-[10px] ml-auto">{patientThread.unreadCount} unread</Badge>
+          )}
+        </div>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-primary" /> Message the Care Team
+          </CardTitle>
+          <CardDescription>Questions about your treatment, appointment, or billing? Send us a message.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            placeholder="Type your message here…"
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            rows={4}
+            data-testid="textarea-message"
+          />
+          <Button
+            onClick={() => sendMutation.mutate()}
+            disabled={!message.trim() || sendMutation.isPending}
+            data-testid="button-send-message"
+          >
+            <Send className="mr-2 h-4 w-4" />
+            {sendMutation.isPending ? "Sending…" : "Send Message"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {messages.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm text-muted-foreground uppercase tracking-wider">Message History</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-[300px] overflow-y-auto">
+            {[...messages].reverse().map(m => (
+              <div
+                key={m.id}
+                className={`px-3 py-2.5 rounded-lg text-sm max-w-[80%] ${
+                  m.direction === "inbound"
+                    ? "ml-auto bg-primary/10 text-primary"
+                    : "bg-muted text-foreground"
+                }`}
+                data-testid={`message-${m.id}`}
+              >
+                <div>{m.body}</div>
+                <div className="text-[10px] mt-1 opacity-60 text-right">
+                  {new Date(m.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Post-Op Instructions ─────────────────────────────────────────────────
+function PostOpTab({ patient }: { patient: Patient }) {
+  const { data: reports = [], isLoading } = useQuery<SurgeryReport[]>({
+    queryKey: ["/api/surgery-reports/patient", patient.id],
+    queryFn: () => fetch(`/api/surgery-reports/patient/${patient.id}`, { credentials: "include" }).then(r => r.json()),
+  });
+
+  const withInstructions = reports.filter(r => r.postOpInstructions || r.followUpPlan);
+
+  return (
+    <div className="space-y-4">
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground text-center py-6">Loading post-op instructions…</p>
+      ) : withInstructions.length === 0 ? (
+        <div className="text-center py-10">
+          <Heart className="mx-auto h-10 w-10 text-muted-foreground/40 mb-3" />
+          <p className="text-sm text-muted-foreground">No post-operative instructions on file yet.</p>
+          <p className="text-xs text-muted-foreground mt-1">Your care team will add these after your procedure.</p>
+        </div>
+      ) : withInstructions.map(r => (
+        <Card key={r.id} data-testid={`post-op-${r.id}`}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Stethoscope className="h-4 w-4 text-primary" />
+                  {r.surgeryType}
+                </CardTitle>
+                <CardDescription>
+                  {new Date(r.surgeryDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                  {r.surgeon && ` · Dr. ${r.surgeon}`}
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="text-xs">Post-Op Care</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {r.postOpInstructions && (
+              <div>
+                <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                  <CheckCircle className="h-4 w-4 text-emerald-500" /> Care Instructions
+                </h4>
+                <div className="rounded-lg bg-muted/50 p-3 text-sm whitespace-pre-wrap leading-relaxed">
+                  {r.postOpInstructions}
+                </div>
+              </div>
+            )}
+            {r.followUpPlan && (
+              <div>
+                <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4 text-blue-500" /> Follow-Up Plan
+                </h4>
+                <div className="rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/40 dark:border-blue-800/30 p-3 text-sm whitespace-pre-wrap leading-relaxed">
+                  {r.followUpPlan}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ─── Billing Tab ──────────────────────────────────────────────────────────
+function BillingTab({ plans }: { plans: TreatmentPlan[] }) {
+  const { toast } = useToast();
+  const totalResponsibility = plans.reduce((acc, p) => acc + parseFloat(p.patientResponsibility || "0"), 0);
+
+  return (
+    <div className="space-y-4">
+      <Card className={totalResponsibility > 0 ? "border-amber-400/30 bg-amber-50/30 dark:bg-amber-950/20" : "border-emerald-400/30 bg-emerald-50/30 dark:bg-emerald-950/20"}>
+        <CardContent className="pt-5 pb-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Estimated Patient Balance</div>
+              <div className={`text-3xl font-bold font-mono ${totalResponsibility > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                ${totalResponsibility.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">Across {plans.length} treatment plan{plans.length !== 1 ? "s" : ""}</div>
+            </div>
+            {totalResponsibility > 0 && (
+              <Button
+                className="gap-2 shrink-0"
+                onClick={() => toast({ title: "Payment portal coming soon", description: "Online payments will be available in an upcoming update." })}
+                data-testid="button-pay-now"
+              >
+                <CreditCard className="h-4 w-4" /> Pay Now
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {plans.map(p => (
+        <Card key={p.id} data-testid={`plan-billing-${p.id}`}>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start justify-between mb-3">
+              <div className="font-semibold">{p.planName}</div>
+              <Badge variant="outline" className="text-xs capitalize">{p.status}</Badge>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <div className="text-xs text-muted-foreground mb-0.5">Total Cost</div>
+                <div className="font-bold">{p.totalCost ? `$${parseFloat(p.totalCost).toLocaleString()}` : "—"}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-0.5">Insurance Est.</div>
+                <div className="font-bold text-emerald-600 dark:text-emerald-400">
+                  {p.insuranceCoverage ? `$${parseFloat(p.insuranceCoverage).toLocaleString()}` : "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-0.5">Patient Est.</div>
+                <div className={`font-bold ${p.patientResponsibility && parseFloat(p.patientResponsibility) > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+                  {p.patientResponsibility ? `$${parseFloat(p.patientResponsibility).toLocaleString()}` : "—"}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+
+      {plans.length === 0 && (
+        <p className="text-sm text-muted-foreground italic py-4 text-center">No treatment plans with billing information.</p>
+      )}
+    </div>
+  );
+}
+
 // ─── Portal View ───────────────────────────────────────────────────────────
-function PortalView({ patient }: { patient: Patient }) {
+function PortalView({ patient, onLogAccess }: { patient: Patient; onLogAccess: (id: number) => void }) {
   const { data: allAppts = [] } = useQuery<Appointment[]>({ queryKey: ["/api/appointments"] });
   const { data: allPlans = [] } = useQuery<TreatmentPlan[]>({ queryKey: ["/api/treatment-plans"] });
   const { data: allConsent = [] } = useQuery<ConsentForm[]>({ queryKey: ["/api/consent-forms"] });
@@ -96,7 +487,6 @@ function PortalView({ patient }: { patient: Patient }) {
 
   const upcoming = appts.filter(a => new Date(a.startTime) >= new Date() && a.status !== "cancelled");
   const past = appts.filter(a => new Date(a.startTime) < new Date() || a.status === "completed");
-
   const totalResponsibility = plans.reduce((acc, p) => acc + parseFloat(p.patientResponsibility || "0"), 0);
   const activePlan = plans.find(p => p.status === "active" || p.status === "approved");
 
@@ -106,12 +496,12 @@ function PortalView({ patient }: { patient: Patient }) {
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="pt-4 pb-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
               <span className="text-xl font-bold text-primary">
                 {patient.firstName[0]}{patient.lastName[0]}
               </span>
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold">{patient.firstName} {patient.lastName}</h2>
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
                 {patient.phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{patient.phone}</span>}
@@ -119,11 +509,9 @@ function PortalView({ patient }: { patient: Patient }) {
                 {patient.dateOfBirth && <span>DOB: {patient.dateOfBirth}</span>}
               </div>
             </div>
-            <div className="ml-auto">
-              <Badge variant="outline" className="text-xs border-primary/30 text-primary gap-1">
-                <Shield className="h-3 w-3" /> HIPAA Protected
-              </Badge>
-            </div>
+            <Badge variant="outline" className="text-xs border-primary/30 text-primary gap-1 shrink-0">
+              <Shield className="h-3 w-3" /> HIPAA Protected
+            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -150,9 +538,12 @@ function PortalView({ patient }: { patient: Patient }) {
 
       {/* Tabs */}
       <Tabs defaultValue="appointments">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="appointments">Appointments ({appts.length})</TabsTrigger>
-          <TabsTrigger value="treatment">Treatment Plans ({plans.length})</TabsTrigger>
+          <TabsTrigger value="request">Request Appt.</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="post-op">Post-Op Care</TabsTrigger>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
           <TabsTrigger value="documents">Documents ({docs.length})</TabsTrigger>
           <TabsTrigger value="consent">Consent Forms ({consent.length})</TabsTrigger>
         </TabsList>
@@ -211,32 +602,24 @@ function PortalView({ patient }: { patient: Patient }) {
           )}
         </TabsContent>
 
-        {/* Treatment Plans */}
-        <TabsContent value="treatment" className="mt-3 space-y-3">
-          {plans.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic py-4 text-center">No treatment plans on file.</p>
-          ) : plans.map(p => (
-            <Card key={p.id} data-testid={`plan-${p.id}`}>
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="font-semibold">{p.title}</div>
-                  <Badge variant="outline" className="text-xs capitalize">{p.status}</Badge>
-                </div>
-                <div className="grid grid-cols-3 gap-3 text-xs">
-                  {[
-                    { label: "Total Cost", value: p.totalCost ? `$${parseFloat(p.totalCost).toLocaleString()}` : "—" },
-                    { label: "Insurance Est.", value: p.insuranceCoverage ? `$${parseFloat(p.insuranceCoverage).toLocaleString()}` : "—" },
-                    { label: "Patient Est.", value: p.patientResponsibility ? `$${parseFloat(p.patientResponsibility).toLocaleString()}` : "—" },
-                  ].map(item => (
-                    <div key={item.label}>
-                      <div className="text-muted-foreground">{item.label}</div>
-                      <div className="font-bold">{item.value}</div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        {/* Request Appointment */}
+        <TabsContent value="request" className="mt-3">
+          <AppointmentRequestTab patient={patient} />
+        </TabsContent>
+
+        {/* Billing */}
+        <TabsContent value="billing" className="mt-3">
+          <BillingTab plans={plans} />
+        </TabsContent>
+
+        {/* Post-Op */}
+        <TabsContent value="post-op" className="mt-3">
+          <PostOpTab patient={patient} />
+        </TabsContent>
+
+        {/* Messages */}
+        <TabsContent value="messages" className="mt-3">
+          <MessageTab patient={patient} />
         </TabsContent>
 
         {/* Documents */}
@@ -285,11 +668,23 @@ export default function PatientPortalPage() {
 
   const { data: patients = [], isLoading } = useQuery<Patient[]>({ queryKey: ["/api/patients"] });
 
+  const logAccessMutation = useMutation({
+    mutationFn: (patientId: number) =>
+      apiRequest("POST", `/api/patients/${patientId}/portal-access-log`, {}),
+  });
+
+  function handleSelectPatient(p: Patient) {
+    setSelectedPatient(p);
+    logAccessMutation.mutate(p.id);
+  }
+
   return (
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Patient Portal</h1>
-        <p className="text-sm text-muted-foreground">Full patient view — appointments, treatment plans, documents, consent forms, and billing summary</p>
+        <p className="text-sm text-muted-foreground">
+          Full patient view — appointments, treatment plans, documents, post-op care, messaging, and billing
+        </p>
       </div>
 
       {!selectedPatient ? (
@@ -303,7 +698,7 @@ export default function PatientPortalPage() {
             {isLoading ? (
               <div className="text-center py-6 text-muted-foreground text-sm">Loading patients…</div>
             ) : (
-              <PatientSelector patients={patients} selected={selectedPatient} onSelect={setSelectedPatient} />
+              <PatientSelector patients={patients} selected={selectedPatient} onSelect={handleSelectPatient} />
             )}
           </CardContent>
         </Card>
@@ -312,7 +707,7 @@ export default function PatientPortalPage() {
           <Button variant="outline" size="sm" onClick={() => setSelectedPatient(null)} data-testid="button-back">
             ← All Patients
           </Button>
-          <PortalView patient={selectedPatient} />
+          <PortalView patient={selectedPatient} onLogAccess={logAccessMutation.mutate} />
         </div>
       )}
     </div>
