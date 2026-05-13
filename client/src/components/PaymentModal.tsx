@@ -9,11 +9,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   CreditCard, Lock, CheckCircle2, AlertCircle, Loader2,
-  FlaskConical, ArrowRight, ShieldAlert,
+  FlaskConical, ArrowRight,
 } from "lucide-react";
+
+interface SuccessRecord {
+  id: number;
+  stripePaymentIntentId: string;
+  amount: number;
+  currency: string;
+  status: string;
+  description: string | null;
+  testMode: boolean;
+  isSimulated: boolean;
+}
 
 interface StripeConfig {
   publishableKey: string | null;
@@ -203,7 +213,7 @@ export function PaymentModal({
   const [description, setDescription] = useState("");
   const [email, setEmail] = useState(receiptEmail || "");
   const [intentData, setIntentData] = useState<PaymentIntentData | null>(null);
-  const [successRecord, setSuccessRecord] = useState<any>(null);
+  const [successRecord, setSuccessRecord] = useState<SuccessRecord | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
@@ -521,7 +531,7 @@ export function PaymentModal({
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Mode</span>
                   <Badge variant="outline" className="text-[10px] border-amber-400/50 text-amber-600 h-4">
-                    {successRecord.simulated ? "SIMULATED" : "TEST"}
+                    {successRecord.isSimulated ? "SIMULATED" : "TEST"}
                   </Badge>
                 </div>
               )}

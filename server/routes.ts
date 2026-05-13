@@ -3916,7 +3916,7 @@ Return this exact JSON shape:
         eraData: { source: "stripe", stripePaymentId: record.id, description },
       });
 
-      res.json(record);
+      res.json({ ...record, isSimulated: !!simulated });
     } catch (error: any) {
       console.error("Stripe confirm error:", error);
       res.status(500).json({ message: error.message || "Failed to record payment" });
