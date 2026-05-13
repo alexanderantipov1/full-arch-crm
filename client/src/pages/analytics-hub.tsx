@@ -153,7 +153,7 @@ function RevenueCycleTab() {
 }
 
 // ─── Reports Tab ──────────────────────────────────────────────────────────────
-function ReportsTab() {
+function ReportsTab({ onExport }: { onExport?: () => void }) {
   const [dateRange, setDateRange] = useState("30");
   const { data: patients = [] } = useQuery<Patient[]>({ queryKey: ["/api/patients"] });
   const { data: claims = [] } = useQuery<BillingClaim[]>({ queryKey: ["/api/billing/claims"] });
@@ -211,7 +211,7 @@ function ReportsTab() {
             <SelectItem value="180">Last 6 months</SelectItem>
           </SelectContent>
         </Select>
-        <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs ml-auto"><Download className="h-3.5 w-3.5" />Export</Button>
+        <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs ml-auto" onClick={onExport} data-testid="button-reports-export"><Download className="h-3.5 w-3.5" />Export CSV</Button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -531,66 +531,129 @@ function PredictiveTab() {
 
 // ─── Main Hub ─────────────────────────────────────────────────────────────────
 export default function AnalyticsHubPage() {
+  const [activeTab, setActiveTab] = useState("revenue");
+
   const { data: analytics } = useQuery<{
     summary: { totalBilled: number; totalCollected: number; totalPending: number; collectionRate: number; denialRate: number; avgDaysToPayment: number };
     claims: { total: number; paid: number; denied: number; pending: number };
     trends: { monthlyCollections: number[]; monthlyDenials: number[]; months: string[] };
   }>({ queryKey: ["/api/analytics/revenue-cycle"] });
 
+  const { data: claims = [] } = useQuery<BillingClaim[]>({ queryKey: ["/api/billing/claims"] });
+  const { data: patients = [] } = useQuery<Patient[]>({ queryKey: ["/api/patients"] });
+  const { data: payments = [] } = useQuery<PaymentPosting[]>({ queryKey: ["/api/era/postings"] });
+
   function handleExportCSV() {
-    const a = analytics;
-    const rows = a
-      ? a.trends.months.map((month, i) => ({
-          Month: month,
-          "Collections ($)": a.trends.monthlyCollections[i] ?? 0,
-          "Denials ($)": a.trends.monthlyDenials[i] ?? 0,
-        }))
-      : [{ Month: "—", "Collections ($)": 0, "Denials ($)": 0 }];
-    exportToCSV(rows, "RevenueCycle");
+    if (activeTab === "reports") {
+      const rows = payments.slice().reverse().map((p) => ({
+        "Payment Date": new Date(p.paymentDate).toLocaleDateString(),
+        "Payer": p.payerName,
+        "Amount ($)": p.paymentAmount,
+        "Status": p.postingStatus,
+      }));
+      exportToCSV(rows.length > 0 ? rows : [{ "Payment Date": "—", Payer: "—", "Amount ($)": "—", Status: "—" }], "Reports");
+    } else {
+      const a = analytics;
+      const rows = a
+        ? a.trends.months.map((month, i) => ({
+            Month: month,
+            "Collections ($)": a.trends.monthlyCollections[i] ?? 0,
+            "Denials ($)": a.trends.monthlyDenials[i] ?? 0,
+          }))
+        : [{ Month: "—", "Collections ($)": 0, "Denials ($)": 0 }];
+      exportToCSV(rows, "RevenueCycle");
+    }
   }
 
   function handleExportPDF() {
     const a = analytics;
-    exportToPDF(
-      [
-        { type: "title", title: "Analytics & Revenue Cycle Report", subtitle: `Generated ${new Date().toLocaleDateString()} — Golden State Dental` },
-        {
-          type: "kpis",
-          heading: "Revenue Summary",
-          items: [
-            { label: "Total Billed", value: a ? fmt$(a.summary.totalBilled) : "—" },
-            { label: "Total Collected", value: a ? fmt$(a.summary.totalCollected) : "—" },
-            { label: "Pending", value: a ? fmt$(a.summary.totalPending) : "—" },
-            { label: "Collection Rate", value: a ? fmtPct(a.summary.collectionRate) : "—" },
-            { label: "Denial Rate", value: a ? fmtPct(a.summary.denialRate) : "—" },
-            { label: "Avg Days to Pay", value: a ? `${a.summary.avgDaysToPayment}d` : "—" },
-          ],
-        },
-        {
-          type: "table",
-          heading: "Monthly Trends",
-          columns: ["Month", "Collections", "Denials"],
-          rows: a
-            ? a.trends.months.map((month, i) => [month, fmt$(a.trends.monthlyCollections[i] ?? 0), fmt$(a.trends.monthlyDenials[i] ?? 0)])
-            : [["No data", "—", "—"]],
-        },
-        {
-          type: "table",
-          heading: "Claims Breakdown",
-          columns: ["Category", "Count"],
-          rows: a
-            ? [
-                ["Total Claims", a.claims.total],
-                ["Paid / Approved", a.claims.paid],
-                ["Denied", a.claims.denied],
-                ["Pending Review", a.claims.pending],
-              ]
-            : [["No data", "—"]],
-        },
-      ],
-      "AnalyticsReport",
-    );
+    if (activeTab === "reports") {
+      const startDate = subDays(new Date(), 30);
+      const periodPayments = payments.filter((p) => new Date(p.paymentDate) >= startDate);
+      const totalRevenue = periodPayments.reduce((s, p) => s + parseFloat(p.paymentAmount || "0"), 0);
+      const periodClaims = claims.filter((c) => new Date(c.createdAt) >= startDate);
+      const approvedClaims = periodClaims.filter((c) => c.claimStatus === "paid");
+      const deniedClaims = periodClaims.filter((c) => c.claimStatus === "denied");
+      const approvalRate = periodClaims.length > 0 ? (approvedClaims.length / periodClaims.length) * 100 : 0;
+      const newPatients = patients.filter((p) => new Date(p.createdAt) >= startDate);
+      exportToPDF(
+        [
+          { type: "title", title: "Practice Reports — Last 30 Days", subtitle: `Generated ${new Date().toLocaleDateString()} — Golden State Dental` },
+          {
+            type: "kpis",
+            heading: "Period Summary",
+            items: [
+              { label: "Revenue (30d)", value: fmt$(totalRevenue) },
+              { label: "New Patients", value: String(newPatients.length) },
+              { label: "Claims Filed", value: String(periodClaims.length) },
+              { label: "Approval Rate", value: fmtPct(approvalRate) },
+              { label: "Approved Claims", value: String(approvedClaims.length) },
+              { label: "Denied Claims", value: String(deniedClaims.length) },
+            ],
+          },
+          {
+            type: "table",
+            heading: "Recent Payments",
+            columns: ["Date", "Payer", "Amount"],
+            rows: periodPayments.slice(0, 20).map((p) => [
+              new Date(p.paymentDate).toLocaleDateString(),
+              p.payerName,
+              fmt$(parseFloat(p.paymentAmount || "0")),
+            ]),
+          },
+        ],
+        "ReportsTab",
+      );
+    } else {
+      exportToPDF(
+        [
+          { type: "title", title: "Analytics & Revenue Cycle Report", subtitle: `Generated ${new Date().toLocaleDateString()} — Golden State Dental` },
+          {
+            type: "kpis",
+            heading: "Revenue Summary",
+            items: [
+              { label: "Total Billed", value: a ? fmt$(a.summary.totalBilled) : "—" },
+              { label: "Total Collected", value: a ? fmt$(a.summary.totalCollected) : "—" },
+              { label: "Pending", value: a ? fmt$(a.summary.totalPending) : "—" },
+              { label: "Collection Rate", value: a ? fmtPct(a.summary.collectionRate) : "—" },
+              { label: "Denial Rate", value: a ? fmtPct(a.summary.denialRate) : "—" },
+              { label: "Avg Days to Pay", value: a ? `${a.summary.avgDaysToPayment}d` : "—" },
+            ],
+          },
+          {
+            type: "table",
+            heading: "Monthly Trends",
+            columns: ["Month", "Collections", "Denials"],
+            rows: a
+              ? a.trends.months.map((month, i) => [month, fmt$(a.trends.monthlyCollections[i] ?? 0), fmt$(a.trends.monthlyDenials[i] ?? 0)])
+              : [["No data", "—", "—"]],
+          },
+          {
+            type: "table",
+            heading: "Claims Breakdown",
+            columns: ["Category", "Count"],
+            rows: a
+              ? [
+                  ["Total Claims", a.claims.total],
+                  ["Paid / Approved", a.claims.paid],
+                  ["Denied", a.claims.denied],
+                  ["Pending Review", a.claims.pending],
+                ]
+              : [["No data", "—"]],
+          },
+        ],
+        "AnalyticsReport",
+      );
+    }
   }
+
+  const TAB_LABELS: Record<string, string> = {
+    revenue: "Revenue Cycle",
+    reports: "Reports",
+    bi: "Business Intelligence",
+    providers: "Provider Intelligence",
+    predictive: "Predictive AI",
+  };
 
   return (
     <div className="space-y-5">
@@ -603,7 +666,7 @@ export default function AnalyticsHubPage() {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" data-testid="button-export-report">
               <Download className="mr-2 h-3.5 w-3.5" />
-              Export Report
+              Export {TAB_LABELS[activeTab] ?? "Report"}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -619,7 +682,7 @@ export default function AnalyticsHubPage() {
         </DropdownMenu>
       </div>
 
-      <Tabs defaultValue="revenue">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="revenue"    className="text-xs"><Activity className="h-3.5 w-3.5 mr-1" />Revenue Cycle</TabsTrigger>
           <TabsTrigger value="reports"    className="text-xs"><BarChart3 className="h-3.5 w-3.5 mr-1" />Reports</TabsTrigger>
@@ -628,7 +691,7 @@ export default function AnalyticsHubPage() {
           <TabsTrigger value="predictive" className="text-xs"><TrendingUp className="h-3.5 w-3.5 mr-1" />Predictive AI</TabsTrigger>
         </TabsList>
         <TabsContent value="revenue"    className="mt-4"><RevenueCycleTab /></TabsContent>
-        <TabsContent value="reports"    className="mt-4"><ReportsTab /></TabsContent>
+        <TabsContent value="reports"    className="mt-4"><ReportsTab onExport={handleExportCSV} /></TabsContent>
         <TabsContent value="bi"         className="mt-4"><BusinessIntelTab /></TabsContent>
         <TabsContent value="providers"  className="mt-4"><ProviderIntelTab /></TabsContent>
         <TabsContent value="predictive" className="mt-4"><PredictiveTab /></TabsContent>

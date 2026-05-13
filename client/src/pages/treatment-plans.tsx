@@ -503,6 +503,7 @@ export default function TreatmentPlansPage() {
                                 type: "title",
                                 title: "Treatment Plan Summary",
                                 subtitle: `Golden State Dental — Prepared for ${patientName}`,
+                                showLogo: true,
                               },
                               {
                                 type: "kpis",
@@ -537,6 +538,18 @@ export default function TreatmentPlansPage() {
                                     ]),
                                   }]
                                 : []),
+                              {
+                                type: "table" as const,
+                                heading: "Treatment Timeline",
+                                columns: ["Phase", "Milestone", "Status"],
+                                rows: [
+                                  ["Phase 1", "Initial Consultation & Treatment Planning", plan.status === "draft" ? "In Progress" : "Complete"],
+                                  ["Phase 2", "Prior Authorization / Insurance Approval", plan.priorAuthStatus === "approved" ? "Complete" : plan.priorAuthStatus === "pending" ? "In Progress" : "Pending"],
+                                  ["Phase 3", "Surgery / Implant Placement", plan.status === "in_progress" || plan.status === "completed" ? "In Progress / Complete" : "Scheduled"],
+                                  ["Phase 4", "Healing & Prosthetic Fabrication", plan.status === "completed" ? "Complete" : "Upcoming"],
+                                  ["Phase 5", "Final Delivery & Seating", plan.status === "completed" ? "Complete" : "Upcoming"],
+                                ],
+                              },
                               ...(plan.notes
                                 ? [{
                                     type: "table" as const,

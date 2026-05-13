@@ -35,6 +35,7 @@ export interface PDFTitleSection {
   type: "title";
   title: string;
   subtitle?: string;
+  showLogo?: boolean;
 }
 
 export interface PDFKPISection {
@@ -72,6 +73,17 @@ export function exportToPDF(sections: PDFSection[], reportType: string): void {
 
   for (const section of sections) {
     if (section.type === "title") {
+      // Optional logo placeholder
+      if (section.showLogo) {
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(margin, y, 40, 16, 2, 2, "FD");
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(148, 163, 184);
+        doc.text("[ PRACTICE LOGO ]", margin + 20, y + 9, { align: "center" });
+        y += 20;
+      }
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(18);
       doc.setFont("helvetica", "bold");

@@ -49,7 +49,7 @@ import {
 } from "lucide-react";
 import { exportToCSV } from "@/lib/export";
 import { format } from "date-fns";
-import type { BillingClaim, TreatmentPlan, PriorAuthorization, ClaimPreflightResult } from "@shared/schema";
+import type { BillingClaim, TreatmentPlan, PriorAuthorization, ClaimPreflightResult, Insurance } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -439,6 +439,10 @@ export default function BillingPage() {
     queryKey: ["/api/patients"],
   });
 
+  const { data: allInsurance } = useQuery<Insurance[]>({
+    queryKey: ["/api/insurance/all"],
+  });
+
   const deniedAuths = priorAuths?.filter(auth => auth.status === "denied") || [];
   const pendingP2P = priorAuths?.filter(auth => auth.peerToPeerRequired && !auth.peerToPeerOutcome) || [];
 
@@ -820,12 +824,23 @@ export default function BillingPage() {
                         { name: `${p.firstName} ${p.lastName}`, dob: p.dateOfBirth ?? "" },
                       ]),
                     );
+                    const insuranceMap = new Map<number, Insurance>();
+                    for (const ins of allInsurance ?? []) {
+                      if (!insuranceMap.has(ins.patientId)) {
+                        insuranceMap.set(ins.patientId, ins);
+                      }
+                    }
                     const rows = (filteredClaims ?? []).map((c) => {
                       const pt = patientMap.get(c.patientId);
+                      const ins = insuranceMap.get(c.patientId);
                       return {
                         "Claim #": c.claimNumber ?? c.id,
                         "Patient Name": pt?.name ?? "",
                         "Date of Birth": pt?.dob ?? "",
+                        "Insurance Provider": ins?.providerName ?? "",
+                        "Insurance Type": ins?.insuranceType ?? "",
+                        "Policy #": ins?.policyNumber ?? "",
+                        "Group #": ins?.groupNumber ?? "",
                         "Procedure Code (CDT)": c.procedureCode ?? "",
                         "ICD-10": c.icd10Code ?? "",
                         Description: c.description ?? "",

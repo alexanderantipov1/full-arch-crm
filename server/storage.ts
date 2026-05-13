@@ -337,6 +337,7 @@ export interface IStorage {
 
   // Additional helpers
   getInsurance(patientId: number): Promise<Insurance[]>;
+  getAllInsurance(): Promise<Insurance[]>;
   getTreatmentPlansByPatient(patientId: number): Promise<TreatmentPlan[]>;
 
   // Patient Journey - Leads
@@ -1130,6 +1131,10 @@ export class DatabaseStorage implements IStorage {
   // Additional helpers
   async getInsurance(patientId: number): Promise<Insurance[]> {
     return db.select().from(insurance).where(eq(insurance.patientId, patientId));
+  }
+
+  async getAllInsurance(): Promise<Insurance[]> {
+    return db.select().from(insurance);
   }
 
   async getTreatmentPlansByPatient(patientId: number): Promise<TreatmentPlan[]> {
