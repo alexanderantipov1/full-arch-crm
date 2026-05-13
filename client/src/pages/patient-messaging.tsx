@@ -113,6 +113,10 @@ export default function PatientMessagingPage() {
     },
   });
 
+  const threadOpenMut = useMutation({
+    mutationFn: (patientId: number) => apiRequest("POST", `/api/patient-messages/${patientId}/open`, {}),
+  });
+
   const sendMut = useMutation({
     mutationFn: () => apiRequest("POST", "/api/patient-messages", {
       patientId: selectedPatientId!,
@@ -217,7 +221,7 @@ export default function PatientMessagingPage() {
               {filteredThreads.map(t => (
                 <button
                   key={t.patientId}
-                  onClick={() => { setSelectedPatientId(t.patientId); setSelectedPatientName(t.patientName); setComposing(false); }}
+                  onClick={() => { setSelectedPatientId(t.patientId); setSelectedPatientName(t.patientName); setComposing(false); threadOpenMut.mutate(t.patientId); }}
                   className={`w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-2.5 transition-colors ${
                     selectedPatientId === t.patientId
                       ? "bg-primary/10 border border-primary/30"
@@ -249,7 +253,7 @@ export default function PatientMessagingPage() {
               {allPatientsWithNoThread.slice(0, 10).map((p: any) => (
                 <button
                   key={p.id}
-                  onClick={() => { setSelectedPatientId(p.id); setSelectedPatientName(`${p.firstName} ${p.lastName}`); setComposing(false); }}
+                  onClick={() => { setSelectedPatientId(p.id); setSelectedPatientName(`${p.firstName} ${p.lastName}`); setComposing(false); threadOpenMut.mutate(p.id); }}
                   className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition-colors ${
                     selectedPatientId === p.id
                       ? "bg-primary/10 border border-primary/30"

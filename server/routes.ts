@@ -2968,21 +2968,27 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     try { res.json(await storage.getPatientMessageThreads()); } catch { res.json([]); }
   });
 
+  // Explicit thread-open audit event — called once when a user consciously opens a thread
+  app.post("/api/patient-messages/:patientId/open", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const userId = getSessionUserId(req);
+      await storage.createAuditLog({
+        userId: userId || "system",
+        action: "view",
+        resourceType: "patient_message_thread",
+        resourceId: String(patientId),
+        patientId,
+        phiAccessed: true,
+        details: { action: "thread_opened" },
+      });
+      res.json({ ok: true });
+    } catch { res.json({ ok: false }); }
+  });
+
   app.get("/api/patient-messages", isAuthenticated, async (req, res) => {
     try {
       const patientId = req.query.patientId ? parseInt(req.query.patientId as string) : undefined;
-      if (patientId) {
-        const userId = getSessionUserId(req);
-        await storage.createAuditLog({
-          userId: userId || "system",
-          action: "view",
-          resourceType: "patient_message_thread",
-          resourceId: String(patientId),
-          patientId,
-          phiAccessed: true,
-          details: { action: "thread_opened" },
-        });
-      }
       res.json(await storage.getPatientMessages(patientId));
     } catch { res.json([]); }
   });
