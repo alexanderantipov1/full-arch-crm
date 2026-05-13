@@ -1388,7 +1388,6 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
       const today = new Date().toISOString().split("T")[0];
       const checksToday = checks.filter(c => c.checkDate && c.checkDate.toString().startsWith(today)).length;
       const active = checks.filter(c => c.eligibilityStatus === "active").length;
-      
       res.json({
         checksToday,
         activeVerifications: checks.length,
@@ -1420,40 +1419,149 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     }
   });
 
+  app.get("/api/eligibility/patient/:patientId", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const checks = await storage.getEligibilityChecksByPatient(patientId);
+      res.json(checks);
+    } catch (error) {
+      console.error("Error fetching patient eligibility history:", error);
+      res.status(500).json({ message: "Failed to fetch eligibility history" });
+    }
+  });
+
+  // Shared AI eligibility check logic
+  async function runEligibilityCheck(patientId: number, forceRefresh = false): Promise<any> {
+    const patient = await storage.getPatient(patientId);
+    if (!patient) throw new Error("Patient not found");
+
+    // 24-hour cache: return existing if checked within last 24h and not force-refreshing
+    if (!forceRefresh) {
+      const latest = await storage.getLatestEligibilityCheckByPatient(patientId);
+      if (latest) {
+        const ageMs = Date.now() - new Date(latest.checkDate).getTime();
+        if (ageMs < 24 * 60 * 60 * 1000) {
+          return { ...latest, cached: true };
+        }
+      }
+    }
+
+    const insuranceRecords = await storage.getInsurance(patientId);
+    const primaryInsurance = insuranceRecords[0];
+
+    const insuranceContext = primaryInsurance
+      ? `Provider: ${primaryInsurance.providerName}, Type: ${primaryInsurance.insuranceType}, Policy: ${primaryInsurance.policyNumber}, Group: ${primaryInsurance.groupNumber || "N/A"}, Annual Max: $${primaryInsurance.annualMaximum || "2000"}, Deductible: $${primaryInsurance.deductible || "50"}, Remaining Benefit: $${primaryInsurance.remainingBenefit || "1500"}`
+      : "No insurance on file — generate a plausible dental PPO plan";
+
+    const aiResponse = await askClaude(
+      `You are a dental insurance clearinghouse (like Availity). Return ONLY valid JSON — no markdown, no explanation.`,
+      `Simulate an eligibility (270/271) response for patient ${patient.firstName} ${patient.lastName}, DOB ${patient.dateOfBirth}.
+Insurance on file: ${insuranceContext}.
+Return this exact JSON shape:
+{
+  "eligibilityStatus": "active" | "inactive" | "terminated",
+  "planName": string,
+  "planType": "PPO" | "HMO" | "Indemnity" | "DHMO",
+  "groupNumber": string,
+  "subscriberId": string,
+  "subscriberName": string,
+  "effectiveDate": "YYYY-MM-DD",
+  "terminationDate": "YYYY-MM-DD" | null,
+  "networkStatus": "In-Network" | "Out-of-Network",
+  "deductibleIndividual": number,
+  "deductibleMet": number,
+  "deductibleRemaining": number,
+  "deductibleFamily": number,
+  "outOfPocketMax": number,
+  "oopMet": number,
+  "oopRemaining": number,
+  "annualMaximum": number,
+  "benefitsRemaining": number,
+  "copayPreventive": number,
+  "copayBasic": number,
+  "copayMajor": number,
+  "copayOrtho": number,
+  "coveredServices": ["preventive","basic","major","orthodontics","implants","oral_surgery"],
+  "waitingPeriods": {"major": string | null, "orthodontics": string | null},
+  "priorAuthRequired": ["implants","oral_surgery"],
+  "notes": string
+}`,
+      800
+    );
+
+    let parsed: any = {};
+    try {
+      parsed = JSON.parse(aiResponse);
+    } catch {
+      const m = aiResponse.match(/\{[\s\S]*\}/);
+      if (m) parsed = JSON.parse(m[0]);
+    }
+
+    const check = await storage.createEligibilityCheck({
+      patientId,
+      insuranceId: primaryInsurance?.id || null,
+      status: "completed",
+      eligibilityStatus: parsed.eligibilityStatus || "active",
+      coverageDetails: parsed,
+      benefitsRemaining: String(parsed.benefitsRemaining ?? primaryInsurance?.remainingBenefit ?? "1500"),
+      deductibleMet: String(parsed.deductibleMet ?? "0"),
+      effectiveDate: parsed.effectiveDate || primaryInsurance?.effectiveDate || null,
+      terminationDate: parsed.terminationDate || primaryInsurance?.terminationDate || null,
+      rawResponse: parsed,
+    });
+    return { ...check, cached: false };
+  }
+
   app.post("/api/eligibility/verify/:patientId", isAuthenticated, async (req, res) => {
     try {
       const patientId = parseInt(req.params.patientId);
-      const patient = await storage.getPatient(patientId);
-      if (!patient) {
-        return res.status(404).json({ message: "Patient not found" });
-      }
-
-      const insuranceRecords = await storage.getInsurance(patientId);
-      const primaryInsurance = insuranceRecords[0];
-
-      const eligibilityResult = await storage.createEligibilityCheck({
-        patientId,
-        insuranceId: primaryInsurance?.id || null,
-        status: "completed",
-        eligibilityStatus: "active",
-        coverageDetails: {
-          planName: primaryInsurance?.providerName || "Standard Medical Plan",
-          planType: primaryInsurance?.insuranceType || "PPO",
-          groupNumber: primaryInsurance?.groupNumber || "GRP-12345",
-          subscriberId: primaryInsurance?.policyNumber || "SUB-67890",
-          effectiveDate: primaryInsurance?.effectiveDate || new Date().toISOString().split("T")[0],
-          networkStatus: "In-Network"
-        },
-        benefitsRemaining: primaryInsurance?.remainingBenefit?.toString() || "15000.00",
-        deductibleMet: "500.00",
-        effectiveDate: primaryInsurance?.effectiveDate || null,
-        terminationDate: primaryInsurance?.terminationDate || null
-      });
-
-      res.json(eligibilityResult);
-    } catch (error) {
+      const forceRefresh = req.body?.forceRefresh === true;
+      const result = await runEligibilityCheck(patientId, forceRefresh);
+      res.json(result);
+    } catch (error: any) {
       console.error("Error verifying eligibility:", error);
-      res.status(500).json({ message: "Failed to verify eligibility" });
+      res.status(error.message === "Patient not found" ? 404 : 500).json({ message: error.message || "Failed to verify eligibility" });
+    }
+  });
+
+  // POST /api/eligibility/check — alias used by insurance-verification page
+  app.post("/api/eligibility/check", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.body?.patientId);
+      if (!patientId) return res.status(400).json({ message: "patientId required" });
+      const forceRefresh = req.body?.forceRefresh === true;
+      const result = await runEligibilityCheck(patientId, forceRefresh);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error checking eligibility:", error);
+      res.status(500).json({ message: error.message || "Failed to check eligibility" });
+    }
+  });
+
+  // Batch verify — all patients with appointments tomorrow
+  app.post("/api/eligibility/batch-tomorrow", isAuthenticated, async (req, res) => {
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tStart = new Date(tomorrow); tStart.setHours(0, 0, 0, 0);
+      const tEnd = new Date(tomorrow); tEnd.setHours(23, 59, 59, 999);
+
+      const allAppts = await storage.getAppointments({ startDate: tStart, endDate: tEnd });
+      const uniquePatientIds = [...new Set(allAppts.map(a => a.patientId))];
+
+      const results: any[] = [];
+      for (const pid of uniquePatientIds) {
+        try {
+          const r = await runEligibilityCheck(pid, false);
+          results.push({ patientId: pid, status: "ok", eligibilityStatus: r.eligibilityStatus, cached: r.cached });
+        } catch (e: any) {
+          results.push({ patientId: pid, status: "error", message: e.message });
+        }
+      }
+      res.json({ checked: results.length, results });
+    } catch (error) {
+      console.error("Error running batch eligibility:", error);
+      res.status(500).json({ message: "Failed to run batch eligibility check" });
     }
   });
 

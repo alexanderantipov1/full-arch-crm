@@ -313,6 +313,8 @@ export interface IStorage {
 
   // Eligibility Checks
   getEligibilityChecks(): Promise<EligibilityCheck[]>;
+  getEligibilityChecksByPatient(patientId: number): Promise<EligibilityCheck[]>;
+  getLatestEligibilityCheckByPatient(patientId: number): Promise<EligibilityCheck | undefined>;
   createEligibilityCheck(data: InsertEligibilityCheck): Promise<EligibilityCheck>;
 
   // Payment Postings
@@ -1048,6 +1050,20 @@ export class DatabaseStorage implements IStorage {
   // Eligibility Checks
   async getEligibilityChecks(): Promise<EligibilityCheck[]> {
     return db.select().from(eligibilityChecks).orderBy(desc(eligibilityChecks.checkDate));
+  }
+
+  async getEligibilityChecksByPatient(patientId: number): Promise<EligibilityCheck[]> {
+    return db.select().from(eligibilityChecks)
+      .where(eq(eligibilityChecks.patientId, patientId))
+      .orderBy(desc(eligibilityChecks.checkDate));
+  }
+
+  async getLatestEligibilityCheckByPatient(patientId: number): Promise<EligibilityCheck | undefined> {
+    const [check] = await db.select().from(eligibilityChecks)
+      .where(eq(eligibilityChecks.patientId, patientId))
+      .orderBy(desc(eligibilityChecks.checkDate))
+      .limit(1);
+    return check;
   }
 
   async createEligibilityCheck(data: InsertEligibilityCheck): Promise<EligibilityCheck> {

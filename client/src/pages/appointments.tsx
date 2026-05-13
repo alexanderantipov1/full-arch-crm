@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import {
   Plus,
   Calendar,
@@ -26,6 +28,9 @@ import {
   UserPlus,
   ShieldAlert,
   Zap,
+  Shield,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import { format, startOfDay, isSameDay, addDays, startOfWeek, endOfWeek } from "date-fns";
 import type { Appointment } from "@shared/schema";
@@ -64,12 +69,27 @@ const aiWaitlist = [
 ];
 
 export default function AppointmentsPage() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [view, setView] = useState<"day" | "week">("day");
   const [mainTab, setMainTab] = useState<string>("calendar");
+  const [batchResults, setBatchResults] = useState<any[] | null>(null);
 
   const { data: appointments, isLoading } = useQuery<Appointment[]>({
     queryKey: ["/api/appointments"],
+  });
+
+  const batchVerifyMut = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/eligibility/batch-tomorrow", {}).then(r => r.json()),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/eligibility"] });
+      setBatchResults(data.results ?? []);
+      const active = (data.results ?? []).filter((r: any) => r.eligibilityStatus === "active").length;
+      const issues = data.checked - active;
+      toast({ title: `Batch Verify Complete`, description: `${active} active, ${issues} need review` });
+    },
+    onError: () => toast({ title: "Batch verify failed", variant: "destructive" }),
   });
 
   const filteredAppointments = appointments?.filter((apt) => {
@@ -101,13 +121,61 @@ export default function AppointmentsPage() {
             Manage surgery schedules and patient appointments
           </p>
         </div>
-        <Button asChild data-testid="button-new-appointment">
-          <Link href="/appointments/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Appointment
-          </Link>
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            onClick={() => batchVerifyMut.mutate()}
+            disabled={batchVerifyMut.isPending}
+            data-testid="button-batch-verify-tomorrow"
+          >
+            {batchVerifyMut.isPending
+              ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying…</>
+              : <><Shield className="mr-2 h-4 w-4" />Verify Tomorrow's Patients</>}
+          </Button>
+          <Button asChild data-testid="button-new-appointment">
+            <Link href="/appointments/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Appointment
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      {batchResults && batchResults.length > 0 && (
+        <Card className="border-blue-200 dark:border-blue-800" data-testid="card-batch-verify-results">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Shield className="h-4 w-4 text-blue-500" />
+              Tomorrow's Eligibility — {batchResults.length} patients checked
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {batchResults.map((r, i) => (
+                <Badge
+                  key={i}
+                  variant={r.eligibilityStatus === "active" ? "secondary" : "destructive"}
+                  className="text-xs"
+                  data-testid={`batch-result-${i}`}
+                >
+                  {r.eligibilityStatus === "active"
+                    ? <CheckCircle2 className="h-3 w-3 mr-1" />
+                    : <AlertTriangle className="h-3 w-3 mr-1" />}
+                  Pt {r.patientId}: {r.eligibilityStatus ?? r.status}
+                  {r.cached ? " (cached)" : ""}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {batchResults && batchResults.length === 0 && (
+        <Card data-testid="card-batch-verify-empty">
+          <CardContent className="py-4 text-center text-sm text-muted-foreground">
+            No appointments scheduled for tomorrow.
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card data-testid="kpi-chair-utilization">
