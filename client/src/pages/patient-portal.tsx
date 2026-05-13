@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { PaymentModal } from "@/components/PaymentModal";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -622,9 +623,9 @@ function PostOpTab({ patient }: { patient: Patient }) {
 }
 
 // ─── Billing Tab ──────────────────────────────────────────────────────────
-function BillingTab({ plans }: { plans: TreatmentPlan[] }) {
-  const { toast } = useToast();
+function BillingTab({ plans, patient }: { plans: TreatmentPlan[]; patient: Patient }) {
   const totalResponsibility = plans.reduce((acc, p) => acc + parseFloat(p.patientResponsibility || "0"), 0);
+  const [paymentOpen, setPaymentOpen] = useState(false);
 
   return (
     <div className="space-y-4">
@@ -641,7 +642,7 @@ function BillingTab({ plans }: { plans: TreatmentPlan[] }) {
             {totalResponsibility > 0 && (
               <Button
                 className="gap-2 shrink-0"
-                onClick={() => toast({ title: "Payment portal coming soon", description: "Online payments will be available in an upcoming update." })}
+                onClick={() => setPaymentOpen(true)}
                 data-testid="button-pay-now"
               >
                 <CreditCard className="h-4 w-4" /> Pay Now
@@ -650,6 +651,15 @@ function BillingTab({ plans }: { plans: TreatmentPlan[] }) {
           </div>
         </CardContent>
       </Card>
+
+      <PaymentModal
+        open={paymentOpen}
+        onClose={() => setPaymentOpen(false)}
+        patientId={patient.id}
+        patientName={`${patient.firstName} ${patient.lastName}`}
+        defaultAmount={totalResponsibility > 0 ? totalResponsibility : undefined}
+        receiptEmail={patient.email || undefined}
+      />
 
       {plans.map(p => (
         <Card key={p.id} data-testid={`plan-billing-${p.id}`}>
@@ -838,7 +848,7 @@ function PortalView({ patient, onAuditLog }: {
         </TabsContent>
 
         <TabsContent value="billing" className="mt-3">
-          <BillingTab plans={plans} />
+          <BillingTab plans={plans} patient={patient} />
         </TabsContent>
 
         <TabsContent value="eob" className="mt-3">

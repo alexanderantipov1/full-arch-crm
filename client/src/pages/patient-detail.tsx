@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -36,9 +37,11 @@ import {
   XCircle,
   MonitorSmartphone,
   Link2,
+  CreditCard,
 } from "lucide-react";
 import { format } from "date-fns";
 import type { Patient, MedicalHistory, DentalInfo, Insurance, TreatmentPlan, Appointment, FacialEvaluation, Cephalometric, MedicalConsult, FullArchExam } from "@shared/schema";
+import { PaymentModal } from "@/components/PaymentModal";
 
 interface EligibilityCheck {
   id: number; patientId: number; checkDate: string; eligibilityStatus: string | null;
@@ -66,6 +69,7 @@ export default function PatientDetailPage() {
   const params = useParams();
   const patientId = params.id;
   const { toast } = useToast();
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   const { data: patient, isLoading } = useQuery<PatientDetailData>({
     queryKey: ["/api/patients", patientId],
@@ -236,6 +240,14 @@ export default function PatientDetailPage() {
           {portalAccess?.linkSentAt ? "Resend Link" : "Send Portal Link"}
         </Button>
 
+        <Button
+          variant="outline"
+          onClick={() => setPaymentModalOpen(true)}
+          data-testid={`button-collect-payment-${patient.id}`}
+        >
+          <CreditCard className="mr-2 h-4 w-4" />
+          Collect Payment
+        </Button>
         <Button asChild>
           <Link href={`/treatment-plans/new?patientId=${patient.id}`}>
             <Plus className="mr-2 h-4 w-4" />
@@ -243,6 +255,14 @@ export default function PatientDetailPage() {
           </Link>
         </Button>
       </div>
+
+      <PaymentModal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        patientId={patient.id}
+        patientName={`${patient.firstName} ${patient.lastName}`}
+        receiptEmail={patient.email || undefined}
+      />
 
       <Card>
         <CardContent className="p-6">

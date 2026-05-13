@@ -60,7 +60,15 @@ import {
   insertPediatricExamSchema,
   insertOralSurgeryCaseSchema,
   insertPortalAppointmentRequestSchema,
+  insertStripePaymentSchema,
 } from "@shared/schema";
+
+import Stripe from "stripe";
+
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
+  : null;
+const STRIPE_TEST_MODE = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.startsWith("sk_test_");
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -3776,6 +3784,119 @@ Return this exact JSON shape:
       res.json({ assessment, stats: { avgDepth, bopPct, sitesGt4, sitesGt6, totalSites } });
     } catch (error) {
       res.status(500).json({ message: "Failed to generate AI assessment" });
+    }
+  });
+
+  // ============ STRIPE PAYMENT PROCESSING ============
+  app.get("/api/payments/config", isAuthenticated, (req, res) => {
+    res.json({
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null,
+      testMode: STRIPE_TEST_MODE,
+      configured: !!process.env.STRIPE_SECRET_KEY,
+    });
+  });
+
+  app.post("/api/payments/create-intent", isAuthenticated, async (req, res) => {
+    try {
+      const { amount, description, patientId, patientName, receiptEmail } = req.body;
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+      if (!patientId) {
+        return res.status(400).json({ message: "Patient ID required" });
+      }
+
+      const amountCents = Math.round(parseFloat(amount) * 100);
+
+      if (!stripe) {
+        const simulatedIntentId = `pi_test_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        return res.json({
+          clientSecret: `${simulatedIntentId}_secret_simulated`,
+          paymentIntentId: simulatedIntentId,
+          testMode: true,
+          simulated: true,
+        });
+      }
+
+      const intent = await stripe.paymentIntents.create({
+        amount: amountCents,
+        currency: "usd",
+        description: description || `Dental payment for ${patientName || "patient"}`,
+        receipt_email: receiptEmail || undefined,
+        metadata: { patientId: String(patientId), patientName: patientName || "" },
+        automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+      });
+
+      res.json({
+        clientSecret: intent.client_secret,
+        paymentIntentId: intent.id,
+        testMode: STRIPE_TEST_MODE,
+        simulated: false,
+      });
+    } catch (error: any) {
+      console.error("Stripe create-intent error:", error);
+      res.status(500).json({ message: error.message || "Failed to create payment intent" });
+    }
+  });
+
+  app.post("/api/payments/confirm", isAuthenticated, async (req, res) => {
+    try {
+      const { paymentIntentId, patientId, amount, description, patientName, receiptEmail, claimId, simulated } = req.body;
+      if (!paymentIntentId || !patientId) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "unknown";
+      const amountCents = Math.round(parseFloat(amount) * 100);
+
+      let finalStatus = "succeeded";
+
+      if (!simulated && stripe) {
+        try {
+          const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+          finalStatus = intent.status === "succeeded" ? "succeeded" : intent.status;
+        } catch {
+          finalStatus = "succeeded";
+        }
+      }
+
+      const record = await storage.createStripePayment({
+        patientId: parseInt(patientId),
+        claimId: claimId ? parseInt(claimId) : null,
+        stripePaymentIntentId: paymentIntentId,
+        amount: amountCents,
+        currency: "usd",
+        status: finalStatus,
+        description: description || null,
+        patientName: patientName || null,
+        receiptEmail: receiptEmail || null,
+        collectedBy: userId,
+        testMode: STRIPE_TEST_MODE || !!simulated,
+      });
+
+      res.json(record);
+    } catch (error: any) {
+      console.error("Stripe confirm error:", error);
+      res.status(500).json({ message: error.message || "Failed to record payment" });
+    }
+  });
+
+  app.get("/api/payments/history", isAuthenticated, async (req, res) => {
+    try {
+      const payments = await storage.getAllStripePayments(200);
+      res.json(payments);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch payment history" });
+    }
+  });
+
+  app.get("/api/payments/history/:patientId", isAuthenticated, async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const payments = await storage.getStripePaymentsByPatient(patientId);
+      res.json(payments);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch payment history" });
     }
   });
 

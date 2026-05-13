@@ -1559,6 +1559,27 @@ export const insertUnionAgreementSchema = createInsertSchema(unionAgreements).om
 export const insertUnionMemberVisitSchema = createInsertSchema(unionMemberVisits).omit({ id: true, createdAt: true });
 
 export type UnionOrganization = typeof unionOrganizations.$inferSelect;
+
+// ============ STRIPE PAYMENTS ============
+export const stripePayments = pgTable("stripe_payments", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  claimId: integer("claim_id").references(() => billingClaims.id),
+  stripePaymentIntentId: text("stripe_payment_intent_id").notNull(),
+  amount: integer("amount").notNull(), // in cents
+  currency: text("currency").default("usd").notNull(),
+  status: text("status").notNull(), // succeeded, pending, failed
+  description: text("description"),
+  patientName: text("patient_name"),
+  receiptEmail: text("receipt_email"),
+  collectedBy: text("collected_by"),
+  testMode: boolean("test_mode").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertStripePaymentSchema = createInsertSchema(stripePayments).omit({ id: true, createdAt: true });
+export type StripePayment = typeof stripePayments.$inferSelect;
+export type InsertStripePayment = z.infer<typeof insertStripePaymentSchema>;
 export type InsertUnionOrganization = z.infer<typeof insertUnionOrganizationSchema>;
 export type UnionContact = typeof unionContacts.$inferSelect;
 export type InsertUnionContact = z.infer<typeof insertUnionContactSchema>;

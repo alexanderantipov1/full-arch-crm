@@ -158,6 +158,9 @@ import {
   type InsertUnionAgreement,
   type UnionMemberVisit,
   type InsertUnionMemberVisit,
+  stripePayments,
+  type StripePayment,
+  type InsertStripePayment,
   perioExams,
   type PerioExam,
   type InsertPerioExam,
@@ -556,6 +559,11 @@ export interface IStorage {
 
   // Payment Postings by Patient (EOB)
   getPaymentPostingsByPatient(patientId: number): Promise<PaymentPosting[]>;
+
+  // Stripe Payments
+  createStripePayment(data: InsertStripePayment): Promise<StripePayment>;
+  getStripePaymentsByPatient(patientId: number): Promise<StripePayment[]>;
+  getAllStripePayments(limit?: number): Promise<StripePayment[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1946,6 +1954,28 @@ export class DatabaseStorage implements IStorage {
       .from(paymentPostings)
       .where(eq(paymentPostings.patientId, patientId))
       .orderBy(desc(paymentPostings.createdAt));
+  }
+
+  // ============ STRIPE PAYMENTS ============
+  async createStripePayment(data: InsertStripePayment): Promise<StripePayment> {
+    const [record] = await db.insert(stripePayments).values(data).returning();
+    return record;
+  }
+
+  async getStripePaymentsByPatient(patientId: number): Promise<StripePayment[]> {
+    return db
+      .select()
+      .from(stripePayments)
+      .where(eq(stripePayments.patientId, patientId))
+      .orderBy(desc(stripePayments.createdAt));
+  }
+
+  async getAllStripePayments(limit = 100): Promise<StripePayment[]> {
+    return db
+      .select()
+      .from(stripePayments)
+      .orderBy(desc(stripePayments.createdAt))
+      .limit(limit);
   }
 }
 
