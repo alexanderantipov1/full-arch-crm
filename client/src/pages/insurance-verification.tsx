@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -182,9 +182,17 @@ function EligibilityResultCard({ result, onRefresh, refreshing }: {
 export default function InsuranceVerificationPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, navigate] = useLocation();
+  const [location] = useLocation();
   const [selectedPatient, setSelectedPatient] = useState<string>("");
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number; results: any[] } | null>(null);
+  const [batchRunning, setBatchRunning] = useState(false);
+
+  // Pre-select patient from URL query param (e.g. clicking eligibility badge on patient profile)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get("patientId");
+    if (pid) setSelectedPatient(pid);
+  }, [location]);
 
   const { data: patients } = useQuery<Patient[]>({ queryKey: ["/api/patients"] });
 
@@ -202,27 +210,41 @@ export default function InsuranceVerificationPage() {
     enabled: !!selectedPatient,
   });
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/eligibility/stats"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/eligibility/recent"] });
+    if (selectedPatient) {
+      queryClient.invalidateQueries({ queryKey: ["/api/eligibility/patient", selectedPatient] });
+    }
+  };
+
   const verifyMut = useMutation({
     mutationFn: ({ patientId, forceRefresh }: { patientId: number; forceRefresh?: boolean }) =>
       apiRequest("POST", "/api/eligibility/check", { patientId, forceRefresh }).then(r => r.json()),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/eligibility"] });
+      invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["/api/eligibility/patient", selectedPatient] });
       toast({ title: "Eligibility Check Complete" });
     },
     onError: () => toast({ title: "Verification failed", variant: "destructive" }),
   });
 
-  const batchMut = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/eligibility/batch-tomorrow", {}).then(r => r.json()),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/eligibility"] });
-      setBatchProgress({ done: data.checked, total: data.checked, results: data.results });
-      const active = data.results.filter((r: any) => r.eligibilityStatus === "active").length;
-      const issues = data.results.filter((r: any) => r.eligibilityStatus !== "active").length;
+  const runBatchVerify = async () => {
+    setBatchRunning(true);
+    setBatchProgress({ done: 0, total: 0, results: [] });
+    try {
+      const data = await apiRequest("POST", "/api/eligibility/batch-tomorrow", {}).then(r => r.json());
+      setBatchProgress({ done: data.checked, total: data.checked, results: data.results ?? [] });
+      invalidateAll();
+      const active = (data.results ?? []).filter((r: any) => r.eligibilityStatus === "active").length;
+      const issues = data.checked - active;
       toast({ title: `Batch Verify Complete — ${active} active, ${issues} need review` });
-    },
-    onError: () => toast({ title: "Batch verify failed", variant: "destructive" }),
-  });
+    } catch {
+      toast({ title: "Batch verify failed", variant: "destructive" });
+    } finally {
+      setBatchRunning(false);
+    }
+  };
 
   const latestResult = patientHistory?.[0];
   const selectedPatientName = patients?.find(p => p.id.toString() === selectedPatient);
@@ -236,39 +258,63 @@ export default function InsuranceVerificationPage() {
         </div>
         <Button
           variant="outline"
-          onClick={() => batchMut.mutate()}
-          disabled={batchMut.isPending}
+          onClick={runBatchVerify}
+          disabled={batchRunning}
           data-testid="button-batch-verify"
         >
-          {batchMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+          {batchRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
           Verify Tomorrow's Patients
         </Button>
       </div>
 
-      {/* Batch results */}
-      {batchProgress && (
+      {/* Batch progress + results */}
+      {(batchRunning || batchProgress) && (
         <Card className="border-blue-200 dark:border-blue-800" data-testid="card-batch-results">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Zap className="h-4 w-4 text-blue-500" />
-              Batch Verification Results — {batchProgress.done} patients checked
+              {batchRunning
+                ? "Running Batch Verification…"
+                : `Batch Complete — ${batchProgress?.done ?? 0} patients checked`}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {batchProgress.results.map((r, i) => (
-                <Badge
-                  key={i}
-                  variant={r.eligibilityStatus === "active" ? "secondary" : "destructive"}
-                  className="text-[10px]"
-                  data-testid={`batch-result-${i}`}
-                >
-                  {r.eligibilityStatus === "active" ? <CheckCircle2 className="h-2.5 w-2.5 mr-1" /> : <AlertTriangle className="h-2.5 w-2.5 mr-1" />}
-                  Patient {r.patientId}: {r.eligibilityStatus ?? r.status}
-                  {r.cached ? " (cached)" : ""}
-                </Badge>
-              ))}
-            </div>
+          <CardContent className="space-y-3">
+            {batchRunning && (
+              <div className="space-y-1" data-testid="batch-progress-bar">
+                <Progress value={undefined} className="h-2 animate-pulse" />
+                <p className="text-xs text-muted-foreground">Checking eligibility for tomorrow's appointments…</p>
+              </div>
+            )}
+            {!batchRunning && batchProgress && batchProgress.results.length > 0 && (
+              <>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Completed</span>
+                    <span>{batchProgress.done} patients</span>
+                  </div>
+                  <Progress value={100} className="h-2" data-testid="batch-progress-complete" />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {batchProgress.results.map((r, i) => (
+                    <Badge
+                      key={i}
+                      variant={r.eligibilityStatus === "active" ? "secondary" : "destructive"}
+                      className="text-[10px]"
+                      data-testid={`batch-result-${i}`}
+                    >
+                      {r.eligibilityStatus === "active"
+                        ? <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
+                        : <AlertTriangle className="h-2.5 w-2.5 mr-1" />}
+                      Pt {r.patientId}: {r.eligibilityStatus ?? r.status}
+                      {r.cached ? " (cached)" : ""}
+                    </Badge>
+                  ))}
+                </div>
+              </>
+            )}
+            {!batchRunning && batchProgress && batchProgress.results.length === 0 && (
+              <p className="text-xs text-muted-foreground">No appointments scheduled for tomorrow.</p>
+            )}
           </CardContent>
         </Card>
       )}

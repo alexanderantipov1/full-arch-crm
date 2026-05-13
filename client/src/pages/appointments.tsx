@@ -83,7 +83,8 @@ export default function AppointmentsPage() {
   const batchVerifyMut = useMutation({
     mutationFn: () => apiRequest("POST", "/api/eligibility/batch-tomorrow", {}).then(r => r.json()),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/eligibility"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/eligibility/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/eligibility/recent"] });
       setBatchResults(data.results ?? []);
       const active = (data.results ?? []).filter((r: any) => r.eligibilityStatus === "active").length;
       const issues = data.checked - active;
