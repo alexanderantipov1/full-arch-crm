@@ -3848,20 +3848,22 @@ Return this exact JSON shape:
 
       const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id || "unknown";
       const amountCents = Math.round(parseFloat(amount) * 100);
+      const patientIdInt = parseInt(patientId);
 
       let finalStatus = "succeeded";
 
       if (!simulated && stripe) {
-        try {
-          const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
-          finalStatus = intent.status === "succeeded" ? "succeeded" : intent.status;
-        } catch {
-          finalStatus = "succeeded";
+        const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+        if (intent.status !== "succeeded") {
+          return res.status(400).json({ message: `Payment not confirmed — status: ${intent.status}` });
         }
+        finalStatus = "succeeded";
+      } else if (!simulated && !stripe) {
+        return res.status(500).json({ message: "Stripe not configured" });
       }
 
       const record = await storage.createStripePayment({
-        patientId: parseInt(patientId),
+        patientId: patientIdInt,
         claimId: claimId ? parseInt(claimId) : null,
         stripePaymentIntentId: paymentIntentId,
         amount: amountCents,
@@ -3872,6 +3874,22 @@ Return this exact JSON shape:
         receiptEmail: receiptEmail || null,
         collectedBy: userId,
         testMode: STRIPE_TEST_MODE || !!simulated,
+      });
+
+      await storage.createPaymentPosting({
+        patientId: patientIdInt,
+        claimId: claimId ? parseInt(claimId) : null,
+        paymentDate: new Date().toISOString().split("T")[0],
+        payerName: patientName ? `Patient — ${patientName}` : "Patient — Card",
+        checkNumber: paymentIntentId,
+        paymentAmount: (amountCents / 100).toFixed(2),
+        adjustmentAmount: null,
+        patientResponsibility: (amountCents / 100).toFixed(2),
+        postingStatus: "posted",
+        autoPosted: true,
+        varianceFlag: false,
+        varianceReason: null,
+        eraData: { source: "stripe", stripePaymentId: record.id, description },
       });
 
       res.json(record);

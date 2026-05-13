@@ -262,6 +262,11 @@ export default function PatientDetailPage() {
         patientId={patient.id}
         patientName={`${patient.firstName} ${patient.lastName}`}
         receiptEmail={patient.email || undefined}
+        defaultAmount={
+          (patient.treatmentPlans ?? []).reduce(
+            (acc, p) => acc + parseFloat(p.patientResponsibility || "0"), 0
+          ) || undefined
+        }
       />
 
       <Card>

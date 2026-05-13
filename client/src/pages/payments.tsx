@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DollarSign, TrendingUp, CreditCard, Search, Plus, Calendar, CheckCircle, Clock, AlertCircle, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
+import { format, subDays } from "date-fns";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,6 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Patient, PaymentPosting, BillingClaim } from "@shared/schema";
+import { PaymentModal } from "@/components/PaymentModal";
 
 const paymentFormSchema = z.object({
   patientId: z.string().min(1, "Patient is required"),
@@ -34,6 +35,9 @@ export default function PaymentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("30");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPatientSelectOpen, setIsPatientSelectOpen] = useState(false);
+  const [selectedPatientForCard, setSelectedPatientForCard] = useState<Patient | null>(null);
+  const [patientPickerId, setPatientPickerId] = useState("");
   const { toast } = useToast();
 
   const { data: patients = [] } = useQuery<Patient[]>({
@@ -140,6 +144,15 @@ export default function PaymentsPage() {
           </h1>
           <p className="text-muted-foreground">Monitor collections and record patient payments</p>
         </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => { setPatientPickerId(""); setIsPatientSelectOpen(true); }}
+            data-testid="button-collect-card-payment"
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Collect Card Payment
+          </Button>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-record-payment">
@@ -253,7 +266,60 @@ export default function PaymentsPage() {
             </Form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {/* Patient Select Dialog for Card Payment */}
+      <Dialog open={isPatientSelectOpen} onOpenChange={setIsPatientSelectOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Select Patient</DialogTitle>
+            <DialogDescription>Choose the patient to collect a card payment from</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <Select value={patientPickerId} onValueChange={setPatientPickerId}>
+              <SelectTrigger data-testid="select-patient-for-card">
+                <SelectValue placeholder="Search patients…" />
+              </SelectTrigger>
+              <SelectContent>
+                {patients.map(p => (
+                  <SelectItem key={p.id} value={String(p.id)}>
+                    {p.firstName} {p.lastName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setIsPatientSelectOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={!patientPickerId}
+                onClick={() => {
+                  const pt = patients.find(p => String(p.id) === patientPickerId) ?? null;
+                  setSelectedPatientForCard(pt);
+                  setIsPatientSelectOpen(false);
+                }}
+                data-testid="button-open-card-modal"
+              >
+                Continue
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stripe Card Payment Modal */}
+      {selectedPatientForCard && (
+        <PaymentModal
+          open={!!selectedPatientForCard}
+          onClose={() => setSelectedPatientForCard(null)}
+          patientId={selectedPatientForCard.id}
+          patientName={`${selectedPatientForCard.firstName} ${selectedPatientForCard.lastName}`}
+          receiptEmail={selectedPatientForCard.email || undefined}
+        />
+      )}
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
