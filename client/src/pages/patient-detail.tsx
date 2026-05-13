@@ -48,6 +48,14 @@ interface EligibilityCheck {
   benefitsRemaining: string | null; coverageDetails: Record<string, unknown> | null;
 }
 
+interface StripePayment {
+  id: number; patientId: number; claimId: number | null;
+  stripePaymentIntentId: string; amount: number; currency: string;
+  status: string; description: string | null; patientName: string | null;
+  receiptEmail: string | null; collectedBy: string | null; testMode: boolean;
+  createdAt: string;
+}
+
 interface PatientDetailData extends Patient {
   medicalHistory?: MedicalHistory;
   dentalInfo?: DentalInfo;
@@ -84,6 +92,12 @@ export default function PatientDetailPage() {
   const { data: portalAccess } = useQuery<PortalAccess>({
     queryKey: ["/api/patients", patientId, "portal-access"],
     queryFn: () => fetch(`/api/patients/${patientId}/portal-access`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!patientId,
+  });
+
+  const { data: stripePayments = [], isLoading: paymentsLoading } = useQuery<StripePayment[]>({
+    queryKey: ["/api/payments/history", patientId],
+    queryFn: () => fetch(`/api/payments/history/${patientId}`, { credentials: "include" }).then(r => r.json()),
     enabled: !!patientId,
   });
 
@@ -964,6 +978,65 @@ export default function PatientDetailPage() {
                   <Link href={`/billing?patientId=${patient.id}`}>Go to Billing</Link>
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-primary" />
+                Card Payments
+              </CardTitle>
+              <CardDescription>Stripe payment transactions collected for this patient</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {paymentsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+                </div>
+              ) : stripePayments.length === 0 ? (
+                <div className="text-center py-8">
+                  <CreditCard className="mx-auto h-9 w-9 text-muted-foreground/40 mb-3" />
+                  <p className="text-sm text-muted-foreground">No card payments recorded for this patient.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {stripePayments.map(p => (
+                    <div key={p.id} className="rounded-lg border p-4 flex items-center justify-between" data-testid={`payment-row-${p.id}`}>
+                      <div className="space-y-0.5">
+                        <div className="font-medium text-sm">{p.description || "Payment"}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(p.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                          {" · "}
+                          <span className="font-mono">{p.stripePaymentIntentId}</span>
+                          {p.collectedBy && ` · Collected by ${p.collectedBy}`}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className="font-bold text-emerald-600 dark:text-emerald-400">
+                            ${(p.amount / 100).toFixed(2)}
+                          </div>
+                          <div className="text-xs text-muted-foreground uppercase">{p.currency}</div>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={`capitalize text-xs ${
+                            p.status === "succeeded"
+                              ? "border-emerald-400/40 text-emerald-600"
+                              : p.status === "pending"
+                              ? "border-amber-400/40 text-amber-600"
+                              : "border-red-400/40 text-red-600"
+                          }`}
+                          data-testid={`status-payment-${p.id}`}
+                        >
+                          {p.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

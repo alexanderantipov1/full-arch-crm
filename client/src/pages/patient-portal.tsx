@@ -61,6 +61,13 @@ interface PaymentPosting {
   paymentAmount: string; adjustmentAmount: string | null;
   patientResponsibility: string | null; postingStatus: string; createdAt: string;
 }
+interface StripePayment {
+  id: number; patientId: number; claimId: number | null;
+  stripePaymentIntentId: string; amount: number; currency: string;
+  status: string; description: string | null; patientName: string | null;
+  receiptEmail: string | null; collectedBy: string | null; testMode: boolean;
+  createdAt: string;
+}
 
 const APPT_STATUS_CFG: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   scheduled:   { label: "Scheduled",  color: "text-blue-600 dark:text-blue-400",       icon: Clock },
@@ -202,8 +209,12 @@ function EobTab({ patient, onAuditLog }: { patient: Patient; onAuditLog: (tab: s
     queryKey: ["/api/payment-postings/patient", patient.id],
     queryFn: () => fetch(`/api/payment-postings/patient/${patient.id}`, { credentials: "include" }).then(r => r.json()),
   });
+  const { data: stripePayments = [], isLoading: stripeLoading } = useQuery<StripePayment[]>({
+    queryKey: ["/api/payments/history", patient.id],
+    queryFn: () => fetch(`/api/payments/history/${patient.id}`, { credentials: "include" }).then(r => r.json()),
+  });
 
-  const isLoading = claimsLoading || postingsLoading;
+  const isLoading = claimsLoading || postingsLoading || stripeLoading;
   const paidClaims = claims.filter(c => c.claimStatus === "paid" || c.paidAmount);
 
   return (
@@ -252,6 +263,53 @@ function EobTab({ patient, onAuditLog }: { patient: Patient; onAuditLog: (tab: s
                       {fmt$(p.patientResponsibility)}
                     </div>
                   </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Card / Stripe Payments */}
+      {stripePayments.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-primary" /> Card Payments
+            </CardTitle>
+            <CardDescription>Payments collected via card on file</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {stripePayments.map(p => (
+              <div key={p.id} className="rounded-lg border p-4 flex items-center justify-between" data-testid={`portal-payment-${p.id}`}>
+                <div className="space-y-0.5">
+                  <div className="font-semibold text-sm">{p.description || "Payment"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(p.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                    {" · "}
+                    <span className="font-mono">{p.stripePaymentIntentId}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="font-bold text-emerald-600 dark:text-emerald-400">
+                      ${(p.amount / 100).toFixed(2)}
+                    </div>
+                    <div className="text-xs text-muted-foreground uppercase">{p.currency}</div>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={`capitalize text-xs ${
+                      p.status === "succeeded"
+                        ? "border-emerald-400/40 text-emerald-600"
+                        : p.status === "pending"
+                        ? "border-amber-400/40 text-amber-600"
+                        : "border-red-400/40 text-red-600"
+                    }`}
+                    data-testid={`status-portal-payment-${p.id}`}
+                  >
+                    {p.status}
+                  </Badge>
                 </div>
               </div>
             ))}
