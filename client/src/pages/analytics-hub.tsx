@@ -13,6 +13,12 @@ import {
   Activity, Bot, Brain, Award, CheckCircle, ArrowUpRight, ArrowDownRight,
 } from "lucide-react";
 import { exportToCSV, exportToPDF } from "@/lib/export";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import type { Patient, BillingClaim, TreatmentPlan, PaymentPosting, Appointment } from "@shared/schema";
 
@@ -593,16 +599,24 @@ export default function AnalyticsHubPage() {
           <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">Analytics & Intelligence Hub</h1>
           <p className="text-sm text-muted-foreground">Revenue cycle, reports, business intelligence, provider performance, and predictive analytics — all in one place</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCSV} data-testid="button-export-csv">
-            <Download className="mr-2 h-3.5 w-3.5" />
-            Export CSV
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExportPDF} data-testid="button-export-pdf">
-            <Download className="mr-2 h-3.5 w-3.5" />
-            Export PDF
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" data-testid="button-export-report">
+              <Download className="mr-2 h-3.5 w-3.5" />
+              Export Report
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleExportPDF} data-testid="menu-export-pdf">
+              <FileText className="mr-2 h-4 w-4" />
+              Export as PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportCSV} data-testid="menu-export-csv">
+              <Download className="mr-2 h-4 w-4" />
+              Export as CSV
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Tabs defaultValue="revenue">

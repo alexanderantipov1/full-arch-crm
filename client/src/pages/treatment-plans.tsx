@@ -201,47 +201,6 @@ export default function TreatmentPlansPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={() => {
-              exportToPDF(
-                [
-                  {
-                    type: "title",
-                    title: "Treatment Plans Summary",
-                    subtitle: `${new Date().toLocaleDateString()} — Golden State Dental`,
-                  },
-                  {
-                    type: "kpis",
-                    heading: "Overview",
-                    items: [
-                      { label: "Total Plans", value: String(plans?.length ?? 0) },
-                      { label: "Pending Auth", value: String(plans?.filter((p) => p.priorAuthStatus === "pending").length ?? 0) },
-                      { label: "Total Value", value: plans ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(plans.reduce((s, p) => s + (Number(p.totalCost) || 0), 0)) : "$0" },
-                    ],
-                  },
-                  {
-                    type: "table",
-                    heading: "Treatment Plans",
-                    columns: ["Plan Name", "Diagnosis", "ICD-10", "Status", "Total Cost ($)", "Patient Responsibility ($)"],
-                    rows: (filteredPlans ?? []).map((p) => [
-                      p.planName,
-                      p.diagnosis ?? "",
-                      p.diagnosisCode ?? "",
-                      p.status,
-                      p.totalCost ?? "",
-                      p.patientResponsibility ?? "",
-                    ]),
-                  },
-                ],
-                "TreatmentPlans",
-              );
-            }}
-            data-testid="button-export-plans-pdf"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export PDF
-          </Button>
           <Dialog open={showPackages} onOpenChange={setShowPackages}>
             <DialogTrigger asChild>
               <Button variant="outline" data-testid="button-view-packages">
@@ -529,6 +488,70 @@ export default function TreatmentPlansPage() {
                         </Badge>
                       </div>
 
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Export for Patient"
+                        data-testid={`button-export-plan-${plan.id}`}
+                        onClick={() => {
+                          const patient = patients.find((p) => p.id === plan.patientId);
+                          const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Patient";
+                          const procedures = Array.isArray(plan.procedures) ? plan.procedures as { name?: string; code?: string; cost?: number }[] : [];
+                          exportToPDF(
+                            [
+                              {
+                                type: "title",
+                                title: "Treatment Plan Summary",
+                                subtitle: `Golden State Dental — Prepared for ${patientName}`,
+                              },
+                              {
+                                type: "kpis",
+                                heading: "Plan Overview",
+                                items: [
+                                  { label: "Patient", value: patientName },
+                                  { label: "Plan Name", value: plan.planName },
+                                  { label: "Diagnosis", value: plan.diagnosis ?? "—" },
+                                  { label: "ICD-10 Code", value: plan.diagnosisCode ?? "—" },
+                                  { label: "Status", value: plan.status },
+                                  { label: "Prior Auth", value: plan.priorAuthStatus ?? "Not required" },
+                                ],
+                              },
+                              {
+                                type: "kpis",
+                                heading: "Financial Summary",
+                                items: [
+                                  { label: "Total Cost", value: formatCurrency(plan.totalCost) },
+                                  { label: "Insurance Coverage", value: formatCurrency(plan.insuranceCoverage) },
+                                  { label: "Patient Responsibility", value: formatCurrency(plan.patientResponsibility) },
+                                ],
+                              },
+                              ...(procedures.length > 0
+                                ? [{
+                                    type: "table" as const,
+                                    heading: "Procedure List",
+                                    columns: ["Procedure", "Code", "Est. Cost ($)"],
+                                    rows: procedures.map((proc) => [
+                                      proc.name ?? "—",
+                                      proc.code ?? "—",
+                                      proc.cost != null ? formatCurrency(proc.cost) : "—",
+                                    ]),
+                                  }]
+                                : []),
+                              ...(plan.notes
+                                ? [{
+                                    type: "table" as const,
+                                    heading: "Clinical Notes",
+                                    columns: ["Notes"],
+                                    rows: [[plan.notes]],
+                                  }]
+                                : []),
+                            ],
+                            `TreatmentPlan_${plan.id}`,
+                          );
+                        }}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" asChild>
                         <Link href={`/treatment-plans/${plan.id}`}>
                           <ArrowRight className="h-4 w-4" />

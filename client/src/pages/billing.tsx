@@ -435,7 +435,7 @@ export default function BillingPage() {
     queryKey: ["/api/treatment-plans"],
   });
 
-  const { data: patients } = useQuery<{ id: number; firstName: string; lastName: string }[]>({
+  const { data: patients } = useQuery<{ id: number; firstName: string; lastName: string; dateOfBirth: string | null }[]>({
     queryKey: ["/api/patients"],
   });
 
@@ -814,19 +814,32 @@ export default function BillingPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const rows = (filteredClaims ?? []).map((c) => ({
-                      "Claim #": c.id,
-                      "Procedure Code": c.procedureCode ?? "",
-                      Description: c.description ?? "",
-                      "CDT Code": c.cdtCode ?? "",
-                      "ICD-10": c.icd10Code ?? "",
-                      "Service Date": c.serviceDate ? new Date(c.serviceDate).toLocaleDateString() : "",
-                      "Billed ($)": c.billedAmount ?? "",
-                      "Allowed ($)": c.allowedAmount ?? "",
-                      "Paid ($)": c.paidAmount ?? "",
-                      Status: c.claimStatus ?? "",
-                      "Submitted Date": c.submittedDate ? new Date(c.submittedDate).toLocaleDateString() : "",
-                    }));
+                    const patientMap = new Map(
+                      (patients ?? []).map((p) => [
+                        p.id,
+                        { name: `${p.firstName} ${p.lastName}`, dob: p.dateOfBirth ?? "" },
+                      ]),
+                    );
+                    const rows = (filteredClaims ?? []).map((c) => {
+                      const pt = patientMap.get(c.patientId);
+                      return {
+                        "Claim #": c.claimNumber ?? c.id,
+                        "Patient Name": pt?.name ?? "",
+                        "Date of Birth": pt?.dob ?? "",
+                        "Procedure Code (CDT)": c.procedureCode ?? "",
+                        "ICD-10": c.icd10Code ?? "",
+                        Description: c.description ?? "",
+                        "Service Date": c.serviceDate ? new Date(c.serviceDate).toLocaleDateString() : "",
+                        "Charged ($)": c.chargedAmount ?? "",
+                        "Allowed ($)": c.allowedAmount ?? "",
+                        "Paid ($)": c.paidAmount ?? "",
+                        "Patient Portion ($)": c.patientPortion ?? "",
+                        Status: c.claimStatus ?? "",
+                        "Submitted Date": c.submittedDate ? new Date(c.submittedDate).toLocaleDateString() : "",
+                        "Paid Date": c.paidDate ? new Date(c.paidDate).toLocaleDateString() : "",
+                        "Denial Reason": c.denialReason ?? "",
+                      };
+                    });
                     exportToCSV(rows, "Claims");
                   }}
                   data-testid="button-export-claims-csv"
