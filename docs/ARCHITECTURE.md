@@ -123,12 +123,19 @@ async function askClaude(systemPrompt: string, userMessage: string, maxTokens = 
 ```
 
 ### AI Endpoints
+> Source of truth: `server/routes.ts`. Complete reference: `docs/API.md`.
+
 | Endpoint | Purpose |
 |---|---|
 | `POST /api/ai/chat` | General billing & clinical assistant chat |
-| `POST /api/ai/generate-document` | Generate medical necessity letters, operative reports, SOAP notes, appeal letters |
-| `POST /api/ai/appeals` | AI-powered insurance appeal generation |
-| `POST /api/ai/coding` | CDT → CPT/ICD-10 cross-coding suggestions |
+| `POST /api/ai/generate-document` | Generate medical necessity letters, operative reports, SOAP notes |
+| `POST /api/ai/appeal-letter` | AI-powered appeal letter text generation |
+| `POST /api/ai/medical-necessity-letter` | Medical necessity letter generation |
+| `POST /api/ai/diagnosis` | AI diagnosis assistance |
+| `POST /api/ai/specialty-recommendations` | Onboarding specialty recommendations |
+| `POST /api/appeals/generate` | Full appeal record: AI letter + DB persist (NOT `/api/ai/appeals`) |
+| `POST /api/coding/suggest` | CDT→CPT/ICD-10 cross-coding suggestions (NOT `/api/ai/coding`) |
+| `POST /api/perio/ai-assessment` | Periodontal AI clinical assessment |
 
 ## Data Flow
 ```

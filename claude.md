@@ -71,7 +71,16 @@ async function askClaude(systemPrompt: string, userMessage: string, maxTokens = 
   return block.type === "text" ? block.text : "";
 }
 ```
-AI endpoints: `POST /api/ai/chat`, `POST /api/ai/generate-document`, `POST /api/ai/appeals`, `POST /api/ai/coding`
+AI endpoints (see `docs/API.md` for complete reference — source of truth is `server/routes.ts`):
+- `POST /api/ai/chat` — general assistant chat
+- `POST /api/ai/generate-document` — medical necessity letters, operative reports, SOAP notes
+- `POST /api/ai/appeal-letter` — single AI appeal letter generation
+- `POST /api/ai/medical-necessity-letter` — medical necessity letter
+- `POST /api/ai/diagnosis` — AI diagnosis assistance
+- `POST /api/ai/specialty-recommendations` — onboarding specialty recommendations
+- `POST /api/appeals/generate` — full appeal record creation (NOT `/api/ai/appeals`)
+- `POST /api/coding/suggest` — CDT→CPT/ICD-10 code suggestions (NOT `/api/ai/coding`)
+- `POST /api/perio/ai-assessment` — periodontal AI clinical assessment
 
 ## Database Schema — Key Tables
 | Table | Purpose | Key Fields |
@@ -178,6 +187,108 @@ These files have pre-existing TS errors that are not regressions — do not fix 
 | `ANTHROPIC_API_KEY` | Claude AI model access |
 | `SESSION_SECRET` | Express session signing |
 | `DATABASE_URL` | PostgreSQL connection (auto-set by Replit) |
+
+## Sidebar Navigation Groups
+Defined in `client/src/components/app-sidebar.tsx`. Source of truth for what users see in the nav.
+
+| Group | Items (route) |
+|---|---|
+| Home | Dashboard `/`, Command Center `/command-center`, Messages `/messages` |
+| Patients & Scheduling | Patients `/patients`, Appointments `/appointments`, Reminders `/reminders`, Lead Management `/leads`, Patient Intake `/intake`, Check-In `/check-in` |
+| Clinical Care | Treatment Plans `/treatment-plans`, Treatment Progress `/treatment-progress`, Clinical Notes `/notes`, Exams & Evaluations `/evaluations`, Dental Charting `/dental-charting`, Perio Charting `/perio`, Endo/RCT `/endo`, Recall System `/recall`, Multi-Provider Schedule `/multi-scheduling`, Patient Portal `/patient-portal`, Patient Messaging `/patient-messaging`, Multi-Location `/multi-location`, Pediatric `/pediatric`, Oral Surgery `/oral-surgery`, AI Diagnostics `/ai-diagnostics`, Patient Documents `/documents`, E-Prescribing `/e-prescribing`, Consent Forms `/consent-forms`, Decision Support `/decision-support` |
+| Surgery Center | Case Acceptance `/case-acceptance`, Treatment Packages `/packages`, Financing `/financing`, Medical Clearance `/medical-clearance`, Pre-Surgery `/pre-surgery`, Surgery Day `/surgery`, Lab & Design `/lab`, Post-Op & Delivery `/post-op`, Implant Tracker `/implant-tracker`, Ortho Tracker `/ortho`, Teledentistry `/telehealth` |
+| Billing & Revenue | Billing & Claims `/billing`, Coding Engine `/coding`, Payment Tracking `/payments`, ERA Processing `/era-processing`, Appeals Engine `/appeals`, Eligibility Check `/eligibility`, Cost Calculator `/calculator`, Revenue Cycle `/rcm`, Financial Center `/financial`, Fee Optimizer `/fee-optimizer` |
+| AI Tools | AI Command Center `/ai-hub` |
+| Marketing & Growth | Marketing Hub `/marketing`, Union Flow `/union-flow`, Practice Launch Pad `/practice-launchpad`, Practice CRM `/practice-crm` |
+| Analytics & Intel | Analytics Hub `/analytics`, Payer Intel `/payer-intel`, Compliance Audit `/compliance` |
+| Administration | Virtual Office `/virtual-office`, Team KPIs & Org `/team-kpis`, Inventory `/inventory`, Sterilization `/sterilization`, Warranty `/warranty`, Maintenance `/maintenance`, Referring Providers `/providers`, Advanced Modules `/advanced-modules`, SaaS Admin `/saas-admin`, HIPAA Audit Logs `/audit-logs`, Settings `/settings` |
+
+## Route Index
+All routes registered in `client/src/App.tsx`. Source of truth: `App.tsx`. Complete page inventory: `docs/FEATURES.md`.
+
+| Route | Page Component | Notes |
+|---|---|---|
+| `/` | Dashboard | |
+| `/onboarding` | Onboarding | Redirected to if onboarding incomplete |
+| `/command-center` | CommandCenter | |
+| `/messages` | Messages | Internal staff messages |
+| `/patients` | Patients | Patient list |
+| `/patients/:id` | PatientDetail | |
+| `/appointments` | Appointments | |
+| `/reminders` | Reminders | |
+| `/leads` | Leads | CRM lead management |
+| `/intake` | PatientIntake | |
+| `/check-in` | CheckIn | |
+| `/treatment-plans` | TreatmentPlans | |
+| `/treatment-progress` | TreatmentProgress | |
+| `/notes` | ClinicalNotes | |
+| `/evaluations` | Evaluations | |
+| `/dental-charting` | DentalCharting | |
+| `/perio` | PerioDashboard | |
+| `/endo` | EndoTracker | |
+| `/recall` | RecallSystem | |
+| `/multi-scheduling` | MultiScheduling | |
+| `/patient-portal` | PatientPortal | |
+| `/patient-messaging` | PatientMessaging | |
+| `/multi-location` | MultiLocation | |
+| `/pediatric` | Pediatric | |
+| `/oral-surgery` | OralSurgery | |
+| `/ai-diagnostics` | AIDiagnostics | |
+| `/documents` | PatientDocuments | |
+| `/e-prescribing` | EPrescribing | |
+| `/consent-forms` | ConsentForms | |
+| `/decision-support` | DecisionSupport | |
+| `/case-acceptance` | CaseAcceptance | |
+| `/packages` | TreatmentPackages | |
+| `/financing` | Financing | |
+| `/medical-clearance` | MedicalClearance | |
+| `/pre-surgery` | PreSurgery | |
+| `/surgery` | SurgeryDay | |
+| `/lab` | LabDesign | |
+| `/post-op` | PostOp | |
+| `/implant-tracker` | ImplantTracker | |
+| `/ortho` | OrthoTracker | |
+| `/telehealth` | Telehealth | |
+| `/billing` | Billing | |
+| `/coding` | CodingEngine | |
+| `/payments` | Payments | |
+| `/era-processing` | ERAProcessing | |
+| `/appeals` | AppealsEngine | |
+| `/eligibility` | EligibilityCheck | |
+| `/calculator` | CostCalculator | |
+| `/rcm` | RevenueCycle | |
+| `/financial` | FinancialCenter | |
+| `/fee-optimizer` | FeeOptimizer | |
+| `/ai-hub` | AIHub | Consolidated AI Command Center hub |
+| `/ai-assistant` | AIAssistant | Legacy standalone (in hub as tab) |
+| `/ai-documentation` | AIDocumentation | Legacy standalone |
+| `/dentbot` | DentBot | Legacy standalone |
+| `/ai-phone` | AIPhone | Legacy standalone |
+| `/voice-to-code` | VoiceToCode | Legacy standalone |
+| `/marketing` | MarketingHub | Consolidated marketing hub |
+| `/marketing-classic` | MarketingClassic | Legacy fallback |
+| `/content-engine` | ContentEngine | |
+| `/reputation` | Reputation | |
+| `/nps` | NPSSurveys | |
+| `/testimonials` | Testimonials | |
+| `/union-flow` | UnionFlow | Union outreach CRM |
+| `/practice-launchpad` | PracticeLaunchpad | |
+| `/practice-crm` | PracticeCRM | |
+| `/analytics` | AnalyticsHub | Consolidated analytics hub |
+| `/analytics-old` | AnalyticsOld | Legacy fallback |
+| `/payer-intel` | PayerIntel | |
+| `/compliance` | Compliance | |
+| `/virtual-office` | VirtualOffice | Consolidated virtual office hub |
+| `/team-kpis` | TeamKPIs | |
+| `/inventory` | Inventory | |
+| `/sterilization` | Sterilization | |
+| `/warranty` | Warranty | |
+| `/maintenance` | Maintenance | |
+| `/providers` | ReferringProviders | |
+| `/advanced-modules` | AdvancedModules | |
+| `/saas-admin` | SaaSAdmin | |
+| `/audit-logs` | AuditLogs | |
+| `/settings` | Settings | |
 
 ## Running the App
 - Workflow: `Start application` → runs `npm run dev`
