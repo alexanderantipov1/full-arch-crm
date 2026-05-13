@@ -11,28 +11,27 @@ Handled by Replit OIDC. Managed in `server/replit_integrations/auth/`.
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/auth/user` | Returns current authenticated user `{ id, email, name, ... }` |
+| GET | `/api/auth/user` | Returns current authenticated user |
 | GET | `/api/login` | Initiates Replit OIDC login flow |
 | GET | `/api/logout` | Ends session and redirects to landing |
 
 ---
 
 ## Dashboard
-| Method | Endpoint | Description | Response |
-|---|---|---|---|
-| GET | `/api/dashboard/stats` | KPIs: total patients, appointments today, monthly revenue, outstanding claims | `{ totalPatients, appointmentsToday, monthlyRevenue, outstandingClaims }` |
+| Method | Endpoint | Response |
+|---|---|---|
+| GET | `/api/dashboard/stats` | `{ totalPatients, appointmentsToday, monthlyRevenue, outstandingClaims }` |
 
 ---
 
 ## Patients
-
-| Method | Endpoint | Description | Body / Query |
+| Method | Endpoint | Query / Body | Notes |
 |---|---|---|---|
-| GET | `/api/patients` | List all patients | — |
-| GET | `/api/patients/:id` | Get patient with full details (insurance, history, etc.) | — |
-| POST | `/api/patients` | Create patient | `InsertPatient` |
-| PATCH | `/api/patients/:id` | Update patient fields | `Partial<InsertPatient>` |
-| DELETE | `/api/patients/:id` | Delete patient | — |
+| GET | `/api/patients` | — | All patients |
+| GET | `/api/patients/:id` | — | Patient with full details |
+| POST | `/api/patients` | `InsertPatient` | |
+| PATCH | `/api/patients/:id` | `Partial<InsertPatient>` | |
+| DELETE | `/api/patients/:id` | — | |
 
 ### Patient Sub-Resources
 | Method | Endpoint | Description |
@@ -46,206 +45,456 @@ Handled by Replit OIDC. Managed in `server/replit_integrations/auth/`.
 | POST | `/api/patients/:id/insurance` | Add insurance record |
 | GET | `/api/patients/:id/notes` | List clinical notes (SOAP) |
 | POST | `/api/patients/:id/notes` | Create clinical note |
+| GET | `/api/patients/:patientId/cephalometrics` | Cephalometric records |
+| GET | `/api/patients/:patientId/consults` | Medical consult records |
+| GET | `/api/patients/:patientId/full-arch-exams` | Full arch exam records |
+| GET | `/api/patients/:patientId/care-reports` | Care reports |
+| GET | `/api/patients/:patientId/tooth-conditions` | Tooth conditions for charting |
+| POST | `/api/patients/:patientId/tooth-conditions` | Add tooth condition |
+| GET | `/api/patients/:patientId/procedures` | All procedures across treatment plans |
 
 ---
 
 ## Insurance
-| Method | Endpoint | Description | Body |
-|---|---|---|---|
-| PATCH | `/api/insurance/:id` | Update insurance record | `Partial<InsertInsurance>` |
-| DELETE | `/api/insurance/:id` | Delete insurance record | — |
+| Method | Endpoint | Body |
+|---|---|---|
+| PATCH | `/api/insurance/:id` | `Partial<InsertInsurance>` |
+| DELETE | `/api/insurance/:id` | — |
 
 ---
 
 ## Treatment Plans
-| Method | Endpoint | Query Params | Body |
-|---|---|---|---|
-| GET | `/api/treatment-plans` | `?patientId=&status=&priorAuthStatus=` | — |
-| GET | `/api/treatment-plans/:id` | — | — |
-| POST | `/api/treatment-plans` | — | `InsertTreatmentPlan` |
-| PATCH | `/api/treatment-plans/:id` | — | `Partial<InsertTreatmentPlan>` |
+| Method | Endpoint | Query / Body |
+|---|---|---|
+| GET | `/api/treatment-plans` | `?patientId=&status=&priorAuthStatus=` |
+| GET | `/api/treatment-plans/:id` | — |
+| POST | `/api/treatment-plans` | `InsertTreatmentPlan` |
+| PATCH | `/api/treatment-plans/:id` | `Partial<InsertTreatmentPlan>` |
+| GET | `/api/treatment-plans/:planId/procedures` | Procedures within a plan |
+| POST | `/api/treatment-plans/:planId/procedures` | Add procedure to plan |
+
+### Procedures
+| Method | Endpoint | Body |
+|---|---|---|
+| PATCH | `/api/procedures/:id` | `Partial<InsertTreatmentPlanProcedure>` |
+| DELETE | `/api/procedures/:id` | — |
+
+---
+
+## Tooth Conditions
+| Method | Endpoint | Body |
+|---|---|---|
+| PATCH | `/api/tooth-conditions/:id` | `Partial<InsertToothCondition>` |
+| DELETE | `/api/tooth-conditions/:id` | — |
 
 ---
 
 ## Appointments
-| Method | Endpoint | Query / Body | Notes |
-|---|---|---|---|
-| GET | `/api/appointments` | `?patientId=&startDate=&endDate=` | Filtered list |
-| GET | `/api/appointments/upcoming` | — | Next appointments sorted by startTime |
-| POST | `/api/appointments` | `InsertAppointment` | |
-| PATCH | `/api/appointments/:id` | `Partial<InsertAppointment>` | Update status, time, etc. |
+| Method | Endpoint | Query / Body |
+|---|---|---|
+| GET | `/api/appointments` | `?patientId=&startDate=&endDate=` |
+| GET | `/api/appointments/upcoming` | — |
+| POST | `/api/appointments` | `InsertAppointment` |
+| PATCH | `/api/appointments/:id` | `Partial<InsertAppointment>` |
+
+**Note:** Use `startTime` / `endTime` field names (not `date`).
 
 ---
 
 ## Billing & Claims
-| Method | Endpoint | Description | Body / Query |
-|---|---|---|---|
-| GET | `/api/billing/stats` | Billing KPIs: total billed, collected, outstanding, denial rate | — |
-| GET | `/api/billing/claims` | List claims | `?patientId=&status=` |
-| POST | `/api/billing/claims` | Create claim | `InsertBillingClaim` |
-| PATCH | `/api/billing/claims/:id` | Update claim (status, amounts) | `Partial<InsertBillingClaim>` |
+| Method | Endpoint | Query / Body |
+|---|---|---|
+| GET | `/api/billing/stats` | — → `{ total billed, collected, outstanding, denial rate }` |
+| GET | `/api/billing/claims` | `?patientId=&status=` |
+| POST | `/api/billing/claims` | `InsertBillingClaim` |
+| PATCH | `/api/billing/claims/:id` | `Partial<InsertBillingClaim>` |
+| GET | `/api/billing/claims/denied` | Denied claims with denial reason/code |
 
-**Note:** Filter by `claimStatus` field (not `status`) in the schema.
+**Note:** Schema field is `claimStatus` (not `status`).
 
 ---
 
 ## Prior Authorizations
-| Method | Endpoint | Description | Body / Query |
-|---|---|---|---|
-| GET | `/api/prior-authorizations` | List prior auths | `?patientId=&status=` |
-| GET | `/api/prior-authorizations/:id` | Get single prior auth | — |
-| POST | `/api/prior-authorizations` | Create prior auth request | `InsertPriorAuthorization` |
-| PATCH | `/api/prior-authorizations/:id` | Update auth status/details | `Partial<InsertPriorAuthorization>` |
+| Method | Endpoint | Query / Body |
+|---|---|---|
+| GET | `/api/prior-authorizations` | `?patientId=&status=` |
+| GET | `/api/prior-authorizations/:id` | — |
+| POST | `/api/prior-authorizations` | `InsertPriorAuthorization` |
+| PATCH | `/api/prior-authorizations/:id` | `Partial<InsertPriorAuthorization>` |
 
 ---
 
-## ERA / Payments
+## Appeals Engine
+| Method | Endpoint | Body | Response |
+|---|---|---|---|
+| GET | `/api/appeals/stats` | — | `{ total, pending, submitted, won, lost, successRate, avgTurnaround, totalRecovered }` |
+| GET | `/api/appeals` | — | All appeal records |
+| POST | `/api/appeals/generate` | `{ claimId, patientId, denialReason, denialCode, additionalInfo? }` | `{ appealLetter, successProbability }` |
+| POST | `/api/appeals` | `{ claimId, patientId, appealLetter, denialReason, denialCode }` | Created appeal record (201) |
+
+---
+
+## ERA Processing
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/era-processing` | List ERA records and remittance data |
-| POST | `/api/era-processing` | Post ERA / remittance |
-| GET | `/api/payments` | List patient payments |
-| POST | `/api/payments` | Record payment |
+| GET | `/api/era/stats` | `{ pendingCount, postedToday, totalPosted, varianceCount, autoPostRate, avgProcessingTime }` |
+| GET | `/api/era/pending` | Pending payment postings |
+| GET | `/api/era/recent` | Recently posted payments |
+| GET | `/api/era/variances` | Postings with variance flags |
+| POST | `/api/era/:id/post` | Post a single payment — `{ success: true }` |
+| POST | `/api/era/auto-post-all` | Auto-post all pending non-variance payments — `{ posted: number }` |
+
+---
+
+## Eligibility Verification
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/eligibility/stats` | `{ checksToday, activeVerifications, eligibleRate, avgResponseTime }` |
+| GET | `/api/eligibility/recent` | Recent checks with patient names (last 10) |
+| POST | `/api/eligibility/verify/:patientId` | Run eligibility check for patient |
 
 ---
 
 ## Coding Engine
-| Method | Endpoint | Description | Body |
-|---|---|---|---|
-| GET | `/api/code-references` | List CDT→CPT/ICD-10 cross references | — |
-| POST | `/api/code-references` | Add code mapping | `InsertCodeCrossReference` |
-| GET | `/api/fee-schedules` | List fee schedules by insurance | — |
-| POST | `/api/fee-schedules` | Add fee schedule entry | `InsertFeeSchedule` |
+| Method | Endpoint | Query / Body |
+|---|---|---|
+| GET | `/api/coding/cross-references` | All CDT→CPT/ICD-10 mappings |
+| GET | `/api/coding/cross-references/:cdtCode` | Lookup by CDT code |
+| POST | `/api/coding/cross-references` | `InsertCodeCrossReference` |
+| GET | `/api/coding/fee-schedules` | `?payer=` — fee schedules by payer |
+| POST | `/api/coding/fee-schedules` | `InsertFeeSchedule` |
+| POST | `/api/coding/suggest` | AI code suggestion — `{ diagnosis, procedures, clinicalNotes? }` → JSON with `suggestedCDT`, `suggestedCPT`, `suggestedICD10`, `medicalNecessityNotes`, `confidenceScore` |
 
 ---
 
 ## AI Endpoints
-| Method | Endpoint | Description | Body | Response |
-|---|---|---|---|---|
-| POST | `/api/ai/chat` | General billing & clinical AI assistant | `{ message: string }` | `{ response: string }` |
-| POST | `/api/ai/generate-document` | Generate clinical document | `{ docType: string, patientId?: number, context?: string }` | `{ document: string }` |
-| POST | `/api/ai/appeals` | Generate insurance appeal letter | `{ claimId?: number, denialReason?: string, context?: string }` | `{ appeal: string }` |
-| POST | `/api/ai/coding` | Get AI coding suggestions (CDT→CPT/ICD-10) | `{ description: string, cdtCodes?: string[] }` | `{ suggestions: string[] }` |
-
-`docType` values: `medical_necessity`, `operative_report`, `progress_note`, `referral_letter`, `predetermination`, `appeal_letter`
-
----
-
-## Leads (CRM)
-| Method | Endpoint | Description | Body |
+| Method | Endpoint | Body | Response |
 |---|---|---|---|
-| GET | `/api/leads` | List all leads | — |
-| POST | `/api/leads` | Create lead | `InsertLead` |
-| PATCH | `/api/leads/:id` | Update lead status/notes | `Partial<InsertLead>` |
-| DELETE | `/api/leads/:id` | Delete lead | — |
+| POST | `/api/ai/chat` | `{ content: string }` | `{ response: string }` |
+| POST | `/api/ai/diagnosis` | `{ patientInfo, chiefComplaint, dentalConditions }` | `{ diagnosis: string }` |
+| POST | `/api/ai/medical-necessity-letter` | `{ patientName, dateOfBirth, diagnosis, procedures, justification }` | `{ letter: string }` |
+| POST | `/api/ai/appeal-letter` | `{ patientName, claimNumber, denialReason, originalDiagnosis, procedures }` | `{ letter: string }` |
+| POST | `/api/ai/generate-document` | `{ patientId, documentType, additionalContext? }` | `{ content: string, documentId: number }` |
+| GET | `/api/ai/documents/recent` | — | Last 10 generated documents |
+| POST | `/api/ai/specialty-recommendations` | `{ specialty, practiceType }` | `{ welcome: string, modules: [] }` |
+
+**`documentType` values:** `medical-necessity`, `operative-report`, `progress-note`, `history-physical`, `peer-to-peer`
+
+**Note on `/api/ai/chat`:** Request body key is `content` (not `message`).
 
 ---
 
-## Scheduling & Operations
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/reminders` | Appointment reminders list |
-| POST | `/api/reminders` | Create reminder rule |
-| GET | `/api/check-ins` | Patient check-in records |
-| POST | `/api/check-ins` | Record patient check-in |
-
----
-
-## Surgery Workflow
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/pre-surgery` | Pre-surgery task lists |
-| POST | `/api/pre-surgery` | Create pre-surgery task |
-| GET | `/api/surgery-sessions` | Surgery session records |
-| POST | `/api/surgery-sessions` | Create surgery session |
-| GET | `/api/post-op-visits` | Post-op visit records |
-| POST | `/api/post-op-visits` | Record post-op visit |
-| GET | `/api/lab-cases` | Lab case tracking |
-| POST | `/api/lab-cases` | Create lab case |
-
----
-
-## Specialty Modules
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/perio-exams` | Periodontal exam records |
-| POST | `/api/perio-exams` | Create perio exam |
-| GET | `/api/ortho-cases` | Orthodontic cases |
-| POST | `/api/ortho-cases` | Create ortho case |
-| GET | `/api/endo-cases` | Endodontic cases |
-| POST | `/api/endo-cases` | Create endo case |
-| GET | `/api/oral-surgery-cases` | Oral surgery cases |
-| POST | `/api/oral-surgery-cases` | Create oral surgery case |
-| GET | `/api/recall-patients` | Recall patient list |
-| POST | `/api/recall-patients` | Add patient to recall |
-| POST | `/api/recall-contact-logs` | Log recall contact attempt |
-
----
-
-## Practice Management
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/providers` | Practice providers list |
-| POST | `/api/providers` | Add provider |
-| GET | `/api/locations` | Practice locations |
-| POST | `/api/locations` | Add location |
-| GET | `/api/settings` | Practice settings |
-| PUT | `/api/settings` | Update settings |
-| GET | `/api/inventory` | Inventory items |
-| POST | `/api/inventory` | Add inventory item |
-
----
-
-## Union Outreach (CRM)
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/union-organizations` | List union orgs |
-| POST | `/api/union-organizations` | Add union org |
-| GET | `/api/union-contacts` | List contacts |
-| POST | `/api/union-contacts` | Add contact |
-| GET | `/api/union-outreach` | Outreach activity log |
-| POST | `/api/union-outreach` | Log outreach activity |
-| GET | `/api/union-events` | Union events |
-| GET | `/api/union-agreements` | Union agreements |
-
----
-
-## Patient Communication
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/messages` | Internal staff messages |
-| POST | `/api/messages` | Send internal message |
-| GET | `/api/patient-messages` | Patient messages |
-| POST | `/api/patient-messages` | Send patient message |
-
----
-
-## Onboarding
-| Method | Endpoint | Description | Body |
+## Calculator
+| Method | Endpoint | Body | Response |
 |---|---|---|---|
-| GET | `/api/onboarding/status` | Check if onboarding complete | — |
-| POST | `/api/onboarding/complete` | Mark onboarding complete | `{ specialty, modules, ... }` |
+| POST | `/api/calculator/patient-responsibility` | `{ treatmentCost, insuranceType, coveragePercentage, deductible, deductibleMet, annualMaximum, usedBenefits, medicalCrossCode? }` | `{ patientResponsibility, insuranceCoverage, deductibleApplied, breakdown, medicalCrossCodePotential? }` |
 
 ---
 
 ## Analytics
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/analytics/revenue` | Monthly revenue breakdown |
-| GET | `/api/analytics/claims` | Claim status distribution |
-| GET | `/api/analytics/appointments` | Appointment volume metrics |
+| GET | `/api/analytics/revenue-cycle` | Claims/prior auth KPIs, aging buckets, 6-month trends |
+| GET | `/api/analytics/predictive` | Collection forecast, at-risk claims, industry benchmarks, recommendations |
 
 ---
 
-## Misc
-| Method | Endpoint | Description |
+## Training Center
+| Method | Endpoint | Body | Description |
+|---|---|---|---|
+| GET | `/api/training/stats` | — | `{ totalModules, completedModules, totalLessons, completedLessons, overallProgress }` |
+| GET | `/api/training/progress` | — | Map of `moduleId-lessonId → boolean` |
+| POST | `/api/training/complete` | `{ moduleId, lessonId }` | Mark lesson complete |
+
+---
+
+## Leads (CRM)
+| Method | Endpoint | Body | Description |
+|---|---|---|---|
+| GET | `/api/leads` | — | All leads |
+| GET | `/api/leads/stats` | — | `{ totalLeads, newLeads, qualifiedLeads, conversionRate }` |
+| POST | `/api/leads` | `InsertLead` | |
+| PATCH | `/api/leads/:id/status` | `{ status }` | Update lead status only |
+| POST | `/api/leads/:id/convert` | — | Convert lead to patient → `{ success, patientId }` |
+
+---
+
+## Referring Providers
+| Method | Endpoint | Body |
 |---|---|---|
-| GET | `/api/consent-forms` | Consent form templates and records |
-| GET | `/api/documents` | Patient documents |
-| POST | `/api/documents` | Upload/link patient document |
-| GET | `/api/testimonials` | Patient testimonials |
-| POST | `/api/testimonials` | Add testimonial |
-| GET | `/api/warranties` | Implant warranties |
-| GET | `/api/financing-plans` | Financing plans |
-| GET | `/api/treatment-packages` | Treatment packages |
-| GET | `/api/audit-logs` | HIPAA audit log (admin only) |
+| GET | `/api/referring-providers` | — |
+| GET | `/api/referring-providers/:id` | — |
+| POST | `/api/referring-providers` | `InsertReferringProvider` |
+| PATCH | `/api/referring-providers/:id` | `Partial<InsertReferringProvider>` |
+
+---
+
+## Follow-Ups
+| Method | Endpoint | Query / Body |
+|---|---|---|
+| GET | `/api/follow-ups` | `?patientId=&status=` |
+| POST | `/api/follow-ups` | `InsertFollowUp` |
+| PATCH | `/api/follow-ups/:id` | `Partial<InsertFollowUp>` |
+
+---
+
+## Clinical Sub-Resources
+| Method | Endpoint | Body |
+|---|---|---|
+| POST | `/api/cephalometrics` | `InsertCephalometric` |
+| POST | `/api/consults` | `InsertMedicalConsult` |
+| PATCH | `/api/consults/:id` | `Partial<InsertMedicalConsult>` |
+| POST | `/api/full-arch-exams` | `InsertFullArchExam` |
+| PATCH | `/api/full-arch-exams/:id` | `Partial<InsertFullArchExam>` |
+| POST | `/api/care-reports` | `InsertCareReport` |
+
+---
+
+## Treatment Packages
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/packages` | — |
+| POST | `/api/packages` | `InsertTreatmentPackage` |
+
+---
+
+## Appointment Reminders
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/reminders` | — |
+| POST | `/api/reminders` | `InsertAppointmentReminder` |
+| POST | `/api/reminders/:id/send` | — → marks reminder as `sent` |
+
+---
+
+## Patient Check-ins
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/checkins` | — |
+| POST | `/api/checkins` | `InsertPatientCheckIn` |
+
+---
+
+## Financing Plans
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/financing` | — |
+| POST | `/api/financing` | `InsertFinancingPlan` |
+| PATCH | `/api/financing/:id` | `Partial<InsertFinancingPlan>` |
+
+---
+
+## Medical Clearances
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/medical-clearances` | — |
+| GET | `/api/medical-clearances/patient/:patientId` | — |
+| POST | `/api/medical-clearances` | `InsertMedicalClearance` |
+| PATCH | `/api/medical-clearances/:id` | `Partial<InsertMedicalClearance>` |
+
+---
+
+## Surgery Workflow
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/pre-surgery-tasks` | — |
+| GET | `/api/pre-surgery-tasks/patient/:patientId` | — |
+| POST | `/api/pre-surgery-tasks` | `InsertPreSurgeryTask` |
+| PATCH | `/api/pre-surgery-tasks/:id` | `Partial<InsertPreSurgeryTask>` |
+| GET | `/api/surgery-sessions` | — |
+| GET | `/api/surgery-sessions/:id` | — |
+| POST | `/api/surgery-sessions` | `InsertSurgerySession` |
+| PATCH | `/api/surgery-sessions/:id` | `Partial<InsertSurgerySession>` |
+| GET | `/api/post-op-visits` | — |
+| POST | `/api/post-op-visits` | `InsertPostOpVisit` |
+| PATCH | `/api/post-op-visits/:id` | `Partial<InsertPostOpVisit>` |
+| GET | `/api/lab-cases` | — |
+| POST | `/api/lab-cases` | `InsertLabCase` |
+| PATCH | `/api/lab-cases/:id` | `Partial<InsertLabCase>` |
+
+---
+
+## Warranty Records
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/warranty-records` | — |
+| POST | `/api/warranty-records` | `InsertWarrantyRecord` |
+| PATCH | `/api/warranty-records/:id` | `Partial<InsertWarrantyRecord>` |
+
+---
+
+## Testimonials
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/testimonials` | — |
+| POST | `/api/testimonials` | `InsertTestimonial` |
+| PATCH | `/api/testimonials/:id` | `Partial<InsertTestimonial>` |
+
+---
+
+## Maintenance Appointments
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/maintenance` | — |
+| POST | `/api/maintenance` | `InsertMaintenanceAppointment` |
+| PATCH | `/api/maintenance/:id` | `Partial<InsertMaintenanceAppointment>` |
+
+---
+
+## Consent Forms
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/consent-forms` | — |
+| GET | `/api/consent-forms/patient/:patientId` | — |
+| POST | `/api/consent-forms` | `InsertConsentForm` |
+| POST | `/api/consent-forms/:id/sign` | — → sets signed status |
+
+---
+
+## Patient Documents
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/documents` | — |
+| GET | `/api/documents/patient/:patientId` | — |
+| POST | `/api/documents` | `InsertPatientDocument` |
+| DELETE | `/api/documents/:id` | — |
+
+---
+
+## Internal Messages (Staff)
+| Method | Endpoint | Body | Notes |
+|---|---|---|---|
+| GET | `/api/messages/inbox` | — | Current user's inbox |
+| GET | `/api/messages/sent` | — | Current user's sent messages |
+| GET | `/api/messages/unread-count` | — | `{ count }` |
+| POST | `/api/messages` | `InsertInternalMessage` (senderId injected server-side) | |
+| PATCH | `/api/messages/:id/read` | — | Mark message as read |
+| GET | `/api/users/all` | — | All users in system |
+
+---
+
+## Patient Messages (2-Way SMS/Communication)
+| Method | Endpoint | Query / Body |
+|---|---|---|
+| GET | `/api/messages` | `?patientId=` — patient messages (separate from internal messages above) |
+| POST | `/api/messages` | `InsertPatientMessage` |
+
+**Note:** Both internal and patient messages use `/api/messages` POST. The schema determines routing.
+
+---
+
+## Practice Settings & Onboarding
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/onboarding/status` | — → `{ hasStarted, isComplete, currentStep }` |
+| POST | `/api/onboarding/complete` | — → marks onboarding complete |
+| GET | `/api/practice-settings` | — → current user's settings or null |
+| POST | `/api/practice-settings` | `Partial<InsertPracticeSettings>` (upsert) |
+| PATCH | `/api/practice-settings` | `Partial<InsertPracticeSettings>` (upsert) |
+
+**Owner bypass:** User ID `47100532` auto-completes onboarding if not already set.
+
+---
+
+## Practice Providers
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/practice-providers` | — |
+| POST | `/api/practice-providers` | `InsertPracticeProvider` |
+| PUT | `/api/practice-providers/:id` | Updated provider fields |
+
+---
+
+## Practice Locations
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/locations` | — |
+| POST | `/api/locations` | `InsertPracticeLocation` |
+| PUT | `/api/locations/:id` | Updated location fields |
+
+---
+
+## Audit Logs (HIPAA)
+| Method | Endpoint | Query |
+|---|---|---|
+| GET | `/api/audit-logs` | `?limit=100&offset=0` |
+| GET | `/api/audit-logs/patient/:patientId` | — |
+
+---
+
+## Specialty Modules
+
+### Perio Charting
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/perio/:patientId` | — |
+| GET | `/api/perio/exam/:id` | — |
+| POST | `/api/perio` | `InsertPerioExam` |
+| PUT | `/api/perio/exam/:id` | Updated perio exam |
+| POST | `/api/perio/ai-assessment` | `{ probingData, patientName }` → `{ assessment, stats }` |
+
+### Orthodontics
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/ortho` | `?patientId=` |
+| GET | `/api/ortho/:id` | — |
+| POST | `/api/ortho` | `InsertOrthoCase` |
+| PUT | `/api/ortho/:id` | Updated ortho case |
+
+### Endodontics
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/endo` | `?patientId=` |
+| GET | `/api/endo/:id` | — |
+| POST | `/api/endo` | `InsertEndoCase` |
+| PUT | `/api/endo/:id` | Updated endo case |
+
+### Oral Surgery
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/oral-surgery` | `?patientId=` |
+| POST | `/api/oral-surgery` | `InsertOralSurgeryCase` |
+| PUT | `/api/oral-surgery/:id` | Updated oral surgery case |
+
+### Pediatric Exams
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/pediatric` | `?patientId=` |
+| POST | `/api/pediatric` | `InsertPediatricExam` |
+| PUT | `/api/pediatric/:id` | Updated pediatric exam |
+
+### Recall System
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/recall` | `?status=` |
+| POST | `/api/recall` | `InsertRecallPatient` |
+| PUT | `/api/recall/:id` | Updated recall patient |
+| GET | `/api/recall/:id/contacts` | Contact log for recall patient |
+| POST | `/api/recall/:id/contacts` | `InsertRecallContactLog` |
+
+---
+
+## Union Outreach (CRM)
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/api/unions` | — |
+| GET | `/api/unions/:id` | — |
+| POST | `/api/unions` | `InsertUnionOrganization` |
+| PATCH | `/api/unions/:id` | Updated fields |
+| DELETE | `/api/unions/:id` | — |
+| GET | `/api/unions/:id/contacts` | Contacts for a union |
+| POST | `/api/unions/contacts` | `InsertUnionContact` |
+| PATCH | `/api/unions/contacts/:id` | Updated contact |
+| DELETE | `/api/unions/contacts/:id` | — |
+| GET | `/api/unions/outreach/all` | `?unionId=` |
+| POST | `/api/unions/outreach` | `InsertUnionOutreach` |
+| PATCH | `/api/unions/outreach/:id` | Updated outreach |
+| GET | `/api/unions/events/all` | — |
+| POST | `/api/unions/events` | `InsertUnionEvent` |
+| PATCH | `/api/unions/events/:id` | Updated event |
+| GET | `/api/unions/agreements/all` | `?unionId=` |
+| POST | `/api/unions/agreements` | `InsertUnionAgreement` |
+| PATCH | `/api/unions/agreements/:id` | Updated agreement |
+| GET | `/api/unions/visits/all` | `?unionId=` |
+| POST | `/api/unions/visits` | `InsertUnionMemberVisit` |
+| POST | `/api/unions/seed` | — → seeds 8 Sacramento-area unions (idempotent) |
