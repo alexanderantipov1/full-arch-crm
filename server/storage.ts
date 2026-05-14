@@ -1,6 +1,10 @@
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql, inArray, not } from "drizzle-orm";
 import {
+  persons,
+  personExternalIds,
+  workflowInstances,
+  workflowSteps,
   patients,
   medicalHistory,
   dentalInfo,
@@ -42,10 +46,19 @@ import {
   testimonials,
   maintenanceAppointments,
   auditLogs,
+  mcpApiKeys,
   consentForms,
   internalMessages,
   practiceSettings,
   users,
+  type Person,
+  type InsertPerson,
+  type PersonExternalId,
+  type InsertPersonExternalId,
+  type WorkflowInstance,
+  type InsertWorkflowInstance,
+  type WorkflowStep,
+  type InsertWorkflowStep,
   type Patient,
   type InsertPatient,
   type MedicalHistory,
@@ -126,6 +139,8 @@ import {
   type InsertMaintenanceAppointment,
   type AuditLog,
   type InsertAuditLog,
+  type McpApiKey,
+  type InsertMcpApiKey,
   type ConsentForm,
   type InsertConsentForm,
   type InternalMessage,
@@ -306,6 +321,7 @@ export interface IStorage {
   getReferringProvider(id: number): Promise<ReferringProvider | undefined>;
   createReferringProvider(data: InsertReferringProvider): Promise<ReferringProvider>;
   updateReferringProvider(id: number, data: Partial<InsertReferringProvider>): Promise<ReferringProvider | undefined>;
+  getSrmOverview(): Promise<any>;
   
   // Coding Engine
   getCodeCrossReferences(): Promise<CodeCrossReference[]>;
@@ -1037,6 +1053,162 @@ export class DatabaseStorage implements IStorage {
     return provider;
   }
 
+  async getSrmOverview(): Promise<any> {
+    const [providers, referrals, reports, recentAudits] = await Promise.all([
+      db.select().from(referringProviders).orderBy(referringProviders.lastName),
+      db.select().from(patientReferrals),
+      db.select().from(careReports),
+      db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(250),
+    ]);
+
+    const toTime = (value: string | Date | null | undefined) => {
+      if (!value) return 0;
+      const time = new Date(value).getTime();
+      return Number.isFinite(time) ? time : 0;
+    };
+
+    const daysSince = (value: string | Date | null | undefined) => {
+      const time = toTime(value);
+      if (!time) return null;
+      return Math.max(0, Math.floor((Date.now() - time) / 86_400_000));
+    };
+
+    const hasSecureChannelNote = (notes?: string | null) => {
+      const value = (notes || "").toLowerCase();
+      return ["secure", "encrypted", "portal", "hipaa", "fax"].some((term) => value.includes(term));
+    };
+
+    const providerSummaries = providers.map((provider) => {
+      const providerReferrals = referrals.filter((referral) => referral.providerId === provider.id);
+      const providerReports = reports.filter((report) => report.recipientProviderId === provider.id);
+      const sortedReports = [...providerReports].sort((a, b) => {
+        return toTime(b.sentDate || b.reportDate || b.createdAt) - toTime(a.sentDate || a.reportDate || a.createdAt);
+      });
+      const lastReport = sortedReports[0];
+      const lastReportDate = lastReport?.sentDate || lastReport?.reportDate || lastReport?.createdAt || null;
+      const inactiveDays = daysSince(lastReportDate);
+      const secureChannelDocumented = Boolean(provider.fax || hasSecureChannelNote(provider.notes));
+
+      const hipaaFlags: string[] = [];
+      if (!provider.npi) hipaaFlags.push("NPI not documented");
+      if (!secureChannelDocumented) hipaaFlags.push("Secure disclosure channel not documented");
+      if (provider.email && !hasSecureChannelNote(provider.notes)) hipaaFlags.push("Encrypted email or portal preference needs confirmation");
+      if (providerReferrals.length > 0 && providerReports.length === 0) hipaaFlags.push("Referral activity has no continuity-of-care report trail");
+      if (inactiveDays !== null && inactiveDays > 180) hipaaFlags.push("Relationship review is stale");
+
+      const hipaaStatus =
+        hipaaFlags.length === 0 ? "ready" :
+        hipaaFlags.length <= 2 ? "needs_review" :
+        "blocked";
+
+      const relationshipStatus =
+        hipaaStatus === "blocked" ? "governance_needed" :
+        providerReferrals.length >= 5 && providerReports.length >= 3 ? "strategic" :
+        providerReferrals.length > 0 ? "active" :
+        "prospect";
+
+      const nextBestAction =
+        hipaaStatus === "blocked" ? "Verify identity and secure disclosure workflow before sending patient information." :
+        providerReports.length === 0 && providerReferrals.length > 0 ? "Send a minimum-necessary care report for the most recent referred case." :
+        providerReferrals.length === 0 ? "Start a no-PHI relationship touchpoint and confirm referral fit." :
+        inactiveDays !== null && inactiveDays > 90 ? "Schedule a provider check-in and update referral preferences." :
+        "Maintain cadence and monitor referral outcomes.";
+
+      const stalePenalty = inactiveDays !== null && inactiveDays > 90 ? 12 : 0;
+      const aiPriorityScore = Math.max(
+        0,
+        Math.min(100, 45 + providerReferrals.length * 8 + providerReports.length * 4 - hipaaFlags.length * 10 - stalePenalty)
+      );
+
+      return {
+        ...provider,
+        referralCount: providerReferrals.length,
+        careReportCount: providerReports.length,
+        lastReportDate,
+        daysSinceLastReport: inactiveDays,
+        secureChannelDocumented,
+        hipaaStatus,
+        hipaaFlags,
+        relationshipStatus,
+        nextBestAction,
+        aiPriorityScore,
+      };
+    });
+
+    const readyProviders = providerSummaries.filter((provider) => provider.hipaaStatus === "ready").length;
+    const needsReviewProviders = providerSummaries.filter((provider) => provider.hipaaStatus !== "ready").length;
+    const secureChannelMissing = providerSummaries.filter((provider) => !provider.secureChannelDocumented).length;
+    const npiMissing = providerSummaries.filter((provider) => !provider.npi).length;
+    const phiAuditEvents = recentAudits.filter((log) => log.phiAccessed).length;
+
+    const controls = [
+      {
+        key: "access_control",
+        label: "Authenticated SRM access",
+        status: "operational",
+        evidence: "SRM APIs are protected by the existing isAuthenticated middleware.",
+      },
+      {
+        key: "audit_logging",
+        label: "PHI access audit logging",
+        status: phiAuditEvents > 0 ? "operational" : "needs_data",
+        evidence: `${phiAuditEvents} PHI audit events found in the recent audit window.`,
+      },
+      {
+        key: "minimum_necessary_ai",
+        label: "Minimum-necessary AI context",
+        status: "operational",
+        evidence: "AI SRM briefs use provider aggregates and exclude patient names, dates of birth, contact details, clinical notes, and claim details.",
+      },
+      {
+        key: "provider_identity",
+        label: "Provider identity verification",
+        status: npiMissing === 0 ? "operational" : "needs_review",
+        evidence: `${npiMissing} provider${npiMissing === 1 ? "" : "s"} missing NPI documentation.`,
+      },
+      {
+        key: "secure_disclosure",
+        label: "Secure disclosure channel",
+        status: secureChannelMissing === 0 ? "operational" : "needs_review",
+        evidence: `${secureChannelMissing} provider${secureChannelMissing === 1 ? "" : "s"} missing documented secure delivery preference.`,
+      },
+      {
+        key: "ai_vendor_governance",
+        label: "AI vendor governance",
+        status: process.env.ANTHROPIC_API_KEY ? "needs_policy" : "not_configured",
+        evidence: process.env.ANTHROPIC_API_KEY
+          ? "AI key is configured; confirm BAA, retention, and permitted-use policy before sending PHI to any AI vendor."
+          : "AI key is not configured in this environment.",
+      },
+    ];
+
+    const blockingControls = controls.filter((control) => ["needs_review", "needs_policy", "not_configured"].includes(control.status)).length;
+    const statusLabel =
+      blockingControls === 0 ? "ready" :
+      blockingControls <= 2 ? "needs_review" :
+      "in_progress";
+
+    return {
+      summary: {
+        totalProviders: providers.length,
+        totalReferrals: referrals.length,
+        careReportsSent: reports.length,
+        hipaaReadyProviders: readyProviders,
+        hipaaReadyRate: providers.length ? Math.round((readyProviders / providers.length) * 100) : 0,
+        aiReviewQueue: needsReviewProviders,
+      },
+      providers: providerSummaries.sort((a, b) => b.aiPriorityScore - a.aiPriorityScore),
+      hipaaStatus: {
+        statusLabel,
+        controls,
+        recentAuditWindow: recentAudits.length,
+        phiAuditEvents,
+        note: "This is implementation readiness tracking, not a legal certification of HIPAA compliance.",
+      },
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   // Coding Engine
   async getCodeCrossReferences(): Promise<CodeCrossReference[]> {
     return db.select().from(codeCrossReference).orderBy(codeCrossReference.cdtCode);
@@ -1230,7 +1402,7 @@ export class DatabaseStorage implements IStorage {
 
   // Patient Check-ins
   async getPatientCheckIns(): Promise<PatientCheckIn[]> {
-    return db.select().from(patientCheckIns).orderBy(desc(patientCheckIns.createdAt));
+    return db.select().from(patientCheckIns).orderBy(desc(patientCheckIns.checkInTime));
   }
 
   async createPatientCheckIn(data: InsertPatientCheckIn): Promise<PatientCheckIn> {
@@ -1407,6 +1579,156 @@ export class DatabaseStorage implements IStorage {
 
   async getAuditLogsByUser(userId: string): Promise<AuditLog[]> {
     return db.select().from(auditLogs).where(eq(auditLogs.userId, userId)).orderBy(desc(auditLogs.createdAt));
+  }
+
+  // ── Persons (canonical identity) ────────────────────────────────────
+  // Low-level CRUD only. Matching / resolution / merge logic lives in
+  // server/services/identity.ts. Storage should not encode policy.
+
+  async getPerson(id: string): Promise<Person | undefined> {
+    const [p] = await db.select().from(persons).where(eq(persons.id, id)).limit(1);
+    return p;
+  }
+
+  async findPersonByEmail(emailNormalized: string): Promise<Person | undefined> {
+    if (!emailNormalized) return undefined;
+    const [p] = await db.select().from(persons).where(eq(persons.email, emailNormalized)).limit(1);
+    return p;
+  }
+
+  async findPersonByPhone(phoneNormalized: string): Promise<Person | undefined> {
+    if (!phoneNormalized) return undefined;
+    const [p] = await db.select().from(persons).where(eq(persons.phone, phoneNormalized)).limit(1);
+    return p;
+  }
+
+  async findPersonByNameDob(firstName: string, lastName: string, dob: string): Promise<Person | undefined> {
+    if (!firstName || !lastName || !dob) return undefined;
+    const [p] = await db
+      .select()
+      .from(persons)
+      .where(and(eq(persons.firstName, firstName), eq(persons.lastName, lastName), eq(persons.dateOfBirth, dob)))
+      .limit(1);
+    return p;
+  }
+
+  async createPerson(data: InsertPerson): Promise<Person> {
+    const [p] = await db.insert(persons).values(data).returning();
+    return p;
+  }
+
+  async updatePerson(id: string, data: Partial<InsertPerson>): Promise<Person | undefined> {
+    const [p] = await db
+      .update(persons)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(persons.id, id))
+      .returning();
+    return p;
+  }
+
+  async setPersonMergedInto(loserId: string, winnerId: string): Promise<void> {
+    await db.update(persons).set({ mergedIntoId: winnerId, updatedAt: new Date() }).where(eq(persons.id, loserId));
+  }
+
+  // Links an existing patient row to its canonical person_uid. Used by the
+  // backfill script and by IdentityService when a new patient is created.
+  async setPatientPersonUid(patientId: number, personUid: string): Promise<void> {
+    await db.update(patients).set({ personUid, updatedAt: new Date() }).where(eq(patients.id, patientId));
+  }
+
+  // Same for leads.
+  async setLeadPersonUid(leadId: number, personUid: string): Promise<void> {
+    await db.update(leads).set({ personUid, updatedAt: new Date() }).where(eq(leads.id, leadId));
+  }
+
+  // ── Person external IDs ─────────────────────────────────────────────
+  async findPersonByExternalId(externalSystem: string, externalId: string): Promise<Person | undefined> {
+    if (!externalSystem || !externalId) return undefined;
+    const rows = await db
+      .select({ person: persons })
+      .from(personExternalIds)
+      .innerJoin(persons, eq(persons.id, personExternalIds.personUid))
+      .where(and(eq(personExternalIds.externalSystem, externalSystem), eq(personExternalIds.externalId, externalId)))
+      .limit(1);
+    return rows[0]?.person;
+  }
+
+  async getPersonExternalIds(personUid: string): Promise<PersonExternalId[]> {
+    return db.select().from(personExternalIds).where(eq(personExternalIds.personUid, personUid));
+  }
+
+  async linkPersonExternalId(data: InsertPersonExternalId): Promise<PersonExternalId> {
+    const [row] = await db.insert(personExternalIds).values(data).returning();
+    return row;
+  }
+
+  async touchPersonExternalIdSync(id: number): Promise<void> {
+    await db.update(personExternalIds).set({ lastSyncedAt: new Date() }).where(eq(personExternalIds.id, id));
+  }
+
+  async unlinkPersonExternalId(id: number): Promise<void> {
+    await db.delete(personExternalIds).where(eq(personExternalIds.id, id));
+  }
+
+  // ── Workflow durability ─────────────────────────────────────────────
+  async createWorkflowInstance(data: InsertWorkflowInstance): Promise<WorkflowInstance> {
+    const [row] = await db.insert(workflowInstances).values(data).returning();
+    return row;
+  }
+
+  async updateWorkflowInstance(
+    id: string,
+    patch: Partial<InsertWorkflowInstance> & { completedAt?: Date | null },
+  ): Promise<void> {
+    await db.update(workflowInstances).set(patch).where(eq(workflowInstances.id, id));
+  }
+
+  async getWorkflowInstance(id: string): Promise<WorkflowInstance | undefined> {
+    const [row] = await db.select().from(workflowInstances).where(eq(workflowInstances.id, id)).limit(1);
+    return row;
+  }
+
+  async listWorkflowInstances(filters: { status?: string; limit?: number } = {}): Promise<WorkflowInstance[]> {
+    const limit = filters.limit ?? 50;
+    const where = filters.status ? eq(workflowInstances.status, filters.status) : undefined;
+    const query = db.select().from(workflowInstances);
+    return (where ? query.where(where) : query).orderBy(desc(workflowInstances.startedAt)).limit(limit);
+  }
+
+  async createWorkflowStep(data: InsertWorkflowStep): Promise<WorkflowStep> {
+    const [row] = await db.insert(workflowSteps).values(data).returning();
+    return row;
+  }
+
+  async getWorkflowSteps(instanceId: string): Promise<WorkflowStep[]> {
+    return db
+      .select()
+      .from(workflowSteps)
+      .where(eq(workflowSteps.instanceId, instanceId))
+      .orderBy(workflowSteps.iteration, workflowSteps.createdAt);
+  }
+
+  // MCP API Keys
+  async getMcpApiKeyByHash(keyHash: string): Promise<McpApiKey | undefined> {
+    const [key] = await db.select().from(mcpApiKeys).where(eq(mcpApiKeys.keyHash, keyHash)).limit(1);
+    return key;
+  }
+
+  async listMcpApiKeys(): Promise<McpApiKey[]> {
+    return db.select().from(mcpApiKeys).orderBy(desc(mcpApiKeys.createdAt));
+  }
+
+  async createMcpApiKey(data: InsertMcpApiKey): Promise<McpApiKey> {
+    const [key] = await db.insert(mcpApiKeys).values(data).returning();
+    return key;
+  }
+
+  async touchMcpApiKeyLastUsed(id: number): Promise<void> {
+    await db.update(mcpApiKeys).set({ lastUsedAt: new Date() }).where(eq(mcpApiKeys.id, id));
+  }
+
+  async revokeMcpApiKey(id: number): Promise<void> {
+    await db.update(mcpApiKeys).set({ enabled: false, revokedAt: new Date() }).where(eq(mcpApiKeys.id, id));
   }
 
   // Consent Forms

@@ -1,14 +1,89 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, serial, integer, timestamp, date, boolean, jsonb, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, integer, timestamp, date, boolean, jsonb, decimal, uuid, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export * from "./models/auth";
 export * from "./models/chat";
 
+// ── Persons (canonical identity) ────────────────────────────────────────
+// One row per real human, regardless of which domain first met them. Both
+// `patients.personUid` and `leads.personUid` point here. The `person_uid`
+// UUID is the join key per fusion_crm doctrine ("one global entity:
+// identity.person.id is the person_uid referenced by every other domain").
+//
+// Today this table is additive — `patients` and `leads` keep their
+// serial-int primary keys and continue to function. New code resolves
+// identity through `IdentityService.resolveOrCreatePerson` and writes
+// `personUid` alongside the existing FK. Backfill via
+// `scripts/backfill-persons.ts` populates the column for legacy rows.
+export const persons = pgTable("persons", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  dateOfBirth: date("date_of_birth"),
+  // Email/phone are normalized when written via IdentityService:
+  // - email: trimmed + lowercased
+  // - phone: digits only (no parens, dashes, spaces)
+  email: text("email"),
+  phone: text("phone"),
+  // Provenance: which domain first brought this person into the system.
+  firstSeenSource: text("first_seen_source"),
+  firstSeenAt: timestamp("first_seen_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  // Merge tracking. When persons A and B are determined to be the same
+  // human, the loser gets `mergedIntoId = winner.id` and is no longer
+  // returned by resolveOrCreatePerson — callers follow the link to the
+  // winner. We don't physically delete rows because PHI/audit history
+  // already references the loser's UUID.
+  mergedIntoId: uuid("merged_into_id"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// ── Person external IDs (source_link) ───────────────────────────────────
+// Maps a canonical person_uid to its identity in external systems
+// (Salesforce, CareStack, Stripe, etc.). Per fusion_crm `identity.source_link`.
+//
+// One row per (external_system, external_id) pair — uniqueness is enforced
+// at the DB level so the same external record can't accidentally end up
+// linked to two different persons. `external_kind` is optional sub-type
+// for systems that have multiple object types (Salesforce: lead/contact;
+// CareStack: patient/responsible_party).
+//
+// When IdentityService.resolveOrCreatePerson is called with externalIds,
+// these are checked FIRST — an external ID match is the highest-trust
+// signal (the external system has its own dedup). If found, return that
+// person. If not, fall through to email/phone/name+DOB matching and link
+// the external ID(s) to whatever person ends up resolved/created.
+export const personExternalIds = pgTable(
+  "person_external_ids",
+  {
+    id: serial("id").primaryKey(),
+    personUid: uuid("person_uid")
+      .notNull()
+      .references(() => persons.id, { onDelete: "cascade" }),
+    externalSystem: text("external_system").notNull(),
+    externalId: text("external_id").notNull(),
+    externalKind: text("external_kind"),
+    linkedAt: timestamp("linked_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    lastSyncedAt: timestamp("last_synced_at"),
+    metadata: jsonb("metadata"),
+  },
+  (table) => ({
+    uniqExternal: uniqueIndex("uniq_person_external_ids_system_id").on(
+      table.externalSystem,
+      table.externalId,
+    ),
+  }),
+);
+
 // Patients table
 export const patients = pgTable("patients", {
   id: serial("id").primaryKey(),
+  // Canonical identity link. Nullable today because legacy rows haven't
+  // been backfilled yet; targets NOT NULL once `scripts/backfill-persons.ts`
+  // has run against every environment.
+  personUid: uuid("person_uid").references(() => persons.id),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   dateOfBirth: date("date_of_birth").notNull(),
@@ -511,6 +586,8 @@ export const patientsRelations = relations(patients, ({ many }) => ({
 }));
 
 // Insert Schemas
+export const insertPersonSchema = createInsertSchema(persons).omit({ id: true, createdAt: true, updatedAt: true, firstSeenAt: true });
+export const insertPersonExternalIdSchema = createInsertSchema(personExternalIds).omit({ id: true, linkedAt: true });
 export const insertPatientSchema = createInsertSchema(patients).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertMedicalHistorySchema = createInsertSchema(medicalHistory).omit({ id: true, updatedAt: true });
 export const insertDentalInfoSchema = createInsertSchema(dentalInfo).omit({ id: true, updatedAt: true });
@@ -616,6 +693,9 @@ export const trainingProgress = pgTable("training_progress", {
 // Marketing Leads
 export const leads = pgTable("leads", {
   id: serial("id").primaryKey(),
+  // Canonical identity link — nullable until backfill runs (see persons table).
+  // When a lead converts to a patient, BOTH rows point at the same person_uid.
+  personUid: uuid("person_uid").references(() => persons.id),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email"),
@@ -963,6 +1043,90 @@ export const auditLogs = pgTable("audit_logs", {
 
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
 
+// ── MCP API keys ─────────────────────────────────────────────────────────
+// Per-key authentication for AI clients (Claude Code, Codex, internal AI
+// agents) reaching the /mcp endpoint. Each key has its own capability
+// scope, so a marketing-AI key can be issued with ops-only access while a
+// clinical-AI key gets phi.read. Replaces the single shared MCP_API_KEY
+// env approach.
+//
+// `keyHash` stores a SHA-256 hex of the bearer token. The plaintext is
+// returned to the operator exactly once at creation time and never stored.
+// `capabilities` mirrors the Principal capability list ("phi.read",
+// "phi.write", etc.) — same string values, same gate.
+export const mcpApiKeys = pgTable("mcp_api_keys", {
+  id: serial("id").primaryKey(),
+  label: text("label").notNull(),
+  keyHash: text("key_hash").notNull().unique(),
+  capabilities: text("capabilities").array().notNull().default(sql`ARRAY[]::text[]`),
+  enabled: boolean("enabled").default(true).notNull(),
+  createdBy: text("created_by"),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  revokedAt: timestamp("revoked_at"),
+});
+
+export const insertMcpApiKeySchema = createInsertSchema(mcpApiKeys).omit({
+  id: true,
+  createdAt: true,
+  lastUsedAt: true,
+  revokedAt: true,
+});
+
+// ── Workflow durability ──────────────────────────────────────────────────
+// Persisted record of every agent loop run (see server/workflow/runner.ts).
+// Lets crashed/timed-out runs be inspected, drives the operator UI's
+// "in-flight workflows" view, and contributes to the audit story (every
+// tool the agent invoked, with input + result + duration).
+//
+// Per fusion_crm doctrine these would live in the `workflow` schema; in
+// the flat-schema CRM they sit alongside the other tables. The shape
+// matches what fusion_crm's `workflow.instance` + `workflow.step` would
+// hold, so migrating later is rename + relocation, not redesign.
+
+export const workflowInstances = pgTable("workflow_instances", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  // Who triggered the run. References the principal that ran the agent
+  // loop — staff userId from OIDC, or "mcp:<keyId>" for MCP-driven runs.
+  principalUserId: text("principal_user_id").notNull(),
+  principalEmail: text("principal_email"),
+  goal: text("goal").notNull(),
+  status: text("status").notNull(), // pending | running | completed | failed | timeout | max_iterations
+  endReason: text("end_reason"),
+  finalAnswer: text("final_answer"),
+  errorMessage: text("error_message"),
+  iterationsUsed: integer("iterations_used").default(0).notNull(),
+  // Which tool subset the run was allowed to use. null = the full registry.
+  // Stored for auditability so reviewers can see what the agent could touch.
+  allowedToolNames: text("allowed_tool_names").array(),
+  startedAt: timestamp("started_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const workflowSteps = pgTable("workflow_steps", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  instanceId: uuid("instance_id")
+    .notNull()
+    .references(() => workflowInstances.id, { onDelete: "cascade" }),
+  iteration: integer("iteration").notNull(),
+  toolName: text("tool_name").notNull(),
+  input: jsonb("input"),
+  // Outcome shape: { ok: true, data } | { ok: false, error: { code, message } }
+  result: jsonb("result").notNull(),
+  durationMs: integer("duration_ms").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertWorkflowInstanceSchema = createInsertSchema(workflowInstances).omit({
+  id: true,
+  startedAt: true,
+  completedAt: true,
+});
+export const insertWorkflowStepSchema = createInsertSchema(workflowSteps).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertGeneratedDocumentSchema = createInsertSchema(generatedDocuments).omit({ id: true, createdAt: true });
 export const insertAppealSchema = createInsertSchema(appeals).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertEligibilityCheckSchema = createInsertSchema(eligibilityChecks).omit({ id: true, checkDate: true });
@@ -1080,6 +1244,10 @@ export const treatmentPlanProcedures = pgTable("treatment_plan_procedures", {
 export const insertTreatmentPlanProcedureSchema = createInsertSchema(treatmentPlanProcedures).omit({ id: true, createdAt: true });
 
 // Types
+export type Person = typeof persons.$inferSelect;
+export type InsertPerson = z.infer<typeof insertPersonSchema>;
+export type PersonExternalId = typeof personExternalIds.$inferSelect;
+export type InsertPersonExternalId = z.infer<typeof insertPersonExternalIdSchema>;
 export type Patient = typeof patients.$inferSelect;
 export type InsertPatient = z.infer<typeof insertPatientSchema>;
 export type MedicalHistory = typeof medicalHistory.$inferSelect;
@@ -1170,6 +1338,12 @@ export type PatientJourneyStatus = typeof patientJourneyStatus.$inferSelect;
 export type InsertPatientJourneyStatus = z.infer<typeof insertPatientJourneyStatusSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type McpApiKey = typeof mcpApiKeys.$inferSelect;
+export type InsertMcpApiKey = z.infer<typeof insertMcpApiKeySchema>;
+export type WorkflowInstance = typeof workflowInstances.$inferSelect;
+export type InsertWorkflowInstance = z.infer<typeof insertWorkflowInstanceSchema>;
+export type WorkflowStep = typeof workflowSteps.$inferSelect;
+export type InsertWorkflowStep = z.infer<typeof insertWorkflowStepSchema>;
 export type InternalMessage = typeof internalMessages.$inferSelect;
 export type InsertInternalMessage = z.infer<typeof insertInternalMessageSchema>;
 export type PracticeSettings = typeof practiceSettings.$inferSelect;

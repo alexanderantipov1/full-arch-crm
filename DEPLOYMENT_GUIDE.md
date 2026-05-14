@@ -94,8 +94,34 @@ npm run build
 # Push database schema
 npm run db:push
 
+# Apply infrastructure migrations (run AS DB SUPERUSER, once per env).
+# These live outside Drizzle because they're permission / role changes, not
+# schema DDL. See infra/sql/README.md for the catalog.
+psql "$DATABASE_URL" -f infra/sql/001_audit_lockdown.sql
+
 # Start production server
 npm start
+```
+
+### HIPAA-required deployment posture
+
+For the audit lockdown migration to actually protect against tampering,
+production MUST run the application as a non-superuser role (commonly
+named `app_role`) that is DISTINCT from the schema owner. Local dev
+with one shared owner is OK — the migration still applies, but the
+runtime user trivially bypasses the REVOKE.
+
+Recommended role setup (run once as superuser before deploying):
+
+```sql
+CREATE ROLE app_role LOGIN PASSWORD 'redacted';
+GRANT CONNECT ON DATABASE your_db TO app_role;
+GRANT USAGE ON SCHEMA public TO app_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_role;
+-- Then apply infra/sql/001_audit_lockdown.sql to strip UPDATE/DELETE on
+-- audit_logs specifically.
 ```
 
 ## Docker Deployment

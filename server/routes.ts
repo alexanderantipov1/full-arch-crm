@@ -4,7 +4,31 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replit_integrations/auth/replitAuth";
 import { registerAuthRoutes } from "./replit_integrations/auth/routes";
 import { registerChatRoutes } from "./replit_integrations/chat";
-import Anthropic from "@anthropic-ai/sdk";
+import {
+  generalApiLimiter,
+  aiLimiter,
+  paymentLimiter,
+} from "./middleware/rate-limit";
+import { registerMcpRoutes } from "./mcp/route";
+import { generateMcpApiKey, sanitizeMcpApiKey } from "./mcp/keys";
+import { isAdmin } from "./middleware/admin";
+import { phiService, PhiAccessDeniedError } from "./services/phi";
+import { anthropic, askClaude } from "./services/ai";
+import {
+  suggestCodesTool,
+  chatTool,
+  diagnosisTool,
+  medicalNecessityLetterTool,
+  appealLetterTool,
+  suggestReplyTool,
+  perioAssessmentTool,
+  specialtyRecommendationsTool,
+  generateDocumentTool,
+  runWorkflowTool,
+  runTool,
+  principalFromReq,
+  respondWithToolResult,
+} from "./tools";
 import {
   insertPatientSchema,
   insertMedicalHistorySchema,
@@ -70,31 +94,173 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 const STRIPE_TEST_MODE = !process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.startsWith("sk_test_");
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-async function askClaude(systemPrompt: string, userMessage: string, maxTokens = 1500): Promise<string> {
-  const response = await anthropic.messages.create({
-    model: "claude-opus-4-5",
-    max_tokens: maxTokens,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userMessage }],
-  });
-  const block = response.content[0];
-  return block.type === "text" ? block.text : "";
-}
+// `anthropic` and `askClaude` re-imported above from ./services/ai so existing
+// AI handlers in this file keep working unchanged. New AI features should go
+// through the tool layer in ./tools/, not call askClaude directly.
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Setup auth
+  // Setup auth (sets `trust proxy` and session middleware — must run before
+  // rate limiters so user-keyed limiting works and `req.ip` is the real client).
   await setupAuth(app);
   registerAuthRoutes(app);
 
+  // Rate limiting. Order matters: stricter per-path limiters mount first so
+  // they evaluate before the broad catch-all on /api.
+  app.use("/api/ai", aiLimiter);
+  app.use("/api/coding/suggest", aiLimiter);
+  app.use("/api/appeals/generate", aiLimiter);
+  app.use("/api/perio/ai-assessment", aiLimiter);
+  app.use("/api/workflows", aiLimiter);
+  app.use("/api/payments/create-intent", paymentLimiter);
+  app.use("/api/payments/confirm", paymentLimiter);
+  app.use("/api", generalApiLimiter);
+
   // Register chat routes for AI
   registerChatRoutes(app);
+
+  // MCP server surface for external AI clients (Claude Code, Codex, etc.).
+  // Auth is bearer-token (MCP_API_KEY), distinct from staff OIDC sessions.
+  registerMcpRoutes(app);
+
+  const getAuditUser = (req: any) => ({
+    userId: req.user?.claims?.sub || req.user?.id || "unknown",
+    userEmail: req.user?.claims?.email || req.user?.email || undefined,
+  });
+
+  const parseNumericId = (value: unknown): number | undefined => {
+    const parsed = typeof value === "number" ? value : parseInt(String(value || ""), 10);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
+  const methodToAuditAction: Record<string, string> = {
+    GET: "view",
+    POST: "create",
+    PUT: "update",
+    PATCH: "update",
+    DELETE: "delete",
+  };
+
+  const trackedPhiEndpoints = [
+    {
+      pattern: /^\/api\/patients\/(\d+)\/care-reports/,
+      resourceType: "care_report",
+      getPatientId: (_req: any, match: RegExpMatchArray) => parseNumericId(match[1]),
+      getResourceId: (_req: any, match: RegExpMatchArray) => match[1],
+    },
+    {
+      pattern: /^\/api\/patients(?:\/(\d+))?/,
+      resourceType: "patient",
+      getPatientId: (_req: any, match: RegExpMatchArray) => parseNumericId(match[1]),
+      getResourceId: (_req: any, match: RegExpMatchArray) => match[1],
+    },
+    {
+      pattern: /^\/api\/care-reports/,
+      resourceType: "care_report",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+      getResourceId: (req: any) => String(req.body?.id || req.query?.id || ""),
+    },
+    {
+      pattern: /^\/api\/medical-history/,
+      resourceType: "medical_history",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+    {
+      pattern: /^\/api\/dental-info/,
+      resourceType: "dental_info",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+    {
+      pattern: /^\/api\/treatment-plans/,
+      resourceType: "treatment_plan",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+    {
+      pattern: /^\/api\/billing/,
+      resourceType: "billing_claim",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+    {
+      pattern: /^\/api\/insurance/,
+      resourceType: "insurance",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+    {
+      pattern: /^\/api\/clinical-notes/,
+      resourceType: "clinical_note",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+    {
+      pattern: /^\/api\/documents/,
+      resourceType: "patient_document",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+    {
+      pattern: /^\/api\/consent-forms/,
+      resourceType: "consent_form",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+    {
+      pattern: /^\/api\/appointments/,
+      resourceType: "appointment",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+    {
+      pattern: /^\/api\/patient-messages/,
+      resourceType: "patient_message",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+    {
+      pattern: /^\/api\/portal\//,
+      resourceType: "patient_portal",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+  ];
+
+  app.use((req, res, next) => {
+    if (!req.user) {
+      next();
+      return;
+    }
+
+    const endpoint = trackedPhiEndpoints.find((item) => req.path.match(item.pattern));
+    if (!endpoint) {
+      next();
+      return;
+    }
+
+    const match = req.path.match(endpoint.pattern);
+    const action = methodToAuditAction[req.method] || "access";
+    const patientId = match ? endpoint.getPatientId?.(req, match) : endpoint.getPatientId?.(req, [] as any);
+    const resourceId = match ? endpoint.getResourceId?.(req, match) : endpoint.getResourceId?.(req, [] as any);
+    const { userId, userEmail } = getAuditUser(req);
+
+    res.on("finish", () => {
+      if (res.statusCode >= 400) return;
+      void storage.createAuditLog({
+        userId,
+        userEmail: userEmail || null,
+        action,
+        resourceType: endpoint.resourceType,
+        resourceId: resourceId || null,
+        patientId: patientId || null,
+        ipAddress: req.ip || req.socket?.remoteAddress || null,
+        userAgent: req.headers["user-agent"] || null,
+        details: {
+          endpoint: req.originalUrl,
+          method: req.method,
+          statusCode: res.statusCode,
+        },
+        phiAccessed: true,
+      }).catch((error) => {
+        console.error("Failed to create PHI audit log:", error);
+      });
+    });
+
+    next();
+  });
 
   // Dashboard stats
   app.get("/api/dashboard/stats", isAuthenticated, async (req, res) => {
@@ -120,13 +286,14 @@ export async function registerRoutes(
 
   app.get("/api/patients/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const patient = await storage.getPatientWithDetails(id);
+      const id = parseInt(String(req.params.id));
+      const patient = await phiService.getPatientWithDetails(principalFromReq(req), id);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
       res.json(patient);
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error fetching patient:", error);
       res.status(500).json({ message: "Failed to fetch patient" });
     }
@@ -135,9 +302,10 @@ export async function registerRoutes(
   app.post("/api/patients", isAuthenticated, async (req, res) => {
     try {
       const data = insertPatientSchema.parse(req.body);
-      const patient = await storage.createPatient(data);
+      const patient = await phiService.createPatient(principalFromReq(req), data);
       res.status(201).json(patient);
     } catch (error: any) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error creating patient:", error);
       res.status(400).json({ message: error.message || "Failed to create patient" });
     }
@@ -145,14 +313,15 @@ export async function registerRoutes(
 
   app.patch("/api/patients/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertPatientSchema.partial().parse(req.body);
-      const patient = await storage.updatePatient(id, data);
+      const patient = await phiService.updatePatient(principalFromReq(req), id, data);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
       res.json(patient);
     } catch (error: any) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error updating patient:", error);
       res.status(400).json({ message: error.message || "Failed to update patient" });
     }
@@ -160,10 +329,11 @@ export async function registerRoutes(
 
   app.delete("/api/patients/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      await storage.deletePatient(id);
+      const id = parseInt(String(req.params.id));
+      await phiService.deletePatient(principalFromReq(req), id);
       res.status(204).send();
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error deleting patient:", error);
       res.status(500).json({ message: "Failed to delete patient" });
     }
@@ -172,10 +342,11 @@ export async function registerRoutes(
   // ============ MEDICAL HISTORY ============
   app.get("/api/patients/:id/medical-history", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
-      const history = await storage.getMedicalHistory(patientId);
+      const patientId = parseInt(String(req.params.id));
+      const history = await phiService.getMedicalHistory(principalFromReq(req), patientId);
       res.json(history || {});
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error fetching medical history:", error);
       res.status(500).json({ message: "Failed to fetch medical history" });
     }
@@ -183,7 +354,7 @@ export async function registerRoutes(
 
   app.put("/api/patients/:id/medical-history", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
+      const patientId = parseInt(String(req.params.id));
       const data = insertMedicalHistorySchema.parse({ ...req.body, patientId });
       const history = await storage.upsertMedicalHistory(data);
       res.json(history);
@@ -196,10 +367,11 @@ export async function registerRoutes(
   // ============ DENTAL INFO ============
   app.get("/api/patients/:id/dental-info", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
-      const info = await storage.getDentalInfo(patientId);
+      const patientId = parseInt(String(req.params.id));
+      const info = await phiService.getDentalInfo(principalFromReq(req), patientId);
       res.json(info || {});
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error fetching dental info:", error);
       res.status(500).json({ message: "Failed to fetch dental info" });
     }
@@ -207,7 +379,7 @@ export async function registerRoutes(
 
   app.put("/api/patients/:id/dental-info", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
+      const patientId = parseInt(String(req.params.id));
       const data = insertDentalInfoSchema.parse({ ...req.body, patientId });
       const info = await storage.upsertDentalInfo(data);
       res.json(info);
@@ -220,7 +392,7 @@ export async function registerRoutes(
   // ============ FACIAL EVALUATION ============
   app.put("/api/patients/:id/facial-evaluation", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
+      const patientId = parseInt(String(req.params.id));
       const data = insertFacialEvaluationSchema.parse({ ...req.body, patientId });
       const evaluation = await storage.upsertFacialEvaluation(data);
       res.json(evaluation);
@@ -243,10 +415,11 @@ export async function registerRoutes(
 
   app.get("/api/patients/:id/insurance", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
-      const insurances = await storage.getPatientInsurance(patientId);
+      const patientId = parseInt(String(req.params.id));
+      const insurances = await phiService.getPatientInsurance(principalFromReq(req), patientId);
       res.json(insurances);
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error fetching insurance:", error);
       res.status(500).json({ message: "Failed to fetch insurance" });
     }
@@ -254,11 +427,12 @@ export async function registerRoutes(
 
   app.post("/api/patients/:id/insurance", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
+      const patientId = parseInt(String(req.params.id));
       const data = insertInsuranceSchema.parse({ ...req.body, patientId });
-      const insurance = await storage.createInsurance(data);
+      const insurance = await phiService.createInsurance(principalFromReq(req), data);
       res.status(201).json(insurance);
     } catch (error: any) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error creating insurance:", error);
       res.status(400).json({ message: error.message || "Failed to create insurance" });
     }
@@ -266,14 +440,15 @@ export async function registerRoutes(
 
   app.patch("/api/insurance/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertInsuranceSchema.partial().parse(req.body);
-      const insurance = await storage.updateInsurance(id, data);
+      const insurance = await phiService.updateInsurance(principalFromReq(req), id, data);
       if (!insurance) {
         return res.status(404).json({ message: "Insurance not found" });
       }
       res.json(insurance);
     } catch (error: any) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error updating insurance:", error);
       res.status(400).json({ message: error.message || "Failed to update insurance" });
     }
@@ -281,7 +456,7 @@ export async function registerRoutes(
 
   app.delete("/api/insurance/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       await storage.deleteInsurance(id);
       res.status(204).send();
     } catch (error) {
@@ -308,13 +483,14 @@ export async function registerRoutes(
 
   app.get("/api/treatment-plans/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const plan = await storage.getTreatmentPlan(id);
+      const id = parseInt(String(req.params.id));
+      const plan = await phiService.getTreatmentPlan(principalFromReq(req), id);
       if (!plan) {
         return res.status(404).json({ message: "Treatment plan not found" });
       }
       res.json(plan);
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error fetching treatment plan:", error);
       res.status(500).json({ message: "Failed to fetch treatment plan" });
     }
@@ -323,9 +499,10 @@ export async function registerRoutes(
   app.post("/api/treatment-plans", isAuthenticated, async (req, res) => {
     try {
       const data = insertTreatmentPlanSchema.parse(req.body);
-      const plan = await storage.createTreatmentPlan(data);
+      const plan = await phiService.createTreatmentPlan(principalFromReq(req), data);
       res.status(201).json(plan);
     } catch (error: any) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error creating treatment plan:", error);
       res.status(400).json({ message: error.message || "Failed to create treatment plan" });
     }
@@ -333,14 +510,15 @@ export async function registerRoutes(
 
   app.patch("/api/treatment-plans/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertTreatmentPlanSchema.partial().parse(req.body);
-      const plan = await storage.updateTreatmentPlan(id, data);
+      const plan = await phiService.updateTreatmentPlan(principalFromReq(req), id, data);
       if (!plan) {
         return res.status(404).json({ message: "Treatment plan not found" });
       }
       res.json(plan);
     } catch (error: any) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error updating treatment plan:", error);
       res.status(400).json({ message: error.message || "Failed to update treatment plan" });
     }
@@ -385,7 +563,7 @@ export async function registerRoutes(
 
   app.patch("/api/appointments/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertAppointmentSchema.partial().parse(req.body);
       const appointment = await storage.updateAppointment(id, data);
       if (!appointment) {
@@ -401,10 +579,11 @@ export async function registerRoutes(
   // ============ CLINICAL NOTES ============
   app.get("/api/patients/:id/notes", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
-      const notes = await storage.getPatientNotes(patientId);
+      const patientId = parseInt(String(req.params.id));
+      const notes = await phiService.getPatientNotes(principalFromReq(req), patientId);
       res.json(notes);
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error fetching notes:", error);
       res.status(500).json({ message: "Failed to fetch notes" });
     }
@@ -412,7 +591,7 @@ export async function registerRoutes(
 
   app.post("/api/patients/:id/notes", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
+      const patientId = parseInt(String(req.params.id));
       const data = insertClinicalNoteSchema.parse({ ...req.body, patientId });
       const note = await storage.createNote(data);
       res.status(201).json(note);
@@ -460,7 +639,7 @@ export async function registerRoutes(
 
   app.patch("/api/billing/claims/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertBillingClaimSchema.partial().parse(req.body);
 
       // Preflight gate: block submission if no passing preflight result exists
@@ -502,7 +681,7 @@ export async function registerRoutes(
 
   app.get("/api/prior-authorizations/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const auth = await storage.getPriorAuthorization(id);
       if (!auth) {
         return res.status(404).json({ message: "Prior authorization not found" });
@@ -527,7 +706,7 @@ export async function registerRoutes(
 
   app.patch("/api/prior-authorizations/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertPriorAuthorizationSchema.partial().parse(req.body);
       const auth = await storage.updatePriorAuthorization(id, data);
       if (!auth) {
@@ -543,7 +722,7 @@ export async function registerRoutes(
   // ============ CEPHALOMETRICS ============
   app.get("/api/patients/:patientId/cephalometrics", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const cephs = await storage.getPatientCephalometrics(patientId);
       res.json(cephs);
     } catch (error) {
@@ -566,7 +745,7 @@ export async function registerRoutes(
   // ============ MEDICAL CONSULTS ============
   app.get("/api/patients/:patientId/consults", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const consults = await storage.getMedicalConsults(patientId);
       res.json(consults);
     } catch (error) {
@@ -588,7 +767,7 @@ export async function registerRoutes(
 
   app.patch("/api/consults/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertMedicalConsultSchema.partial().parse(req.body);
       const consult = await storage.updateMedicalConsult(id, data);
       if (!consult) {
@@ -604,7 +783,7 @@ export async function registerRoutes(
   // ============ FULL ARCH EXAMS ============
   app.get("/api/patients/:patientId/full-arch-exams", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const exams = await storage.getPatientFullArchExams(patientId);
       res.json(exams);
     } catch (error) {
@@ -626,7 +805,7 @@ export async function registerRoutes(
 
   app.patch("/api/full-arch-exams/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertFullArchExamSchema.partial().parse(req.body);
       const exam = await storage.updateFullArchExam(id, data);
       if (!exam) {
@@ -665,7 +844,7 @@ export async function registerRoutes(
 
   app.patch("/api/follow-ups/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertFollowUpSchema.partial().parse(req.body);
       const followUp = await storage.updateFollowUp(id, data);
       if (!followUp) {
@@ -681,7 +860,7 @@ export async function registerRoutes(
   // ============ CARE REPORTS ============
   app.get("/api/patients/:patientId/care-reports", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const reports = await storage.getCareReports(patientId);
       res.json(reports);
     } catch (error) {
@@ -714,7 +893,7 @@ export async function registerRoutes(
 
   app.get("/api/referring-providers/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const provider = await storage.getReferringProvider(id);
       if (!provider) {
         return res.status(404).json({ message: "Referring provider not found" });
@@ -739,7 +918,7 @@ export async function registerRoutes(
 
   app.patch("/api/referring-providers/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertReferringProviderSchema.partial().parse(req.body);
       const provider = await storage.updateReferringProvider(id, data);
       if (!provider) {
@@ -752,155 +931,143 @@ export async function registerRoutes(
     }
   });
 
-  // ============ AI ASSISTANT ============
-  app.post("/api/ai/chat", isAuthenticated, async (req, res) => {
+  const buildFallbackSrmBrief = (overview: any) => {
+    const providers = overview.providers || [];
+    const priorities = providers
+      .filter((provider: any) => provider.hipaaStatus !== "ready" || provider.aiPriorityScore >= 60)
+      .slice(0, 3)
+      .map((provider: any) => ({
+        provider: provider.practiceName || `${provider.firstName} ${provider.lastName}`,
+        reason: provider.hipaaFlags?.[0] || `Priority score ${provider.aiPriorityScore}`,
+        action: provider.nextBestAction,
+        hipaaGuardrail: provider.hipaaStatus === "ready"
+          ? "Use minimum-necessary content and existing secure delivery preference."
+          : "Resolve identity and secure-channel documentation before disclosing PHI.",
+      }));
+
+    return {
+      executiveSummary: `${overview.summary.hipaaReadyProviders}/${overview.summary.totalProviders} providers are HIPAA-ready for SRM workflows. ${overview.summary.aiReviewQueue} relationship${overview.summary.aiReviewQueue === 1 ? "" : "s"} need governance review before PHI-bearing outreach.`,
+      topPriorities: priorities,
+      complianceNotes: overview.hipaaStatus.controls
+        .filter((control: any) => control.status !== "operational")
+        .map((control: any) => `${control.label}: ${control.evidence}`),
+      nextWorkflow: [
+        "Resolve missing NPI and secure delivery preferences.",
+        "Send continuity-of-care reports only with minimum necessary patient context.",
+        "Use AI briefs for relationship strategy from de-identified aggregates.",
+      ],
+      generatedBy: "rules",
+      generatedAt: new Date().toISOString(),
+    };
+  };
+
+  const parseSrmBrief = (raw: string, fallback: any) => {
     try {
-      const { content } = req.body;
-      
-      if (!content || typeof content !== "string") {
-        return res.status(400).json({ message: "Content is required" });
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(jsonMatch?.[0] || raw);
+      return {
+        executiveSummary: parsed.executiveSummary || fallback.executiveSummary,
+        topPriorities: Array.isArray(parsed.topPriorities) ? parsed.topPriorities : fallback.topPriorities,
+        complianceNotes: Array.isArray(parsed.complianceNotes) ? parsed.complianceNotes : fallback.complianceNotes,
+        nextWorkflow: Array.isArray(parsed.nextWorkflow) ? parsed.nextWorkflow : fallback.nextWorkflow,
+        generatedBy: "claude",
+        generatedAt: new Date().toISOString(),
+      };
+    } catch {
+      return { ...fallback, generatedBy: "rules_fallback" };
+    }
+  };
+
+  // ============ AI-NATIVE SRM ============
+  app.get("/api/srm/overview", isAuthenticated, async (_req, res) => {
+    try {
+      const overview = await storage.getSrmOverview();
+      res.json(overview);
+    } catch (error) {
+      console.error("Error fetching SRM overview:", error);
+      res.status(500).json({ message: "Failed to fetch SRM overview" });
+    }
+  });
+
+  app.post("/api/srm/ai-brief", isAuthenticated, async (req, res) => {
+    try {
+      const overview = await storage.getSrmOverview();
+      const fallback = buildFallbackSrmBrief(overview);
+      const { userId, userEmail } = getAuditUser(req);
+
+      await storage.createAuditLog({
+        userId,
+        userEmail: userEmail || null,
+        action: "generate",
+        resourceType: "srm_ai_brief",
+        resourceId: null,
+        patientId: null,
+        ipAddress: req.ip || req.socket?.remoteAddress || null,
+        userAgent: req.headers["user-agent"] || null,
+        details: {
+          dataScope: "deidentified_provider_aggregates",
+          providerCount: overview.summary.totalProviders,
+          phiIncluded: false,
+        },
+        phiAccessed: false,
+      });
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.json(fallback);
       }
 
-      const systemPrompt = `You are an expert dental implant assistant specializing in full arch dental implants (All-on-4, All-on-6), oral surgery, and comprehensive facial/airway evaluation. You help dental practices maximize insurance approvals and streamline billing. You assist with:
+      const providerContext = overview.providers.slice(0, 20).map((provider: any) => ({
+        provider: provider.practiceName || `${provider.firstName} ${provider.lastName}`,
+        providerType: provider.providerType,
+        specialty: provider.specialty,
+        referralCount: provider.referralCount,
+        careReportCount: provider.careReportCount,
+        relationshipStatus: provider.relationshipStatus,
+        hipaaStatus: provider.hipaaStatus,
+        hipaaFlags: provider.hipaaFlags,
+        nextBestAction: provider.nextBestAction,
+        aiPriorityScore: provider.aiPriorityScore,
+      }));
 
-1. Treatment Planning: Provide guidance on case assessment for full arch implants, implant positioning, bone grafting needs, and prosthetic options (hybrid, zirconia, PMMA).
+      const raw = await askClaude(
+        `You are an AI-native specialty/referral relationship management strategist for a dental implant practice.
+Use only the de-identified provider relationship aggregate data provided.
+Do not include patient names, dates of birth, phone numbers, clinical facts, claim facts, appointment details, or any other PHI.
+Return strict JSON with keys: executiveSummary, topPriorities, complianceNotes, nextWorkflow.
+topPriorities must be an array of objects with provider, reason, action, and hipaaGuardrail.`,
+        JSON.stringify({
+          summary: overview.summary,
+          hipaaStatus: overview.hipaaStatus,
+          providers: providerContext,
+        }),
+        1200
+      );
 
-2. Insurance & Billing: Help with correct CDT codes and ICD-10 codes for medical necessity. Common codes include:
-   - D6010: Surgical placement of implant body ($2,200)
-   - D6056: Prefabricated abutment ($650)
-   - D6058: Abutment supported crown ($1,400)
-   - D6114: Implant/abutment supported fixed denture for completely edentulous arch ($28,500)
-   - D7210: Extraction with flap elevation ($285)
-   - D7953: Bone replacement graft ($875)
-   
-   Key ICD-10 codes for medical necessity:
-   - K08.1: Complete loss of teeth
-   - K08.101-K08.109: Loss due to trauma, periodontal disease, caries
-   - M26.5: Dentofacial functional abnormalities
-   - R63.3: Feeding difficulties (nutritional impact)
-   - G47.33: Obstructive sleep apnea (for airway cases)
-
-3. Prior Authorization: Assist with submitting prior authorizations, including documentation requirements and clinical evidence needed for approval.
-
-4. Medical Necessity Letters: Help draft compelling letters emphasizing functional impairment, nutritional concerns, speech difficulties, and quality of life impact that increase approval rates.
-
-5. Denial Appeals: Guide practices through the appeals process with evidence-based arguments, citing peer-reviewed literature and clinical guidelines.
-
-6. Insurance Strategy: Advise on whether to bill medical vs dental insurance, dual coverage strategies, and when medical insurance is more likely to approve full arch cases (trauma, cancer reconstruction, severe atrophy).
-
-7. Arnett & Gunson Protocols: Provide guidance on facial evaluation protocols including:
-   - Facial profile analysis (convex, straight, concave)
-   - Soft tissue evaluation and lip competence
-   - Airway assessment and Mallampati scoring
-   - Bite classification and occlusion analysis
-   - Cephalometric landmarks and measurements (SNA, SNB, ANB, FMA)
-
-8. Cephalometric Analysis: Help interpret cephalometric measurements for treatment planning, including skeletal classification, growth patterns, and surgical planning considerations.
-
-9. Airway Evaluation: Assist with airway assessment including tongue position, tonsil size, neck circumference, and sleep apnea considerations that may affect treatment planning.
-
-10. Medical Consultation Requests: Generate appropriate preoperative medical clearance requests with necessary labs and specialist consultations.
-
-Always provide accurate, professional guidance. When discussing billing codes or insurance, note that practices should verify with their specific payers.`;
-
-      const assistantResponse = await askClaude(systemPrompt, content, 1500) || "I apologize, I couldn't generate a response. Please try again.";
-
-      res.json({ response: assistantResponse });
-    } catch (error: any) {
-      console.error("Error in AI chat:", error);
-      res.status(500).json({ message: "Failed to get AI response" });
+      res.json(parseSrmBrief(raw, fallback));
+    } catch (error) {
+      console.error("Error generating SRM AI brief:", error);
+      res.status(500).json({ message: "Failed to generate SRM AI brief" });
     }
   });
 
-  // AI-assisted diagnosis for treatment planning
+  // ============ AI ASSISTANT ============
+  // All /api/ai/* endpoints now go through the tool layer (server/tools/).
+  // Routes are thin wires: build a principal from the session, run the tool,
+  // map the result to an HTTP response.
+  app.post("/api/ai/chat", isAuthenticated, async (req, res) => {
+    return respondWithToolResult(res, await runTool(chatTool, { principal: principalFromReq(req) }, req.body));
+  });
+
   app.post("/api/ai/diagnosis", isAuthenticated, async (req, res) => {
-    try {
-      const { patientInfo, chiefComplaint, dentalConditions } = req.body;
-
-      const prompt = `Based on the following patient information, provide a diagnosis and treatment recommendations for full arch dental implants:
-
-Patient Info: ${JSON.stringify(patientInfo)}
-Chief Complaint: ${chiefComplaint}
-Dental Conditions: ${JSON.stringify(dentalConditions)}
-
-Please provide:
-1. Primary diagnosis with ICD-10 code
-2. Treatment recommendations (All-on-4, All-on-6, or alternative)
-3. Estimated procedure list with CDT codes
-4. Key considerations for treatment planning
-5. Suggested pre-operative requirements`;
-
-      const diagnosis = await askClaude(
-        "You are an expert dental implant treatment planning assistant. Provide detailed, clinically accurate recommendations.",
-        prompt, 2000
-      );
-      res.json({ diagnosis });
-    } catch (error) {
-      console.error("Error in AI diagnosis:", error);
-      res.status(500).json({ message: "Failed to get AI diagnosis" });
-    }
+    return respondWithToolResult(res, await runTool(diagnosisTool, { principal: principalFromReq(req) }, req.body));
   });
 
-  // AI-generated medical necessity letter
   app.post("/api/ai/medical-necessity-letter", isAuthenticated, async (req, res) => {
-    try {
-      const { patientName, dateOfBirth, diagnosis, procedures, justification } = req.body;
-
-      const prompt = `Generate a professional medical necessity letter for dental implant treatment:
-
-Patient: ${patientName}
-DOB: ${dateOfBirth}
-Diagnosis: ${diagnosis}
-Procedures: ${procedures}
-Additional Justification: ${justification}
-
-The letter should:
-1. Be professionally formatted
-2. Include relevant ICD-10 and CDT codes
-3. Emphasize functional impairment and quality of life impact
-4. Reference clinical evidence for implant therapy
-5. Be suitable for insurance submission`;
-
-      const letter = await askClaude(
-        "You are an expert at writing medical necessity letters for dental implant procedures. Create compelling, evidence-based letters.",
-        prompt, 2000
-      );
-      res.json({ letter });
-    } catch (error) {
-      console.error("Error generating medical necessity letter:", error);
-      res.status(500).json({ message: "Failed to generate letter" });
-    }
+    return respondWithToolResult(res, await runTool(medicalNecessityLetterTool, { principal: principalFromReq(req) }, req.body));
   });
 
-  // AI-generated appeal letter
   app.post("/api/ai/appeal-letter", isAuthenticated, async (req, res) => {
-    try {
-      const { patientName, claimNumber, denialReason, originalDiagnosis, procedures } = req.body;
-
-      const prompt = `Generate a professional insurance appeal letter for a denied dental implant claim:
-
-Patient: ${patientName}
-Claim Number: ${claimNumber}
-Denial Reason: ${denialReason}
-Original Diagnosis: ${originalDiagnosis}
-Procedures: ${procedures}
-
-The appeal should:
-1. Professionally address the specific denial reason
-2. Cite relevant clinical evidence and guidelines
-3. Reference peer-reviewed literature if applicable
-4. Include strong medical necessity arguments
-5. Request reconsideration with specific action items`;
-
-      const letter = await askClaude(
-        "You are an expert at writing insurance appeal letters for dental procedures. Create persuasive, evidence-based appeals.",
-        prompt, 2000
-      );
-      res.json({ letter });
-    } catch (error) {
-      console.error("Error generating appeal letter:", error);
-      res.status(500).json({ message: "Failed to generate appeal letter" });
-    }
+    return respondWithToolResult(res, await runTool(appealLetterTool, { principal: principalFromReq(req) }, req.body));
   });
 
   // ============ CODING ENGINE ============
@@ -916,7 +1083,7 @@ The appeal should:
 
   app.get("/api/coding/cross-references/:cdtCode", isAuthenticated, async (req, res) => {
     try {
-      const cdtCode = req.params.cdtCode;
+      const cdtCode = String(req.params.cdtCode);
       const code = await storage.getCodeCrossReferenceByCDT(cdtCode);
       if (!code) {
         return res.status(404).json({ message: "Code not found" });
@@ -962,53 +1129,11 @@ The appeal should:
   });
 
   // AI-assisted code suggestion
+  // First tool migrated. See server/tools/coding/suggestCodes.ts for the
+  // prompt, validation, and parsing. The route stays thin — same pattern as
+  // every /api/ai/* endpoint below.
   app.post("/api/coding/suggest", isAuthenticated, async (req, res) => {
-    try {
-      const { diagnosis, procedures, clinicalNotes } = req.body;
-      
-      if (!diagnosis || typeof diagnosis !== "string" || diagnosis.trim() === "") {
-        return res.status(400).json({ message: "Diagnosis is required" });
-      }
-      if (!procedures || typeof procedures !== "string" || procedures.trim() === "") {
-        return res.status(400).json({ message: "Procedures is required" });
-      }
-      
-      const codeSystemPrompt = `You are an expert dental billing coder specializing in full arch dental implants. Your role is to suggest the most appropriate CDT codes, CPT codes (for medical insurance cross-coding), and ICD-10 diagnosis codes that maximize insurance approval rates while maintaining compliance.
-
-For full arch dental implants, focus on:
-- Medical necessity documentation (functional impairment, nutritional concerns, airway issues)
-- Appropriate modifier usage (RT/LT for laterality, 22 for complexity)
-- Supporting diagnoses that strengthen medical necessity
-
-Common CDT codes for full arch:
-- D6010: Surgical placement of implant body
-- D6056: Prefabricated abutment
-- D6114: Implant/abutment supported fixed denture for completely edentulous arch
-- D7210: Extraction with flap elevation
-- D7953: Bone replacement graft
-
-Common ICD-10 codes for medical necessity:
-- K08.1: Complete loss of teeth (edentulism)
-- K08.109: Complete loss of teeth, unspecified cause
-- K08.419: Partial loss of teeth, unspecified cause
-- R63.3: Feeding difficulties and mismanagement (nutritional impact)
-- G47.33: Obstructive sleep apnea (if applicable)
-- E11.x: Type 2 diabetes mellitus (if applicable for bone healing)
-
-Return your response as valid JSON only (no markdown, no code blocks) with this structure:
-{"suggestedCDT": [{"code": "D6010", "description": "...", "fee": 2200}], "suggestedCPT": [{"code": "21248", "description": "...", "medicalCrossCode": true}], "suggestedICD10": [{"code": "K08.1", "description": "...", "priority": 1}], "medicalNecessityNotes": "...", "confidenceScore": 95, "warnings": []}`;
-
-      const codeRaw = await askClaude(codeSystemPrompt, `Suggest appropriate billing codes for:
-Diagnosis: ${diagnosis || "Not specified"}
-Procedures: ${procedures || "Not specified"}
-Clinical Notes: ${clinicalNotes || "Not provided"}`, 1500);
-
-      const suggestions = JSON.parse(codeRaw || "{}");
-      res.json(suggestions);
-    } catch (error) {
-      console.error("Error generating code suggestions:", error);
-      res.status(500).json({ message: "Failed to generate code suggestions" });
-    }
+    return respondWithToolResult(res, await runTool(suggestCodesTool, { principal: principalFromReq(req) }, req.body));
   });
 
   // ============ PATIENT RESPONSIBILITY CALCULATOR ============
@@ -1175,58 +1300,7 @@ Clinical Notes: ${clinicalNotes || "Not provided"}`, 1500);
   });
 
   app.post("/api/ai/generate-document", isAuthenticated, async (req, res) => {
-    try {
-      const { patientId, documentType, additionalContext } = req.body;
-      
-      if (!patientId || !documentType) {
-        return res.status(400).json({ message: "Patient ID and document type are required" });
-      }
-
-      const patient = await storage.getPatient(patientId);
-      if (!patient) {
-        return res.status(404).json({ message: "Patient not found" });
-      }
-
-      const medicalHistory = await storage.getMedicalHistory(patientId);
-      const treatmentPlans = await storage.getTreatmentPlansByPatient(patientId);
-
-      const documentTemplates: Record<string, string> = {
-        "medical-necessity": `Generate a comprehensive medical necessity letter for insurance submission. Include clinical justification for full arch dental implants, functional impairment documentation, and reference to ADA guidelines.`,
-        "operative-report": `Generate a detailed operative report for dental implant surgery. Include procedure details, implant specifications, bone quality, complications if any, and post-operative instructions.`,
-        "progress-note": `Generate a clinical progress note documenting the patient's treatment progress, healing status, and any clinical observations.`,
-        "history-physical": `Generate a comprehensive History and Physical (H&P) document from the patient's intake data, including chief complaint, medical history, review of systems, and physical examination findings.`,
-        "peer-to-peer": `Generate talking points and clinical justification for a peer-to-peer review with an insurance medical director. Focus on medical necessity and clinical evidence.`
-      };
-
-      const prompt = `${documentTemplates[documentType] || "Generate appropriate clinical documentation."}
-
-Patient Information:
-- Name: ${patient.firstName} ${patient.lastName}
-- DOB: ${patient.dateOfBirth}
-- Medical History: ${JSON.stringify(medicalHistory || {})}
-- Treatment Plans: ${JSON.stringify(treatmentPlans || [])}
-${additionalContext ? `\nAdditional Context: ${additionalContext}` : ""}
-
-Please generate professional, HIPAA-compliant clinical documentation.`;
-
-      const content = await askClaude(
-        "You are an expert dental billing specialist generating clinical documentation for full arch dental implant procedures. Generate professional, compliant documentation that supports medical necessity and insurance claims.",
-        prompt, 2000
-      );
-      
-      const savedDoc = await storage.createGeneratedDocument({
-        patientId,
-        documentType,
-        title: `${documentType.replace("-", " ").replace(/\b\w/g, (l: string) => l.toUpperCase())} - ${patient.firstName} ${patient.lastName}`,
-        content,
-        metadata: { additionalContext }
-      });
-
-      res.json({ content, documentId: savedDoc.id });
-    } catch (error) {
-      console.error("Error generating document:", error);
-      res.status(500).json({ message: "Failed to generate document" });
-    }
+    return respondWithToolResult(res, await runTool(generateDocumentTool, { principal: principalFromReq(req) }, req.body));
   });
 
   // ============ APPEALS ENGINE ============
@@ -1285,7 +1359,7 @@ Please generate professional, HIPAA-compliant clinical documentation.`;
 
   app.get("/api/billing/claims/:id/preflight", isAuthenticated, async (req, res) => {
     try {
-      const claimId = parseInt(req.params.id);
+      const claimId = parseInt(String(req.params.id));
       const result = await storage.getPreflightResult(claimId);
       if (!result) return res.status(404).json({ message: "No preflight result found" });
       res.json(result);
@@ -1297,13 +1371,13 @@ Please generate professional, HIPAA-compliant clinical documentation.`;
 
   app.post("/api/billing/claims/:id/preflight", isAuthenticated, async (req, res) => {
     try {
-      const claimId = parseInt(req.params.id);
+      const claimId = parseInt(String(req.params.id));
       const claims = await storage.getBillingClaims();
       const claim = claims.find(c => c.id === claimId);
       if (!claim) return res.status(404).json({ message: "Claim not found" });
 
-      const patient = await storage.getPatient(claim.patientId);
-      const insuranceList = await storage.getInsurance(claim.patientId);
+      const patient = await phiService.getPatient(principalFromReq(req), claim.patientId);
+      const insuranceList = await phiService.getPatientInsurance(principalFromReq(req), claim.patientId);
       const primaryInsurance = insuranceList[0];
 
       const systemPrompt = `You are an expert medical billing compliance specialist for dental implant claims. 
@@ -1393,6 +1467,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
 
       res.json(result);
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error running preflight check:", error);
       res.status(500).json({ message: "Failed to run preflight check" });
     }
@@ -1400,7 +1475,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
 
   app.patch("/api/billing/claims/:id/autofix", isAuthenticated, async (req, res) => {
     try {
-      const claimId = parseInt(req.params.id);
+      const claimId = parseInt(String(req.params.id));
       const { issueCode, fixValue, field } = req.body as { issueCode: string; fixValue: string; field: string };
 
       const allowedFields: Record<string, boolean> = {
@@ -1426,7 +1501,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
   // ============ PATIENT PORTAL ============
   app.get("/api/patients/:id/portal-access", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
+      const patientId = parseInt(String(req.params.id));
       const access = await storage.getPortalAccess(patientId);
       res.json(access || { patientId, enabled: false, lastAccessedAt: null, linkSentAt: null });
     } catch (error) {
@@ -1437,7 +1512,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
 
   app.patch("/api/patients/:id/portal-access", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
+      const patientId = parseInt(String(req.params.id));
       const { enabled } = req.body as { enabled: boolean };
       const access = await storage.upsertPortalAccess(patientId, { enabled });
       res.json(access);
@@ -1449,7 +1524,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
 
   app.post("/api/patients/:id/portal-link", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
+      const patientId = parseInt(String(req.params.id));
       const access = await storage.upsertPortalAccess(patientId, { enabled: true, linkSentAt: new Date() });
       await storage.createAuditLog({
         userId: req.user?.claims?.sub || req.user?.id || "unknown",
@@ -1468,7 +1543,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
 
   app.post("/api/patients/:id/portal-access-log", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.id);
+      const patientId = parseInt(String(req.params.id));
       const tab: string = req.body?.tab || "portal_open";
       // Verify portal is enabled — do NOT create or mutate enabled status
       const access = await storage.getPortalAccess(patientId);
@@ -1547,7 +1622,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
 
   app.patch("/api/portal/appointment-requests/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertPortalAppointmentRequestSchema.partial().parse(req.body);
       const request = await storage.updatePortalAppointmentRequest(id, data);
       if (!request) return res.status(404).json({ message: "Request not found" });
@@ -1561,7 +1636,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
 
   app.get("/api/surgery-reports/patient/:patientId", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const access = await storage.getPortalAccess(patientId);
       if (!access || !access.enabled) {
         return res.status(403).json({ message: "Portal access is not enabled for this patient" });
@@ -1576,7 +1651,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
 
   app.get("/api/payment-postings/patient/:patientId", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const access = await storage.getPortalAccess(patientId);
       if (!access || !access.enabled) {
         return res.status(403).json({ message: "Portal access is not enabled for this patient" });
@@ -1592,9 +1667,10 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
   app.post("/api/appeals/generate", isAuthenticated, async (req, res) => {
     try {
       const { claimId, patientId, denialReason, denialCode, additionalInfo } = req.body;
+      const principal = principalFromReq(req);
 
-      const patient = await storage.getPatient(patientId);
-      const medicalHistory = await storage.getMedicalHistory(patientId);
+      const patient = await phiService.getPatient(principal, patientId);
+      const medicalHistory = await phiService.getMedicalHistory(principal, patientId);
 
       const prompt = `Generate a professional insurance appeal letter for a denied dental implant claim.
 
@@ -1612,6 +1688,7 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
       );
       res.json({ appealLetter, successProbability: 78 });
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error generating appeal:", error);
       res.status(500).json({ message: "Failed to generate appeal" });
     }
@@ -1697,7 +1774,7 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
 
   app.post("/api/era/:id/post", isAuthenticated, async (req, res) => {
     try {
-      const postingId = parseInt(req.params.id);
+      const postingId = parseInt(String(req.params.id));
       await storage.updatePaymentPosting(postingId, { postingStatus: "posted", autoPosted: true });
       res.json({ success: true });
     } catch (error) {
@@ -1743,10 +1820,11 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
 
   app.get("/api/eligibility/recent", isAuthenticated, async (req, res) => {
     try {
+      const principal = principalFromReq(req);
       const checks = await storage.getEligibilityChecks();
       const recentWithNames = await Promise.all(
         checks.slice(0, 10).map(async (check) => {
-          const patient = await storage.getPatient(check.patientId);
+          const patient = await phiService.getPatient(principal, check.patientId);
           return {
             ...check,
             patientName: patient ? `${patient.firstName} ${patient.lastName}` : `Patient ${check.patientId}`
@@ -1755,6 +1833,7 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
       );
       res.json(recentWithNames);
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error fetching recent eligibility:", error);
       res.json([]);
     }
@@ -1762,7 +1841,7 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
 
   app.get("/api/eligibility/patient/:patientId", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const checks = await storage.getEligibilityChecksByPatient(patientId);
       res.json(checks);
     } catch (error) {
@@ -1791,9 +1870,14 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
     message?: string;
   }
 
-  // Shared AI eligibility check logic
-  async function runEligibilityCheck(patientId: number, forceRefresh = false): Promise<Record<string, unknown> & { cached: boolean }> {
-    const patient = await storage.getPatient(patientId);
+  // Shared AI eligibility check logic. Takes the caller's principal so the
+  // PHI reads (patient + insurance) flow through the gate and audit log.
+  async function runEligibilityCheck(
+    principal: import("./tools/types").Principal,
+    patientId: number,
+    forceRefresh = false,
+  ): Promise<Record<string, unknown> & { cached: boolean }> {
+    const patient = await phiService.getPatient(principal, patientId);
     if (!patient) throw new Error("Patient not found");
 
     // 24-hour cache: return existing if checked within last 24h and not force-refreshing
@@ -1807,7 +1891,7 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
       }
     }
 
-    const insuranceRecords = await storage.getInsurance(patientId);
+    const insuranceRecords = await phiService.getPatientInsurance(principal, patientId);
     const primaryInsurance = insuranceRecords[0];
 
     const insuranceContext = primaryInsurance
@@ -1875,11 +1959,12 @@ Return this exact JSON shape:
 
   app.post("/api/eligibility/verify/:patientId", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const forceRefresh = req.body?.forceRefresh === true;
-      const result = await runEligibilityCheck(patientId, forceRefresh);
+      const result = await runEligibilityCheck(principalFromReq(req), patientId, forceRefresh);
       res.json(result);
     } catch (error: any) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error verifying eligibility:", error);
       res.status(error.message === "Patient not found" ? 404 : 500).json({ message: error.message || "Failed to verify eligibility" });
     }
@@ -1891,9 +1976,10 @@ Return this exact JSON shape:
       const patientId = parseInt(req.body?.patientId);
       if (!patientId) return res.status(400).json({ message: "patientId required" });
       const forceRefresh = req.body?.forceRefresh === true;
-      const result = await runEligibilityCheck(patientId, forceRefresh);
+      const result = await runEligibilityCheck(principalFromReq(req), patientId, forceRefresh);
       res.json(result);
     } catch (error: any) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error checking eligibility:", error);
       res.status(500).json({ message: error.message || "Failed to check eligibility" });
     }
@@ -1910,10 +1996,11 @@ Return this exact JSON shape:
       const allAppts = await storage.getAppointments({ startDate: tStart, endDate: tEnd });
       const uniquePatientIds = [...new Set(allAppts.map(a => a.patientId))];
 
+      const principal = principalFromReq(req);
       const results: BatchEligibilityResult[] = [];
       for (const pid of uniquePatientIds) {
         try {
-          const r = await runEligibilityCheck(pid, false);
+          const r = await runEligibilityCheck(principal, pid, false);
           results.push({ patientId: pid, status: "ok", eligibilityStatus: String(r.eligibilityStatus ?? ""), cached: Boolean(r.cached) });
         } catch (e: unknown) {
           results.push({ patientId: pid, status: "error", message: e instanceof Error ? e.message : "Unknown error" });
@@ -2080,12 +2167,15 @@ Return this exact JSON shape:
     try {
       const leadId = parseInt(req.params.id as string);
       const lead = await storage.getLead(leadId);
-      
+
       if (!lead) {
         return res.status(404).json({ message: "Lead not found" });
       }
 
-      const patient = await storage.createPatient({
+      // Conversion goes through PhiService — capability check + audit row +
+      // identity resolution (so the new patient picks up the lead's
+      // person_uid if backfill has run, instead of creating a duplicate).
+      const patient = await phiService.createPatient(principalFromReq(req), {
         firstName: lead.firstName,
         lastName: lead.lastName,
         email: lead.email || undefined,
@@ -2094,13 +2184,14 @@ Return this exact JSON shape:
         gender: "unknown",
       });
 
-      await storage.updateLead(leadId, { 
-        status: "converted", 
-        convertedToPatientId: patient.id 
+      await storage.updateLead(leadId, {
+        status: "converted",
+        convertedToPatientId: patient.id,
       });
 
       res.json({ success: true, patientId: patient.id });
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error converting lead:", error);
       res.status(500).json({ message: "Failed to convert lead to patient" });
     }
@@ -2569,7 +2660,7 @@ Return this exact JSON shape:
 
   app.get("/api/audit-logs/patient/:patientId", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const logs = await storage.getAuditLogsByPatient(patientId);
       res.json(logs);
     } catch (error) {
@@ -2591,10 +2682,11 @@ Return this exact JSON shape:
 
   app.get("/api/consent-forms/patient/:patientId", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
-      const forms = await storage.getConsentFormsByPatient(patientId);
+      const patientId = parseInt(String(req.params.patientId));
+      const forms = await phiService.getConsentFormsByPatient(principalFromReq(req), patientId);
       res.json(forms);
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error fetching patient consent forms:", error);
       res.status(500).json({ message: "Failed to fetch consent forms" });
     }
@@ -2606,9 +2698,10 @@ Return this exact JSON shape:
       if (!parsed.success) {
         return res.status(400).json({ message: "Invalid consent form data", errors: parsed.error.errors });
       }
-      const form = await storage.createConsentForm(parsed.data);
+      const form = await phiService.createConsentForm(principalFromReq(req), parsed.data);
       res.json(form);
     } catch (error) {
+      if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
       console.error("Error creating consent form:", error);
       res.status(500).json({ message: "Failed to create consent form" });
     }
@@ -2616,7 +2709,7 @@ Return this exact JSON shape:
 
   app.post("/api/consent-forms/:id/sign", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const form = await storage.signConsentForm(id);
       if (!form) {
         return res.status(404).json({ message: "Consent form not found" });
@@ -2641,7 +2734,7 @@ Return this exact JSON shape:
 
   app.get("/api/documents/patient/:patientId", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const documents = await storage.getDocumentsByPatient(patientId);
       res.json(documents);
     } catch (error) {
@@ -2666,7 +2759,7 @@ Return this exact JSON shape:
 
   app.delete("/api/documents/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       await storage.deleteDocument(id);
       res.json({ success: true });
     } catch (error) {
@@ -2775,7 +2868,7 @@ Return this exact JSON shape:
   app.patch("/api/messages/:id/read", isAuthenticated, async (req, res) => {
     try {
       const userId = getSessionUserId(req);
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const message = await storage.markMessageRead(id, userId);
       if (!message) {
         return res.status(404).json({ message: "Message not found or not authorized" });
@@ -2793,8 +2886,8 @@ Return this exact JSON shape:
       const userId = getSessionUserId(req);
       let settings = await storage.getPracticeSettings(userId);
 
-      const ownerBypassId = "47100532";
-      if (!settings?.onboardingComplete && userId === ownerBypassId) {
+      const ownerBypassId = process.env.OWNER_USER_ID;
+      if (ownerBypassId && !settings?.onboardingComplete && userId === ownerBypassId) {
         settings = await storage.upsertPracticeSettings({
           userId,
           practiceName: "My Practice",
@@ -2856,27 +2949,7 @@ Return this exact JSON shape:
   });
 
   app.post("/api/ai/specialty-recommendations", isAuthenticated, async (req, res) => {
-    try {
-      const { specialty, practiceType } = req.body;
-      const message = await anthropic.messages.create({
-        model: "claude-opus-4-5",
-        max_tokens: 600,
-        messages: [{
-          role: "user",
-          content: `You are helping set up a dental practice management platform for a ${specialty || practiceType || "dental"} specialist. Generate a brief, enthusiastic personalized welcome (2 sentences max) and a JSON list of the 6 most relevant module categories for this specialty from the following list. Return ONLY valid JSON in this format: {"welcome": "...", "modules": [{"title":"...", "url":"...", "reason":"..."}]}. Available modules: Patients (/patients), Scheduling (/appointments), Perio Charting (/perio), Endo/RCT (/endo), Recall System (/recall), Oral Surgery (/oral-surgery), Orthodontics (/ortho), Pediatric (/pediatric), Treatment Plans (/treatment-plans), Implant Tracker (/implant-tracker), Lab & Design (/lab), Billing & Claims (/billing), Coding Engine (/coding), Medical Clearance (/medical-clearance), Surgery Day (/surgery), AI Documentation (/ai-documentation), Appeals Engine (/appeals), Insurance Verification (/eligibility), Patient Messaging (/patient-messaging), Consent Forms (/consent-forms). Specialty: ${specialty || practiceType}`
-        }],
-      });
-      const text = (message.content[0] as any).text;
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        res.json(JSON.parse(jsonMatch[0]));
-      } else {
-        res.json({ welcome: `Welcome! Your platform is ready for ${specialty} practice.`, modules: [] });
-      }
-    } catch (error) {
-      console.error("Specialty recommendation error:", error);
-      res.json({ welcome: "Welcome to your dental practice platform!", modules: [] });
-    }
+    return respondWithToolResult(res, await runTool(specialtyRecommendationsTool, { principal: principalFromReq(req) }, req.body));
   });
 
   app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
@@ -2896,7 +2969,7 @@ Return this exact JSON shape:
   // Tooth Conditions (Dental Charting)
   app.get("/api/patients/:patientId/tooth-conditions", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const conditions = await storage.getToothConditions(patientId);
       res.json(conditions);
     } catch (error) {
@@ -2907,7 +2980,7 @@ Return this exact JSON shape:
 
   app.post("/api/patients/:patientId/tooth-conditions", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const data = insertToothConditionSchema.parse({ ...req.body, patientId });
       const condition = await storage.createToothCondition(data);
       res.json(condition);
@@ -2919,7 +2992,7 @@ Return this exact JSON shape:
 
   app.patch("/api/tooth-conditions/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertToothConditionSchema.partial().parse(req.body);
       const condition = await storage.updateToothCondition(id, data);
       if (!condition) return res.status(404).json({ message: "Tooth condition not found" });
@@ -2932,7 +3005,7 @@ Return this exact JSON shape:
 
   app.delete("/api/tooth-conditions/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       await storage.deleteToothCondition(id);
       res.json({ success: true });
     } catch (error) {
@@ -2944,7 +3017,7 @@ Return this exact JSON shape:
   // Treatment Plan Procedures
   app.get("/api/treatment-plans/:planId/procedures", isAuthenticated, async (req, res) => {
     try {
-      const planId = parseInt(req.params.planId);
+      const planId = parseInt(String(req.params.planId));
       const procedures = await storage.getTreatmentPlanProcedures(planId);
       res.json(procedures);
     } catch (error) {
@@ -2955,7 +3028,7 @@ Return this exact JSON shape:
 
   app.get("/api/patients/:patientId/procedures", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const procedures = await storage.getPatientProcedures(patientId);
       res.json(procedures);
     } catch (error) {
@@ -2966,7 +3039,7 @@ Return this exact JSON shape:
 
   app.post("/api/treatment-plans/:planId/procedures", isAuthenticated, async (req, res) => {
     try {
-      const treatmentPlanId = parseInt(req.params.planId);
+      const treatmentPlanId = parseInt(String(req.params.planId));
       const data = insertTreatmentPlanProcedureSchema.parse({ ...req.body, treatmentPlanId });
       const procedure = await storage.createTreatmentPlanProcedure(data);
       res.json(procedure);
@@ -2978,7 +3051,7 @@ Return this exact JSON shape:
 
   app.patch("/api/procedures/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const data = insertTreatmentPlanProcedureSchema.partial().parse(req.body);
       const procedure = await storage.updateTreatmentPlanProcedure(id, data);
       if (!procedure) return res.status(404).json({ message: "Procedure not found" });
@@ -2991,7 +3064,7 @@ Return this exact JSON shape:
 
   app.delete("/api/procedures/:id", isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       await storage.deleteTreatmentPlanProcedure(id);
       res.json({ success: true });
     } catch (error) {
@@ -3036,7 +3109,7 @@ Return this exact JSON shape:
 
   app.get("/api/unions/:id", isAuthenticated, async (req, res) => {
     try {
-      const union = await storage.getUnionOrganization(parseInt(req.params.id));
+      const union = await storage.getUnionOrganization(parseInt(String(req.params.id)));
       if (!union) return res.status(404).json({ message: "Union not found" });
       res.json(union);
     } catch (error: any) {
@@ -3056,7 +3129,7 @@ Return this exact JSON shape:
 
   app.patch("/api/unions/:id", isAuthenticated, async (req, res) => {
     try {
-      const union = await storage.updateUnionOrganization(parseInt(req.params.id), req.body);
+      const union = await storage.updateUnionOrganization(parseInt(String(req.params.id)), req.body);
       if (!union) return res.status(404).json({ message: "Union not found" });
       res.json(union);
     } catch (error: any) {
@@ -3066,7 +3139,7 @@ Return this exact JSON shape:
 
   app.delete("/api/unions/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteUnionOrganization(parseInt(req.params.id));
+      await storage.deleteUnionOrganization(parseInt(String(req.params.id)));
       res.json({ message: "Deleted" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -3075,7 +3148,7 @@ Return this exact JSON shape:
 
   app.get("/api/unions/:id/contacts", isAuthenticated, async (req, res) => {
     try {
-      const contacts = await storage.getUnionContacts(parseInt(req.params.id));
+      const contacts = await storage.getUnionContacts(parseInt(String(req.params.id)));
       res.json(contacts);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -3094,7 +3167,7 @@ Return this exact JSON shape:
 
   app.patch("/api/unions/contacts/:id", isAuthenticated, async (req, res) => {
     try {
-      const contact = await storage.updateUnionContact(parseInt(req.params.id), req.body);
+      const contact = await storage.updateUnionContact(parseInt(String(req.params.id)), req.body);
       if (!contact) return res.status(404).json({ message: "Contact not found" });
       res.json(contact);
     } catch (error: any) {
@@ -3104,7 +3177,7 @@ Return this exact JSON shape:
 
   app.delete("/api/unions/contacts/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteUnionContact(parseInt(req.params.id));
+      await storage.deleteUnionContact(parseInt(String(req.params.id)));
       res.json({ message: "Deleted" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -3133,7 +3206,7 @@ Return this exact JSON shape:
 
   app.patch("/api/unions/outreach/:id", isAuthenticated, async (req, res) => {
     try {
-      const outreach = await storage.updateUnionOutreach(parseInt(req.params.id), req.body);
+      const outreach = await storage.updateUnionOutreach(parseInt(String(req.params.id)), req.body);
       if (!outreach) return res.status(404).json({ message: "Outreach not found" });
       res.json(outreach);
     } catch (error: any) {
@@ -3162,7 +3235,7 @@ Return this exact JSON shape:
 
   app.patch("/api/unions/events/:id", isAuthenticated, async (req, res) => {
     try {
-      const event = await storage.updateUnionEvent(parseInt(req.params.id), req.body);
+      const event = await storage.updateUnionEvent(parseInt(String(req.params.id)), req.body);
       if (!event) return res.status(404).json({ message: "Event not found" });
       res.json(event);
     } catch (error: any) {
@@ -3192,7 +3265,7 @@ Return this exact JSON shape:
 
   app.patch("/api/unions/agreements/:id", isAuthenticated, async (req, res) => {
     try {
-      const agreement = await storage.updateUnionAgreement(parseInt(req.params.id), req.body);
+      const agreement = await storage.updateUnionAgreement(parseInt(String(req.params.id)), req.body);
       if (!agreement) return res.status(404).json({ message: "Agreement not found" });
       res.json(agreement);
     } catch (error: any) {
@@ -3440,7 +3513,7 @@ Return this exact JSON shape:
   // Explicit thread-open audit event — called once when a user consciously opens a thread
   app.post("/api/patient-messages/:patientId/open", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const userId = getSessionUserId(req);
       await storage.createAuditLog({
         userId: userId || "system",
@@ -3485,25 +3558,14 @@ Return this exact JSON shape:
 
   app.patch("/api/patient-messages/:id/read", isAuthenticated, async (req, res) => {
     try {
-      const updated = await storage.markPatientMessageRead(parseInt(req.params.id));
+      const updated = await storage.markPatientMessageRead(parseInt(String(req.params.id)));
       res.json(updated);
     } catch { res.status(500).json({ message: "Failed to mark read" }); }
   });
 
   // AI suggest reply for patient messages
   app.post("/api/ai/suggest-reply", isAuthenticated, async (req, res) => {
-    try {
-      const { patientName, lastMessage, channel } = req.body;
-      const channelCtx = channel === "sms" ? "a brief SMS (under 160 characters if possible)" : channel === "email" ? "a professional email" : "an in-app message";
-      const suggestion = await askClaude(
-        `You are a helpful dental practice assistant. Write professional, empathetic, HIPAA-compliant replies. Do not include placeholders or brackets. Return only the ready-to-send message text with no additional commentary.`,
-        `Draft ${channelCtx} reply for patient ${patientName || "the patient"}.\n\nPatient's last message: "${lastMessage}"`
-      );
-      res.json({ suggestion });
-    } catch (error) {
-      console.error("AI suggest reply error:", error);
-      res.status(500).json({ message: "AI suggestion failed" });
-    }
+    return respondWithToolResult(res, await runTool(suggestReplyTool, { principal: principalFromReq(req) }, req.body));
   });
 
   // ============ PRACTICE LOCATIONS ============
@@ -3523,7 +3585,7 @@ Return this exact JSON shape:
 
   app.put("/api/locations/:id", isAuthenticated, async (req, res) => {
     try {
-      const updated = await storage.updatePracticeLocation(parseInt(req.params.id), req.body);
+      const updated = await storage.updatePracticeLocation(parseInt(String(req.params.id)), req.body);
       if (!updated) return res.status(404).json({ message: "Not found" });
       res.json(updated);
     } catch { res.status(500).json({ message: "Failed to update" }); }
@@ -3549,7 +3611,7 @@ Return this exact JSON shape:
 
   app.put("/api/pediatric/:id", isAuthenticated, async (req, res) => {
     try {
-      const updated = await storage.updatePediatricExam(parseInt(req.params.id), req.body);
+      const updated = await storage.updatePediatricExam(parseInt(String(req.params.id)), req.body);
       if (!updated) return res.status(404).json({ message: "Not found" });
       res.json(updated);
     } catch { res.status(500).json({ message: "Failed to update" }); }
@@ -3575,7 +3637,7 @@ Return this exact JSON shape:
 
   app.put("/api/oral-surgery/:id", isAuthenticated, async (req, res) => {
     try {
-      const updated = await storage.updateOralSurgeryCase(parseInt(req.params.id), req.body);
+      const updated = await storage.updateOralSurgeryCase(parseInt(String(req.params.id)), req.body);
       if (!updated) return res.status(404).json({ message: "Not found" });
       res.json(updated);
     } catch { res.status(500).json({ message: "Failed to update" }); }
@@ -3600,7 +3662,7 @@ Return this exact JSON shape:
 
   app.put("/api/practice-providers/:id", isAuthenticated, async (req, res) => {
     try {
-      const updated = await storage.updatePracticeProvider(parseInt(req.params.id), req.body);
+      const updated = await storage.updatePracticeProvider(parseInt(String(req.params.id)), req.body);
       if (!updated) return res.status(404).json({ message: "Not found" });
       res.json(updated);
     } catch { res.status(500).json({ message: "Failed to update" }); }
@@ -3626,7 +3688,7 @@ Return this exact JSON shape:
 
   app.put("/api/recall/:id", isAuthenticated, async (req, res) => {
     try {
-      const updated = await storage.updateRecallPatient(parseInt(req.params.id), req.body);
+      const updated = await storage.updateRecallPatient(parseInt(String(req.params.id)), req.body);
       if (!updated) return res.status(404).json({ message: "Not found" });
       res.json(updated);
     } catch { res.status(500).json({ message: "Failed to update" }); }
@@ -3634,13 +3696,13 @@ Return this exact JSON shape:
 
   app.get("/api/recall/:id/contacts", isAuthenticated, async (req, res) => {
     try {
-      res.json(await storage.getRecallContactLog(parseInt(req.params.id)));
+      res.json(await storage.getRecallContactLog(parseInt(String(req.params.id))));
     } catch { res.json([]); }
   });
 
   app.post("/api/recall/:id/contacts", isAuthenticated, async (req, res) => {
     try {
-      const data = insertRecallContactLogSchema.parse({ ...req.body, recallPatientId: parseInt(req.params.id) });
+      const data = insertRecallContactLogSchema.parse({ ...req.body, recallPatientId: parseInt(String(req.params.id)) });
       res.status(201).json(await storage.addRecallContact(data));
     } catch (error) {
       console.error("Error adding contact:", error);
@@ -3658,7 +3720,7 @@ Return this exact JSON shape:
 
   app.get("/api/endo/:id", isAuthenticated, async (req, res) => {
     try {
-      const c = await storage.getEndoCase(parseInt(req.params.id));
+      const c = await storage.getEndoCase(parseInt(String(req.params.id)));
       if (!c) return res.status(404).json({ message: "Not found" });
       res.json(c);
     } catch { res.status(500).json({ message: "Failed" }); }
@@ -3676,7 +3738,7 @@ Return this exact JSON shape:
 
   app.put("/api/endo/:id", isAuthenticated, async (req, res) => {
     try {
-      const updated = await storage.updateEndoCase(parseInt(req.params.id), req.body);
+      const updated = await storage.updateEndoCase(parseInt(String(req.params.id)), req.body);
       if (!updated) return res.status(404).json({ message: "Not found" });
       res.json(updated);
     } catch { res.status(500).json({ message: "Failed to update" }); }
@@ -3693,7 +3755,7 @@ Return this exact JSON shape:
 
   app.get("/api/ortho/:id", isAuthenticated, async (req, res) => {
     try {
-      const c = await storage.getOrthoCase(parseInt(req.params.id));
+      const c = await storage.getOrthoCase(parseInt(String(req.params.id)));
       if (!c) return res.status(404).json({ message: "Not found" });
       res.json(c);
     } catch (error) { res.status(500).json({ message: "Failed" }); }
@@ -3712,7 +3774,7 @@ Return this exact JSON shape:
 
   app.put("/api/ortho/:id", isAuthenticated, async (req, res) => {
     try {
-      const updated = await storage.updateOrthoCase(parseInt(req.params.id), req.body);
+      const updated = await storage.updateOrthoCase(parseInt(String(req.params.id)), req.body);
       if (!updated) return res.status(404).json({ message: "Not found" });
       res.json(updated);
     } catch (error) { res.status(500).json({ message: "Failed to update" }); }
@@ -3721,7 +3783,7 @@ Return this exact JSON shape:
   // ============ PERIO CHARTING ============
   app.get("/api/perio/:patientId", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const exams = await storage.getPerioExams(patientId);
       res.json(exams);
     } catch (error) {
@@ -3732,7 +3794,7 @@ Return this exact JSON shape:
 
   app.get("/api/perio/exam/:id", isAuthenticated, async (req, res) => {
     try {
-      const exam = await storage.getPerioExam(parseInt(req.params.id));
+      const exam = await storage.getPerioExam(parseInt(String(req.params.id)));
       if (!exam) return res.status(404).json({ message: "Exam not found" });
       res.json(exam);
     } catch (error) {
@@ -3753,7 +3815,7 @@ Return this exact JSON shape:
 
   app.put("/api/perio/exam/:id", isAuthenticated, async (req, res) => {
     try {
-      const updated = await storage.updatePerioExam(parseInt(req.params.id), req.body);
+      const updated = await storage.updatePerioExam(parseInt(String(req.params.id)), req.body);
       if (!updated) return res.status(404).json({ message: "Exam not found" });
       res.json(updated);
     } catch (error) {
@@ -3762,28 +3824,101 @@ Return this exact JSON shape:
   });
 
   app.post("/api/perio/ai-assessment", isAuthenticated, async (req, res) => {
-    try {
-      const { probingData, patientName } = req.body;
-      const allDepths: number[] = [];
-      let bopCount = 0, totalSites = 0, sitesGt4 = 0, sitesGt6 = 0;
-      Object.values(probingData as Record<string, any>).forEach((t: any) => {
-        if (t.missing) return;
-        const depths = [...(t.facialProbing || []), ...(t.lingualProbing || [])];
-        const bops = [...(t.facialBop || []), ...(t.lingualBop || [])];
-        depths.forEach(d => { allDepths.push(d); totalSites++; if (d >= 4) sitesGt4++; if (d >= 6) sitesGt6++; });
-        bops.forEach(b => { if (b) bopCount++; });
-      });
-      const avgDepth = allDepths.length ? (allDepths.reduce((a, b) => a + b, 0) / allDepths.length).toFixed(1) : "0";
-      const bopPct = totalSites ? Math.round((bopCount / totalSites) * 100) : 0;
+    return respondWithToolResult(res, await runTool(perioAssessmentTool, { principal: principalFromReq(req) }, req.body));
+  });
 
-      const assessment = await askClaude(
-        "You are a periodontist generating a clinical AI assessment for a perio chart. Be concise, clinical, and specific. Include diagnosis, treatment recommendations (CDT codes D4341/D4342/D4910), and prognosis. Keep under 120 words.",
-        `Patient: ${patientName}. Avg probing: ${avgDepth}mm. Sites ≥4mm: ${sitesGt4}. Sites ≥6mm: ${sitesGt6}. BOP: ${bopPct}%. Generate a periodontal assessment and treatment plan.`,
-        400
-      );
-      res.json({ assessment, stats: { avgDepth, bopPct, sitesGt4, sitesGt6, totalSites } });
+  // Staff-facing entry point for the agent workflow runner. Same surface as
+  // the MCP `workflow.run` tool — both go through the same handler — so an
+  // operator in the UI and an external AI client over MCP can trigger the
+  // same multi-step agent loops.
+  app.post("/api/workflows/run", isAuthenticated, async (req, res) => {
+    return respondWithToolResult(res, await runTool(runWorkflowTool, { principal: principalFromReq(req) }, req.body));
+  });
+
+  // List recent workflow runs. Used by the operator UI's "in-flight + history"
+  // view. Filter by status (running / completed / failed / timeout /
+  // max_iterations) via ?status=…; default limit is 50, max 200.
+  app.get("/api/workflows", isAuthenticated, async (req, res) => {
+    try {
+      const status = req.query.status ? String(req.query.status) : undefined;
+      const limit = req.query.limit
+        ? Math.min(parseInt(String(req.query.limit), 10) || 50, 200)
+        : 50;
+      const instances = await storage.listWorkflowInstances({ status, limit });
+      res.json(instances);
     } catch (error) {
-      res.status(500).json({ message: "Failed to generate AI assessment" });
+      console.error("Error listing workflows:", error);
+      res.status(500).json({ message: "Failed to list workflows" });
+    }
+  });
+
+  // Get one workflow run with its full step trail.
+  app.get("/api/workflows/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = String(req.params.id);
+      const instance = await storage.getWorkflowInstance(id);
+      if (!instance) return res.status(404).json({ message: "Workflow not found" });
+      const steps = await storage.getWorkflowSteps(id);
+      res.json({ ...instance, steps });
+    } catch (error) {
+      console.error("Error fetching workflow:", error);
+      res.status(500).json({ message: "Failed to fetch workflow" });
+    }
+  });
+
+  // ── MCP key management (admin) ──────────────────────────────────────
+  // List, create, and revoke MCP API keys. Admin-only (set OWNER_USER_ID
+  // or ADMIN_USER_IDS env). Plaintext tokens are returned ONLY by the
+  // create endpoint, exactly once — clients must persist them at receive
+  // time. The DB never stores the plaintext.
+
+  app.get("/api/admin/mcp-keys", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const rows = await storage.listMcpApiKeys();
+      res.json(rows.map(sanitizeMcpApiKey));
+    } catch (error) {
+      console.error("Error listing MCP keys:", error);
+      res.status(500).json({ message: "Failed to list MCP keys" });
+    }
+  });
+
+  app.post("/api/admin/mcp-keys", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { label, capabilities } = req.body ?? {};
+      if (!label || typeof label !== "string") {
+        return res.status(400).json({ message: "label is required" });
+      }
+      const caps = Array.isArray(capabilities) ? capabilities : [];
+      // Filter to the recognized capability set; silently drop unknown
+      // values rather than minting a key that can't actually do anything
+      // useful but looks like it can.
+      const allowed = new Set(["phi.read", "phi.write"]);
+      const filtered = caps.filter((c: string) => allowed.has(c));
+      const creator = principalFromReq(req).userId;
+      const created = await generateMcpApiKey({
+        label,
+        capabilities: filtered as any,
+        createdBy: creator,
+      });
+      // Response surfaces the plaintext token exactly once.
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error("Error creating MCP key:", error);
+      res.status(400).json({ message: error.message ?? "Failed to create MCP key" });
+    }
+  });
+
+  app.post("/api/admin/mcp-keys/:id/revoke", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(String(req.params.id), 10);
+      if (!Number.isFinite(id)) {
+        return res.status(400).json({ message: "invalid id" });
+      }
+      await storage.revokeMcpApiKey(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error revoking MCP key:", error);
+      res.status(500).json({ message: "Failed to revoke MCP key" });
     }
   });
 
@@ -3938,7 +4073,7 @@ Return this exact JSON shape:
 
   app.get("/api/payments/history/:patientId", isAuthenticated, async (req, res) => {
     try {
-      const patientId = parseInt(req.params.patientId);
+      const patientId = parseInt(String(req.params.patientId));
       const payments = await storage.getStripePaymentsByPatient(patientId);
       res.json(payments);
     } catch (error: any) {

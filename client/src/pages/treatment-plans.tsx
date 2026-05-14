@@ -602,10 +602,11 @@ export default function TreatmentPlansPage() {
       <Dialog open={!!detailPlan} onOpenChange={(open) => !open && setDetailPlan(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           {detailPlan && (() => {
-            const patient = patients.find((p) => p.id === detailPlan.patientId);
+            const plan = detailPlan;
+            const patient = patients.find((p) => p.id === plan.patientId);
             const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Patient";
-            const procedures = Array.isArray(detailPlan.procedures) ? detailPlan.procedures as { name?: string; code?: string; cost?: number }[] : [];
-            const statusCfg = statusConfig[detailPlan.status] || statusConfig.draft;
+            const procedures = Array.isArray(plan.procedures) ? plan.procedures as { name?: string; code?: string; cost?: number }[] : [];
+            const statusCfg = statusConfig[plan.status] || statusConfig.draft;
             const StatusIcon = statusCfg.icon;
 
             function doExport() {
@@ -617,20 +618,20 @@ export default function TreatmentPlansPage() {
                     heading: "Plan Overview",
                     items: [
                       { label: "Patient", value: patientName },
-                      { label: "Plan Name", value: detailPlan.planName },
-                      { label: "Diagnosis", value: detailPlan.diagnosis ?? "—" },
-                      { label: "ICD-10 Code", value: detailPlan.diagnosisCode ?? "—" },
-                      { label: "Status", value: detailPlan.status },
-                      { label: "Prior Auth", value: detailPlan.priorAuthStatus ?? "Not required" },
+                      { label: "Plan Name", value: plan.planName },
+                      { label: "Diagnosis", value: plan.diagnosis ?? "—" },
+                      { label: "ICD-10 Code", value: plan.diagnosisCode ?? "—" },
+                      { label: "Status", value: plan.status },
+                      { label: "Prior Auth", value: plan.priorAuthStatus ?? "Not required" },
                     ],
                   },
                   {
                     type: "kpis",
                     heading: "Financial Summary",
                     items: [
-                      { label: "Total Cost", value: formatCurrency(detailPlan.totalCost) },
-                      { label: "Insurance Coverage", value: formatCurrency(detailPlan.insuranceCoverage) },
-                      { label: "Patient Responsibility", value: formatCurrency(detailPlan.patientResponsibility) },
+                      { label: "Total Cost", value: formatCurrency(plan.totalCost) },
+                      { label: "Insurance Coverage", value: formatCurrency(plan.insuranceCoverage) },
+                      { label: "Patient Responsibility", value: formatCurrency(plan.patientResponsibility) },
                     ],
                   },
                   ...(procedures.length > 0
@@ -641,16 +642,16 @@ export default function TreatmentPlansPage() {
                     heading: "Treatment Timeline",
                     columns: ["Phase", "Milestone", "Status"],
                     rows: [
-                      ["Phase 1", "Initial Consultation & Treatment Planning", detailPlan.status === "draft" ? "In Progress" : "Complete"],
-                      ["Phase 2", "Prior Authorization / Insurance Approval", detailPlan.priorAuthStatus === "approved" ? "Complete" : detailPlan.priorAuthStatus === "pending" ? "In Progress" : "Pending"],
-                      ["Phase 3", "Surgery / Implant Placement", detailPlan.status === "in_progress" || detailPlan.status === "completed" ? "In Progress / Complete" : "Scheduled"],
-                      ["Phase 4", "Healing & Prosthetic Fabrication", detailPlan.status === "completed" ? "Complete" : "Upcoming"],
-                      ["Phase 5", "Final Delivery & Seating", detailPlan.status === "completed" ? "Complete" : "Upcoming"],
+                      ["Phase 1", "Initial Consultation & Treatment Planning", plan.status === "draft" ? "In Progress" : "Complete"],
+                      ["Phase 2", "Prior Authorization / Insurance Approval", plan.priorAuthStatus === "approved" ? "Complete" : plan.priorAuthStatus === "pending" ? "In Progress" : "Pending"],
+                      ["Phase 3", "Surgery / Implant Placement", plan.status === "in_progress" || plan.status === "completed" ? "In Progress / Complete" : "Scheduled"],
+                      ["Phase 4", "Healing & Prosthetic Fabrication", plan.status === "completed" ? "Complete" : "Upcoming"],
+                      ["Phase 5", "Final Delivery & Seating", plan.status === "completed" ? "Complete" : "Upcoming"],
                     ],
                   },
-                  ...(detailPlan.notes ? [{ type: "table" as const, heading: "Clinical Notes", columns: ["Notes"], rows: [[detailPlan.notes]] }] : []),
+                  ...(plan.notes ? [{ type: "table" as const, heading: "Clinical Notes", columns: ["Notes"], rows: [[plan.notes]] }] : []),
                 ],
-                `TreatmentPlan_${detailPlan.id}`,
+                `TreatmentPlan_${plan.id}`,
               );
             }
 
@@ -659,7 +660,7 @@ export default function TreatmentPlansPage() {
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5 text-primary" />
-                    {detailPlan.planName}
+                    {plan.planName}
                   </DialogTitle>
                   <DialogDescription>{patient ? `Patient: ${patientName}` : "Treatment plan details"}</DialogDescription>
                 </DialogHeader>
@@ -671,26 +672,26 @@ export default function TreatmentPlansPage() {
                       <StatusIcon className="mr-1 h-3 w-3" />
                       {statusCfg.label}
                     </Badge>
-                    {detailPlan.priorAuthStatus && (
-                      <Badge variant="outline" className="capitalize">{detailPlan.priorAuthStatus.replace("_", " ")} Auth</Badge>
+                    {plan.priorAuthStatus && (
+                      <Badge variant="outline" className="capitalize">{plan.priorAuthStatus.replace("_", " ")} Auth</Badge>
                     )}
-                    {detailPlan.cosmeticPackage && <Badge variant="outline">Cosmetic Package</Badge>}
+                    {plan.cosmeticPackage && <Badge variant="outline">Cosmetic Package</Badge>}
                   </div>
 
                   {/* Diagnosis */}
-                  {detailPlan.diagnosis && (
+                  {plan.diagnosis && (
                     <div>
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Diagnosis</p>
-                      <p className="text-sm">{detailPlan.diagnosis} {detailPlan.diagnosisCode && <span className="text-muted-foreground">({detailPlan.diagnosisCode})</span>}</p>
+                      <p className="text-sm">{plan.diagnosis} {plan.diagnosisCode && <span className="text-muted-foreground">({plan.diagnosisCode})</span>}</p>
                     </div>
                   )}
 
                   {/* Financials */}
                   <div className="grid grid-cols-3 gap-3">
                     {[
-                      { label: "Total Cost", value: formatCurrency(detailPlan.totalCost) },
-                      { label: "Insurance", value: formatCurrency(detailPlan.insuranceCoverage) },
-                      { label: "Patient Owes", value: formatCurrency(detailPlan.patientResponsibility) },
+                      { label: "Total Cost", value: formatCurrency(plan.totalCost) },
+                      { label: "Insurance", value: formatCurrency(plan.insuranceCoverage) },
+                      { label: "Patient Owes", value: formatCurrency(plan.patientResponsibility) },
                     ].map((f) => (
                       <div key={f.label} className="rounded-lg border p-3">
                         <p className="text-xs text-muted-foreground mb-1">{f.label}</p>
@@ -718,10 +719,10 @@ export default function TreatmentPlansPage() {
                   )}
 
                   {/* Notes */}
-                  {detailPlan.notes && (
+                  {plan.notes && (
                     <div>
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Clinical Notes</p>
-                      <p className="text-sm text-muted-foreground leading-relaxed rounded-lg border p-3">{detailPlan.notes}</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed rounded-lg border p-3">{plan.notes}</p>
                     </div>
                   )}
                 </div>
@@ -729,7 +730,7 @@ export default function TreatmentPlansPage() {
                 {/* Footer */}
                 <div className="flex justify-end gap-2 pt-4 border-t">
                   <Button variant="outline" onClick={() => setDetailPlan(null)}>Close</Button>
-                  <Button onClick={doExport} data-testid={`button-detail-export-plan-${detailPlan.id}`}>
+                  <Button onClick={doExport} data-testid={`button-detail-export-plan-${plan.id}`}>
                     <Download className="mr-2 h-4 w-4" />
                     Export for Patient
                   </Button>
