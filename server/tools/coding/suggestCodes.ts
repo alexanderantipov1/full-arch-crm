@@ -65,7 +65,10 @@ Clinical Notes: ${input.clinicalNotes ?? "Not provided"}`;
 
     let raw: string;
     try {
-      raw = await askClaude(SYSTEM_PROMPT, userMessage, 1500);
+      raw = await askClaude(SYSTEM_PROMPT, userMessage, 1500, {
+        dataClass: "phi",
+        purpose: "clinical_code_suggestion",
+      });
     } catch (err: any) {
       return {
         ok: false,

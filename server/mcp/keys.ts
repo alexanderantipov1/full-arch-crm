@@ -28,6 +28,7 @@ export async function generateMcpApiKey(opts: {
   label: string;
   capabilities: Capability[];
   createdBy?: string;
+  tenantId?: string | null;
 }): Promise<NewMcpApiKey> {
   if (!opts.label || opts.label.trim().length === 0) {
     throw new Error("label is required");
@@ -44,6 +45,10 @@ export async function generateMcpApiKey(opts: {
     capabilities: opts.capabilities,
     enabled: true,
     createdBy: opts.createdBy ?? null,
+    // Tenant scope: the auth middleware reads this column on every call,
+    // so a key minted for tenant-A literally cannot reach tenant-B data
+    // even if the token leaks. Null = unscoped (legacy / pre-tenant).
+    tenantId: opts.tenantId ?? null,
   } as any);
 
   return {

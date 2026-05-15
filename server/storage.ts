@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql, inArray, not } from "drizzle-orm";
 import {
+  tenants,
   persons,
   personExternalIds,
   workflowInstances,
@@ -51,6 +52,8 @@ import {
   internalMessages,
   practiceSettings,
   users,
+  type Tenant,
+  type InsertTenant,
   type Person,
   type InsertPerson,
   type PersonExternalId,
@@ -1579,6 +1582,26 @@ export class DatabaseStorage implements IStorage {
 
   async getAuditLogsByUser(userId: string): Promise<AuditLog[]> {
     return db.select().from(auditLogs).where(eq(auditLogs.userId, userId)).orderBy(desc(auditLogs.createdAt));
+  }
+
+  // ── Tenants ─────────────────────────────────────────────────────────
+  async listTenants(): Promise<Tenant[]> {
+    return db.select().from(tenants).orderBy(tenants.name);
+  }
+
+  async getTenant(id: string): Promise<Tenant | undefined> {
+    const [t] = await db.select().from(tenants).where(eq(tenants.id, id)).limit(1);
+    return t;
+  }
+
+  async getTenantBySlug(slug: string): Promise<Tenant | undefined> {
+    const [t] = await db.select().from(tenants).where(eq(tenants.slug, slug)).limit(1);
+    return t;
+  }
+
+  async createTenant(data: InsertTenant): Promise<Tenant> {
+    const [t] = await db.insert(tenants).values(data).returning();
+    return t;
   }
 
   // ── Persons (canonical identity) ────────────────────────────────────

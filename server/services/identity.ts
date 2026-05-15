@@ -59,6 +59,11 @@ export interface ResolveOrCreatePersonInput {
   // contact-info heuristics. Any external IDs that don't already match a
   // person are linked to whatever person is ultimately resolved/created.
   externalIds?: ExternalIdHint[];
+  // Tenant scope. When set, identity matches must be within the same
+  // tenant (a "Jane Doe" at clinic A is a different person from a "Jane
+  // Doe" at clinic B even with identical contact info), and new persons
+  // are bound to this tenant. Null = single-tenant deployment / legacy.
+  tenantId?: string | null;
 }
 
 export interface ResolveResult {
@@ -79,6 +84,22 @@ async function resolveMergedInto(person: Person): Promise<Person> {
     current = next;
   }
   return current;
+}
+
+// Tenant gate for matches. A match is valid when:
+//   - the caller specified no tenant (single-tenant mode), or
+//   - the matched person has no tenant yet (legacy / pre-backfill), or
+//   - the matched person's tenant equals the caller's.
+// Otherwise the match is treated as no-match (we don't return cross-tenant
+// records, even via identity resolution). This is what stops a "Jane Doe"
+// at clinic A from getting linked to a "Jane Doe" at clinic B just because
+// they share an email or DOB.
+function matchesTenant(person: Person | undefined, callerTenantId: string | null | undefined): person is Person {
+  if (!person) return false;
+  if (!callerTenantId) return true;
+  const personTenant = (person as any).tenantId as string | null | undefined;
+  if (personTenant == null) return true; // legacy passthrough
+  return personTenant === callerTenantId;
 }
 
 // Link any unmatched external IDs to the final person. Silently skips
@@ -117,13 +138,17 @@ export async function resolveOrCreatePerson(input: ResolveOrCreatePersonInput): 
   const email = normalizeEmail(input.email);
   const phone = normalizePhone(input.phone);
 
+  const callerTenant = input.tenantId ?? null;
+
   // 0. External-ID match — highest trust. Walk every hint until one
   //    resolves. If multiple hints match DIFFERENT persons, the first one
   //    wins; the caller should run a merge after if that's a real conflict.
+  //    Cross-tenant matches are skipped — a Salesforce ID can only point
+  //    at a person within the caller's tenant.
   if (input.externalIds && input.externalIds.length > 0) {
     for (const ext of input.externalIds) {
       const match = await storage.findPersonByExternalId(ext.system, ext.id);
-      if (match) {
+      if (matchesTenant(match, callerTenant)) {
         const resolved = await resolveMergedInto(match);
         await linkUnmatchedExternalIds(resolved.id, input.externalIds, ext.system, ext.id);
         return { person: resolved, via: "external_id" };
@@ -131,32 +156,30 @@ export async function resolveOrCreatePerson(input: ResolveOrCreatePersonInput): 
     }
   }
 
-  // 1. Email match.
+  // 1. Email match — tenant-scoped.
   if (email) {
     const match = await storage.findPersonByEmail(email);
-    if (match) {
+    if (matchesTenant(match, callerTenant)) {
       const resolved = await resolveMergedInto(match);
       await linkUnmatchedExternalIds(resolved.id, input.externalIds, null, null);
       return { person: resolved, via: "email" };
     }
   }
 
-  // 2. Phone match.
+  // 2. Phone match — tenant-scoped.
   if (phone) {
     const match = await storage.findPersonByPhone(phone);
-    if (match) {
+    if (matchesTenant(match, callerTenant)) {
       const resolved = await resolveMergedInto(match);
       await linkUnmatchedExternalIds(resolved.id, input.externalIds, null, null);
       return { person: resolved, via: "phone" };
     }
   }
 
-  // 3. (firstName, lastName, dateOfBirth) match — guards against the
-  //    common case where two intake forms have slightly different contact
-  //    info but identify the same human.
+  // 3. (firstName, lastName, dateOfBirth) match — tenant-scoped.
   if (input.firstName && input.lastName && input.dateOfBirth) {
     const match = await storage.findPersonByNameDob(input.firstName, input.lastName, input.dateOfBirth);
-    if (match) {
+    if (matchesTenant(match, callerTenant)) {
       const resolved = await resolveMergedInto(match);
       await linkUnmatchedExternalIds(resolved.id, input.externalIds, null, null);
       return { person: resolved, via: "name_dob" };
@@ -172,6 +195,11 @@ export async function resolveOrCreatePerson(input: ResolveOrCreatePersonInput): 
     phone,
     firstSeenSource: input.source,
     mergedIntoId: null,
+    // Tenant binding: a new person belongs to the principal's tenant.
+    // Cross-tenant resolveOrCreate (same email, different clinic) creates
+    // a separate person — by design; clinics don't see each other's
+    // patients.
+    tenantId: input.tenantId ?? null,
   } as any);
   await linkUnmatchedExternalIds(created.id, input.externalIds, null, null);
 

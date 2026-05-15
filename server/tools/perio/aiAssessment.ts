@@ -68,6 +68,7 @@ export const perioAssessmentTool = defineTool<PerioAssessmentInput, PerioAssessm
         "You are a periodontist generating a clinical AI assessment for a perio chart. Be concise, clinical, and specific. Include diagnosis, treatment recommendations (CDT codes D4341/D4342/D4910), and prognosis. Keep under 120 words.",
         `Patient: ${input.patientName ?? "(unnamed)"}. Avg probing: ${stats.avgDepth}mm. Sites ≥4mm: ${stats.sitesGt4}. Sites ≥6mm: ${stats.sitesGt6}. BOP: ${stats.bopPct}%. Generate a periodontal assessment and treatment plan.`,
         400,
+        { dataClass: "phi", purpose: "periodontal_ai_assessment" },
       );
       return { ok: true, data: { assessment, stats } };
     } catch {

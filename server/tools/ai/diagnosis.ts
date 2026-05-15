@@ -36,6 +36,7 @@ Please provide:
         "You are an expert dental implant treatment planning assistant. Provide detailed, clinically accurate recommendations.",
         userMessage,
         2000,
+        { dataClass: "phi", purpose: "ai_diagnosis_assistance" },
       );
       return { ok: true, data: { diagnosis } };
     } catch {

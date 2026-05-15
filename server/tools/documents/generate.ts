@@ -94,6 +94,7 @@ Please generate professional, HIPAA-compliant clinical documentation.`;
         "You are an expert dental billing specialist generating clinical documentation for full arch dental implant procedures. Generate professional, compliant documentation that supports medical necessity and insurance claims.",
         userMessage,
         2000,
+        { dataClass: "phi", purpose: "clinical_document_generation" },
       );
     } catch {
       return {

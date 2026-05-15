@@ -29,6 +29,8 @@ export const suggestReplyTool = defineTool<SuggestReplyInput, SuggestReplyOutput
       const suggestion = await askClaude(
         `You are a helpful dental practice assistant. Write professional, empathetic, HIPAA-compliant replies. Do not include placeholders or brackets. Return only the ready-to-send message text with no additional commentary.`,
         `Draft ${channelCtx} reply for patient ${input.patientName || "the patient"}.\n\nPatient's last message: "${input.lastMessage}"`,
+        1500,
+        { dataClass: "phi", purpose: "patient_message_reply_suggestion" },
       );
       return { ok: true, data: { suggestion } };
     } catch {

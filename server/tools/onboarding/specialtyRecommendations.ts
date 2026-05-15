@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { anthropic } from "../../services/ai";
+import { askClaude } from "../../services/ai";
 import { defineTool } from "../types";
 
 const inputSchema = z.object({
@@ -35,19 +35,12 @@ export const specialtyRecommendationsTool = defineTool<SpecialtyRecommendationsI
     };
 
     try {
-      const message = await anthropic.messages.create({
-        model: "claude-opus-4-5",
-        max_tokens: 600,
-        messages: [
-          {
-            role: "user",
-            content: `You are helping set up a dental practice management platform for a ${specialty} specialist. Generate a brief, enthusiastic personalized welcome (2 sentences max) and a JSON list of the 6 most relevant module categories for this specialty from the following list. Return ONLY valid JSON in this format: {"welcome": "...", "modules": [{"title":"...", "url":"...", "reason":"..."}]}. Available modules: Patients (/patients), Scheduling (/appointments), Perio Charting (/perio), Endo/RCT (/endo), Recall System (/recall), Oral Surgery (/oral-surgery), Orthodontics (/ortho), Pediatric (/pediatric), Treatment Plans (/treatment-plans), Implant Tracker (/implant-tracker), Lab & Design (/lab), Billing & Claims (/billing), Coding Engine (/coding), Medical Clearance (/medical-clearance), Surgery Day (/surgery), AI Documentation (/ai-documentation), Appeals Engine (/appeals), Insurance Verification (/eligibility), Patient Messaging (/patient-messaging), Consent Forms (/consent-forms). Specialty: ${specialty}`,
-          },
-        ],
-      });
-
-      const block = message.content[0];
-      const text = block.type === "text" ? block.text : "";
+      const text = await askClaude(
+        "You help configure dental practice management software. Return only valid JSON.",
+        `You are helping set up a dental practice management platform for a ${specialty} specialist. Generate a brief, enthusiastic personalized welcome (2 sentences max) and a JSON list of the 6 most relevant module categories for this specialty from the following list. Return ONLY valid JSON in this format: {"welcome": "...", "modules": [{"title":"...", "url":"...", "reason":"..."}]}. Available modules: Patients (/patients), Scheduling (/appointments), Perio Charting (/perio), Endo/RCT (/endo), Recall System (/recall), Oral Surgery (/oral-surgery), Orthodontics (/ortho), Pediatric (/pediatric), Treatment Plans (/treatment-plans), Implant Tracker (/implant-tracker), Lab & Design (/lab), Billing & Claims (/billing), Coding Engine (/coding), Medical Clearance (/medical-clearance), Surgery Day (/surgery), AI Documentation (/ai-documentation), Appeals Engine (/appeals), Insurance Verification (/eligibility), Patient Messaging (/patient-messaging), Consent Forms (/consent-forms). Specialty: ${specialty}`,
+        600,
+        { dataClass: "ops_safe", purpose: "onboarding_module_recommendations" },
+      );
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         return { ok: true, data: fallback };

@@ -1,5 +1,5 @@
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { anthropic } from "../services/ai";
+import { anthropic, hasSignedAnthropicBaa } from "../services/ai";
 import { storage } from "../storage";
 import { listTools } from "../tools/registry";
 import { runTool } from "../tools/runner";
@@ -152,6 +152,15 @@ export async function runAgentLoop({ ctx, goal, opts }: AgentLoopInput): Promise
     }
 
     iteration++;
+
+    if (!hasSignedAnthropicBaa()) {
+      return finalize(
+        "failed",
+        "error",
+        "(agent failed: Anthropic BAA is not configured)",
+        "Anthropic BAA is not configured; workflow agent prompts may include PHI.",
+      );
+    }
 
     let response;
     try {

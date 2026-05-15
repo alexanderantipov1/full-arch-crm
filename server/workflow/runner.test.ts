@@ -8,6 +8,7 @@ const anthropicMock = vi.hoisted(() => ({
 vi.mock("../services/ai", () => ({
   anthropic: anthropicMock,
   askClaude: vi.fn(),
+  hasSignedAnthropicBaa: vi.fn(() => true),
 }));
 
 // Mock the storage so persistence is observable without a real DB. Each

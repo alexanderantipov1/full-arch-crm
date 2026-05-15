@@ -82,6 +82,9 @@ export async function mcpAuth(req: Request, res: Response, next: NextFunction) {
     req.mcpPrincipal = makePrincipal({
       userId: `mcp:${row.id}`,
       email: row.label,
+      // Key's tenant binding wins. Falls back to DEFAULT_TENANT_ID if the
+      // key row predates the tenant column (during the rolling backfill).
+      tenantId: (row as any).tenantId ?? process.env.DEFAULT_TENANT_ID,
       capabilities: (row.capabilities ?? []) as Capability[],
     });
     req.mcpKeyId = row.id;

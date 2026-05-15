@@ -20,6 +20,11 @@ export default defineConfig({
       DATABASE_URL: "postgres://test:test@localhost:5432/test",
       SESSION_SECRET: "test-session-secret-not-for-production",
       ANTHROPIC_API_KEY: "test-anthropic-key",
+      // Tests bypass the BAA gate Codex added in services/ai.ts — every
+      // askClaude call goes through a vi.fn mock in tests, so no real
+      // PHI is ever sent, and the workflow runner's per-iteration BAA
+      // check needs this set to advance past the guard.
+      ANTHROPIC_BAA_SIGNED: "true",
       AI_INTEGRATIONS_OPENAI_API_KEY: "test-openai-key",
       OPENAI_API_KEY: "test-openai-key",
       NODE_ENV: "test",

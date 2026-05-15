@@ -13,7 +13,7 @@ import { registerMcpRoutes } from "./mcp/route";
 import { generateMcpApiKey, sanitizeMcpApiKey } from "./mcp/keys";
 import { isAdmin } from "./middleware/admin";
 import { phiService, PhiAccessDeniedError } from "./services/phi";
-import { anthropic, askClaude } from "./services/ai";
+import { anthropic, askClaude, AiPolicyBlockedError } from "./services/ai";
 import {
   suggestCodesTool,
   chatTool,
@@ -1040,11 +1040,13 @@ topPriorities must be an array of objects with provider, reason, action, and hip
           hipaaStatus: overview.hipaaStatus,
           providers: providerContext,
         }),
-        1200
+        1200,
+        { dataClass: "deidentified", purpose: "srm_provider_aggregate_brief" },
       );
 
       res.json(parseSrmBrief(raw, fallback));
     } catch (error) {
+      if (error instanceof AiPolicyBlockedError) return res.status(403).json({ message: error.message });
       console.error("Error generating SRM AI brief:", error);
       res.status(500).json({ message: "Failed to generate SRM AI brief" });
     }
@@ -1423,7 +1425,10 @@ Insurance Type: ${primaryInsurance?.insuranceType || "Unknown"}
 Prior Auth Required: ${primaryInsurance?.priorAuthRequired ? "YES" : "No"}
 Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
 
-      const raw = await askClaude(systemPrompt, userMessage, 2000);
+      const raw = await askClaude(systemPrompt, userMessage, 2000, {
+        dataClass: "phi",
+        purpose: "claim_denial_risk_preflight",
+      });
 
       let parsed: {
         riskScore: number;
@@ -1468,6 +1473,7 @@ Coverage %: ${primaryInsurance?.coveragePercentage || "Unknown"}`;
       res.json(result);
     } catch (error) {
       if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
+      if (error instanceof AiPolicyBlockedError) return res.status(403).json({ message: error.message });
       console.error("Error running preflight check:", error);
       res.status(500).json({ message: "Failed to run preflight check" });
     }
@@ -1684,11 +1690,14 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
 
       const appealLetter = await askClaude(
         "You are an expert dental billing appeals specialist with a 78% success rate in overturning denials. Generate compelling, evidence-based appeal letters that address specific denial reasons.",
-        prompt, 1500
+        prompt,
+        1500,
+        { dataClass: "phi", purpose: "insurance_appeal_generation" },
       );
       res.json({ appealLetter, successProbability: 78 });
     } catch (error) {
       if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
+      if (error instanceof AiPolicyBlockedError) return res.status(403).json({ message: error.message });
       console.error("Error generating appeal:", error);
       res.status(500).json({ message: "Failed to generate appeal" });
     }
@@ -1931,7 +1940,8 @@ Return this exact JSON shape:
   "priorAuthRequired": ["implants","oral_surgery"],
   "notes": string
 }`,
-      800
+      800,
+      { dataClass: "phi", purpose: "eligibility_simulation" },
     );
 
     let parsed: EligibilityAIResponse = {};
@@ -1965,6 +1975,7 @@ Return this exact JSON shape:
       res.json(result);
     } catch (error: any) {
       if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
+      if (error instanceof AiPolicyBlockedError) return res.status(403).json({ message: error.message });
       console.error("Error verifying eligibility:", error);
       res.status(error.message === "Patient not found" ? 404 : 500).json({ message: error.message || "Failed to verify eligibility" });
     }
@@ -1980,6 +1991,7 @@ Return this exact JSON shape:
       res.json(result);
     } catch (error: any) {
       if (error instanceof PhiAccessDeniedError) return res.status(403).json({ message: error.message });
+      if (error instanceof AiPolicyBlockedError) return res.status(403).json({ message: error.message });
       console.error("Error checking eligibility:", error);
       res.status(500).json({ message: error.message || "Failed to check eligibility" });
     }
@@ -3866,6 +3878,19 @@ Return this exact JSON shape:
     }
   });
 
+  // ── Admin tenant listing ────────────────────────────────────────────
+  // Powers the MCP-key UI's tenant picker. Single-tenant deployments
+  // simply return [defaultTenant] — the UI can hide the selector.
+  app.get("/api/admin/tenants", isAuthenticated, isAdmin, async (_req, res) => {
+    try {
+      const rows = await storage.listTenants();
+      res.json(rows);
+    } catch (error) {
+      console.error("Error listing tenants:", error);
+      res.status(500).json({ message: "Failed to list tenants" });
+    }
+  });
+
   // ── MCP key management (admin) ──────────────────────────────────────
   // List, create, and revoke MCP API keys. Admin-only (set OWNER_USER_ID
   // or ADMIN_USER_IDS env). Plaintext tokens are returned ONLY by the
@@ -3884,7 +3909,7 @@ Return this exact JSON shape:
 
   app.post("/api/admin/mcp-keys", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const { label, capabilities } = req.body ?? {};
+      const { label, capabilities, tenantId } = req.body ?? {};
       if (!label || typeof label !== "string") {
         return res.status(400).json({ message: "label is required" });
       }
@@ -3894,11 +3919,20 @@ Return this exact JSON shape:
       // useful but looks like it can.
       const allowed = new Set(["phi.read", "phi.write"]);
       const filtered = caps.filter((c: string) => allowed.has(c));
-      const creator = principalFromReq(req).userId;
+      const principal = principalFromReq(req);
+      // Tenant scope. Explicit `tenantId` in the body wins (admins can mint
+      // keys for any tenant); otherwise the key inherits the admin's own
+      // tenant. The auth middleware reads this column when the key is used
+      // and binds the principal to that tenant.
+      const effectiveTenantId =
+        typeof tenantId === "string" && tenantId.length > 0
+          ? tenantId
+          : principal.tenantId ?? null;
       const created = await generateMcpApiKey({
         label,
         capabilities: filtered as any,
-        createdBy: creator,
+        createdBy: principal.userId,
+        tenantId: effectiveTenantId,
       });
       // Response surfaces the plaintext token exactly once.
       res.status(201).json(created);

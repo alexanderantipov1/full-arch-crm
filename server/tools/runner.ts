@@ -22,9 +22,15 @@ export function principalFromReq(req: Request): Principal {
   const user = req.user as any;
   const userId = user?.claims?.sub ?? user?.id ?? "unknown";
   const email = user?.claims?.email ?? user?.email;
+  // Tenant resolution. Today there's no per-staff tenant claim, so we use
+  // the deployment's `DEFAULT_TENANT_ID` env. When multi-tenant goes live,
+  // this should pull from the OIDC claim (e.g. `claims.tenant_id`) or a
+  // staff→tenant lookup table.
+  const tenantId = user?.claims?.tenant_id ?? process.env.DEFAULT_TENANT_ID;
   return makePrincipal({
     userId,
     email,
+    tenantId,
     capabilities: ["phi.read", "phi.write"],
   });
 }

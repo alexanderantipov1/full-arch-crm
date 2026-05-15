@@ -6,6 +6,32 @@ import { z } from "zod";
 export * from "./models/auth";
 export * from "./models/chat";
 
+// ── Tenants (multi-clinic isolation) ────────────────────────────────────
+// Each clinic deployment is one tenant. Every PHI/ops row carries a
+// `tenant_id`, and `PhiService` filters by the calling principal's tenant
+// so cross-clinic reads are impossible by construction.
+//
+// Today the system is effectively single-tenant — when this migration
+// runs, the backfill puts every existing row under a "default" tenant.
+// New clinics get their own tenant row + a separate set of records.
+//
+// Per fusion_crm doctrine the `tenant` schema is its own domain; here the
+// flat-schema CRM puts the table alongside the rest. The shape matches
+// fusion_crm's `tenant.tenant` so the conceptual move-out later is rename
+// + relocation, not redesign.
+export const tenants = pgTable("tenants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(), // url-safe key, e.g. "main-clinic"
+  name: text("name").notNull(),
+  // Optional: per-tenant configuration, branding, billing details. Lives
+  // in JSONB so adding a new field doesn't require a migration.
+  settings: jsonb("settings"),
+  enabled: boolean("enabled").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertTenantSchema = createInsertSchema(tenants).omit({ id: true, createdAt: true });
+
 // ── Persons (canonical identity) ────────────────────────────────────────
 // One row per real human, regardless of which domain first met them. Both
 // `patients.personUid` and `leads.personUid` point here. The `person_uid`
@@ -19,6 +45,10 @@ export * from "./models/chat";
 // `scripts/backfill-persons.ts` populates the column for legacy rows.
 export const persons = pgTable("persons", {
   id: uuid("id").primaryKey().defaultRandom(),
+  // Tenant isolation: nullable until backfill assigns every existing row
+  // to a default tenant. New rows get a tenant id from the calling
+  // principal (set by IdentityService.resolveOrCreatePerson).
+  tenantId: uuid("tenant_id").references(() => tenants.id),
   firstName: text("first_name"),
   lastName: text("last_name"),
   dateOfBirth: date("date_of_birth"),
@@ -80,6 +110,10 @@ export const personExternalIds = pgTable(
 // Patients table
 export const patients = pgTable("patients", {
   id: serial("id").primaryKey(),
+  // Tenant isolation — nullable until backfill, then targets NOT NULL.
+  // Every PhiService.getPatient/createPatient/... call resolves the
+  // caller's principal.tenantId and filters/sets this column.
+  tenantId: uuid("tenant_id").references(() => tenants.id),
   // Canonical identity link. Nullable today because legacy rows haven't
   // been backfilled yet; targets NOT NULL once `scripts/backfill-persons.ts`
   // has run against every environment.
@@ -693,6 +727,8 @@ export const trainingProgress = pgTable("training_progress", {
 // Marketing Leads
 export const leads = pgTable("leads", {
   id: serial("id").primaryKey(),
+  // Tenant isolation — nullable until backfill, then NOT NULL.
+  tenantId: uuid("tenant_id").references(() => tenants.id),
   // Canonical identity link — nullable until backfill runs (see persons table).
   // When a lead converts to a patient, BOTH rows point at the same person_uid.
   personUid: uuid("person_uid").references(() => persons.id),
@@ -1056,6 +1092,12 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: tru
 // "phi.write", etc.) — same string values, same gate.
 export const mcpApiKeys = pgTable("mcp_api_keys", {
   id: serial("id").primaryKey(),
+  // Tenant scope: every MCP key is bound to exactly one tenant. The
+  // resulting principal can never reach data outside that tenant — keeps
+  // a marketing AI for clinic A from accidentally reaching clinic B
+  // even with phi.read. Nullable until backfill assigns existing keys to
+  // the default tenant.
+  tenantId: uuid("tenant_id").references(() => tenants.id),
   label: text("label").notNull(),
   keyHash: text("key_hash").notNull().unique(),
   capabilities: text("capabilities").array().notNull().default(sql`ARRAY[]::text[]`),
@@ -1244,6 +1286,8 @@ export const treatmentPlanProcedures = pgTable("treatment_plan_procedures", {
 export const insertTreatmentPlanProcedureSchema = createInsertSchema(treatmentPlanProcedures).omit({ id: true, createdAt: true });
 
 // Types
+export type Tenant = typeof tenants.$inferSelect;
+export type InsertTenant = z.infer<typeof insertTenantSchema>;
 export type Person = typeof persons.$inferSelect;
 export type InsertPerson = z.infer<typeof insertPersonSchema>;
 export type PersonExternalId = typeof personExternalIds.$inferSelect;

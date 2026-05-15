@@ -25,6 +25,11 @@ export type Capability =
 export interface Principal {
   userId: string;
   email?: string;
+  // The tenant the principal belongs to. Carried into PhiService so every
+  // read/write is filtered by tenantId — cross-tenant access is impossible
+  // by construction. Optional during the single-tenant transition; once
+  // every deployment has backfilled, this targets required.
+  tenantId?: string;
   capabilities?: Set<Capability>;
 }
 
@@ -38,11 +43,13 @@ export function hasCapability(p: Principal, cap: Capability): boolean {
 export function makePrincipal(opts: {
   userId: string;
   email?: string;
+  tenantId?: string;
   capabilities?: Capability[];
 }): Principal {
   return {
     userId: opts.userId,
     email: opts.email,
+    tenantId: opts.tenantId,
     capabilities: new Set(opts.capabilities ?? []),
   };
 }
@@ -103,6 +110,10 @@ export const ToolErrorCode = {
   // generic Forbidden so callers can distinguish "you can't do this at all"
   // from "you can't read patient health data specifically".
   PhiAccessDenied: "phi.access_denied",
+  // Resource exists but belongs to a different tenant. Always returned as
+  // NotFound to the caller (we never leak the existence of cross-tenant
+  // data); this code is for internal audit only.
+  TenantMismatch: "tenant.mismatch",
   Internal: "internal",
 } as const;
 

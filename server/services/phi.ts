@@ -111,6 +111,48 @@ async function requireWrite(principal: Principal, resourceType: string, resource
 // audit than a metaprogrammed dispatcher. Adding a new PHI resource means
 // one more pair (read + write) here, nothing else.
 
+// Tenant filter: if the principal has a tenantId set, any row returned
+// from storage must match it. Mismatched rows are mapped to `undefined`
+// so callers (and the HTTP layer) cannot distinguish "doesn't exist" from
+// "exists in another tenant" — that's the leak we're preventing.
+//
+// Arrays are filtered element-wise. If the principal has no tenantId
+// (single-tenant deployment, or legacy backfill not yet done), the
+// filter is a no-op — backward compatible.
+//
+// Strict mode (set `STRICT_TENANT_ISOLATION=true` after the backfill has
+// run on every environment) tightens the policy: rows with no `tenantId`
+// are treated as cross-tenant — i.e. denied — instead of passed through.
+// Flip this when you're confident every legacy row has been assigned.
+
+function isStrictTenantIsolation(): boolean {
+  return process.env.STRICT_TENANT_ISOLATION === "true";
+}
+
+function rowTenantOk(rowTenant: unknown, callerTenant: string): boolean {
+  if (rowTenant === callerTenant) return true;
+  // null/undefined tenant on the row = legacy. In strict mode that's a deny.
+  if (rowTenant == null) return !isStrictTenantIsolation();
+  return false;
+}
+
+function filterByTenant<T>(principal: Principal, value: T): T {
+  if (!principal.tenantId) return value;
+  if (value === null || value === undefined) return value;
+  if (Array.isArray(value)) {
+    return value.filter((row: any) => {
+      if (!row || typeof row !== "object") return true;
+      return rowTenantOk(row.tenantId, principal.tenantId!);
+    }) as unknown as T;
+  }
+  if (typeof value === "object") {
+    if (!rowTenantOk((value as any).tenantId, principal.tenantId)) {
+      return undefined as unknown as T;
+    }
+  }
+  return value;
+}
+
 async function gatedRead<T>(
   principal: Principal,
   resourceType: string,
@@ -120,6 +162,7 @@ async function gatedRead<T>(
 ): Promise<T> {
   await requireRead(principal, resourceType, resourceId);
   const result = await fetch();
+  const filtered = filterByTenant(principal, result);
   await writeAuditRow({
     principal,
     action: "read",
@@ -128,7 +171,7 @@ async function gatedRead<T>(
     patientId,
     allowed: true,
   });
-  return result;
+  return filtered;
 }
 
 async function gatedWrite<T>(
@@ -177,6 +220,8 @@ export async function createPatient(
     // Resolve canonical identity before creating the patient row so the
     // new record carries `person_uid` from the start. If the same human
     // already exists (as a prior patient or a lead), they share the UUID.
+    // Identity resolution carries the principal's tenant so the resulting
+    // person row is scoped to the same clinic.
     const { person } = await resolveOrCreatePerson({
       firstName: (data as any).firstName ?? null,
       lastName: (data as any).lastName ?? null,
@@ -184,10 +229,15 @@ export async function createPatient(
       phone: (data as any).phone ?? null,
       dateOfBirth: (data as any).dateOfBirth ?? null,
       source: "patient",
+      tenantId: principal.tenantId ?? null,
     });
     const created = await storage.createPatient({
       ...(data as any),
       personUid: person.id,
+      // Inject the caller's tenant so the new row is bound to their
+      // clinic. Cross-tenant access by future readers is denied by the
+      // tenant filter in gatedRead.
+      tenantId: principal.tenantId ?? null,
     });
     return created;
   });

@@ -45,6 +45,8 @@ import TestimonialsPage from "@/pages/testimonials";
 import WarrantyPage from "@/pages/warranty";
 import MaintenancePage from "@/pages/maintenance";
 import AuditLogsPage from "@/pages/audit-logs";
+import McpKeysPage from "@/pages/mcp-keys";
+import WorkflowsPage from "@/pages/workflows";
 import ClinicalNotesPage from "@/pages/clinical-notes";
 import EvaluationsPage from "@/pages/evaluations";
 import SettingsPage from "@/pages/settings";
@@ -58,6 +60,7 @@ import CommandCenterPage from "@/pages/command-center";
 import PracticeLaunchPadPage from "@/pages/practice-launchpad";
 import DentBotPage from "@/pages/dentbot";
 import PracticeCRMPage from "@/pages/practice-crm";
+import SrmPage from "@/pages/srm";
 import SaasAdminPage from "@/pages/saas-admin";
 import AdvancedModulesPage from "@/pages/advanced-modules";
 import ContentEnginePage from "@/pages/content-engine";
@@ -181,6 +184,9 @@ function Router() {
         <Route path="/warranty" component={WarrantyPage} />
         <Route path="/maintenance" component={MaintenancePage} />
         <Route path="/audit-logs" component={AuditLogsPage} />
+        <Route path="/admin/mcp-keys" component={McpKeysPage} />
+        <Route path="/workflows" component={WorkflowsPage} />
+        <Route path="/workflows/:id" component={WorkflowsPage} />
         <Route path="/patients" component={PatientsPage} />
         <Route path="/patients/new" component={PatientForm} />
         <Route path="/patients/:id" component={PatientDetailPage} />
@@ -211,6 +217,7 @@ function Router() {
         <Route path="/practice-launchpad" component={PracticeLaunchPadPage} />
         <Route path="/dentbot" component={DentBotPage} />
         <Route path="/practice-crm" component={PracticeCRMPage} />
+        <Route path="/srm" component={SrmPage} />
         <Route path="/saas-admin" component={SaasAdminPage} />
         <Route path="/advanced-modules" component={AdvancedModulesPage} />
         <Route path="/content-engine" component={ContentEnginePage} />

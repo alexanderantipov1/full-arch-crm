@@ -60,7 +60,10 @@ export const chatTool = defineTool<ChatInput, ChatOutput>({
   async handler(_ctx, input) {
     try {
       const response =
-        (await askClaude(SYSTEM_PROMPT, input.content, 1500)) ||
+        (await askClaude(SYSTEM_PROMPT, input.content, 1500, {
+          dataClass: "phi",
+          purpose: "freeform_clinic_ai_chat",
+        })) ||
         "I apologize, I couldn't generate a response. Please try again.";
       return { ok: true, data: { response } };
     } catch (err: any) {

@@ -40,6 +40,7 @@ The appeal should:
         "You are an expert at writing insurance appeal letters for dental procedures. Create persuasive, evidence-based appeals.",
         userMessage,
         2000,
+        { dataClass: "phi", purpose: "appeal_letter" },
       );
       return { ok: true, data: { letter } };
     } catch {

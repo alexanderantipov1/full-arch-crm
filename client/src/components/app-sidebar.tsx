@@ -61,6 +61,8 @@ import {
   CircleDot,
   Handshake,
   Bell,
+  Key,
+  GitBranch,
 } from "lucide-react";
 import {
   Sidebar,
@@ -148,6 +150,7 @@ const aiToolsItems = [
 const growthItems = [
   { title: "Marketing Hub", url: "/marketing", icon: Megaphone },
   { title: "Union Flow", url: "/union-flow", icon: Handshake },
+  { title: "AI SRM", url: "/srm", icon: Handshake },
   { title: "Practice Launch Pad", url: "/practice-launchpad", icon: Rocket },
   { title: "Practice CRM", url: "/practice-crm", icon: Contact },
 ];
@@ -169,6 +172,8 @@ const adminItems = [
   { title: "Advanced Modules", url: "/advanced-modules", icon: Layers },
   { title: "SaaS Admin", url: "/saas-admin", icon: Cog },
   { title: "HIPAA Audit Logs", url: "/audit-logs", icon: Shield },
+  { title: "Agent Workflows", url: "/workflows", icon: GitBranch },
+  { title: "MCP API Keys", url: "/admin/mcp-keys", icon: Key },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

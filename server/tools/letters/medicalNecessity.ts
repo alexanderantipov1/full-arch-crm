@@ -40,6 +40,7 @@ The letter should:
         "You are an expert at writing medical necessity letters for dental implant procedures. Create compelling, evidence-based letters.",
         userMessage,
         2000,
+        { dataClass: "phi", purpose: "medical_necessity_letter" },
       );
       return { ok: true, data: { letter } };
     } catch {

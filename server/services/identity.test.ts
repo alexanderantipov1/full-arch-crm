@@ -323,6 +323,85 @@ describe("resolveOrCreatePerson — external ID matching", () => {
   });
 });
 
+describe("resolveOrCreatePerson — tenant isolation", () => {
+  it("skips a same-email match in a different tenant and creates a new person", async () => {
+    // Caller is tenant-A, but the email matches someone in tenant-B.
+    storageMock.findPersonByEmail.mockResolvedValueOnce({
+      id: "person-other-tenant",
+      tenantId: "tenant-b",
+      mergedIntoId: null,
+    });
+    storageMock.findPersonByPhone.mockResolvedValue(undefined);
+    storageMock.findPersonByNameDob.mockResolvedValue(undefined);
+    storageMock.createPerson.mockResolvedValueOnce({ id: "new-in-tenant-a", mergedIntoId: null });
+
+    const result = await resolveOrCreatePerson({
+      email: "jane@example.com",
+      tenantId: "tenant-a",
+      source: "intake",
+    });
+
+    expect(result.via).toBe("created");
+    expect(result.person.id).toBe("new-in-tenant-a");
+    // The cross-tenant match was rejected — a new person was created in
+    // tenant-a, bound to the caller's tenant.
+    const createArgs = storageMock.createPerson.mock.calls[0][0];
+    expect(createArgs.tenantId).toBe("tenant-a");
+  });
+
+  it("matches when the row's tenant matches the caller", async () => {
+    storageMock.findPersonByEmail.mockResolvedValueOnce({
+      id: "person-same-tenant",
+      tenantId: "tenant-a",
+      mergedIntoId: null,
+    });
+    const result = await resolveOrCreatePerson({
+      email: "jane@example.com",
+      tenantId: "tenant-a",
+      source: "intake",
+    });
+    expect(result.via).toBe("email");
+    expect(result.person.id).toBe("person-same-tenant");
+  });
+
+  it("matches a null-tenant (legacy) row even when caller has a tenant — passthrough", async () => {
+    storageMock.findPersonByEmail.mockResolvedValueOnce({
+      id: "legacy-person",
+      tenantId: null,
+      mergedIntoId: null,
+    });
+    const result = await resolveOrCreatePerson({
+      email: "legacy@example.com",
+      tenantId: "tenant-a",
+      source: "backfill",
+    });
+    expect(result.via).toBe("email");
+    expect(result.person.id).toBe("legacy-person");
+  });
+
+  it("skips a cross-tenant external-ID match and falls through to email", async () => {
+    // External ID belongs to tenant-b; caller is tenant-a. Skip the ext
+    // match and proceed to email (no email here, so fall through to create).
+    storageMock.findPersonByExternalId.mockResolvedValueOnce({
+      id: "ext-other-tenant",
+      tenantId: "tenant-b",
+      mergedIntoId: null,
+    });
+    storageMock.findPersonByEmail.mockResolvedValue(undefined);
+    storageMock.findPersonByPhone.mockResolvedValue(undefined);
+    storageMock.findPersonByNameDob.mockResolvedValue(undefined);
+    storageMock.createPerson.mockResolvedValueOnce({ id: "new", mergedIntoId: null });
+
+    const result = await resolveOrCreatePerson({
+      externalIds: [{ system: "salesforce", id: "sf-1" }],
+      tenantId: "tenant-a",
+      source: "salesforce",
+    });
+
+    expect(result.via).toBe("created");
+  });
+});
+
 describe("linkExternalId / findPersonByExternalId", () => {
   it("writes a row through storage", async () => {
     await linkExternalId("p-x", { system: "salesforce", id: "sf-42", kind: "Contact" }, { source: "test" });
