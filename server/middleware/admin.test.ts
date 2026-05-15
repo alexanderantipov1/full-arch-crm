@@ -48,8 +48,17 @@ describe("isAdmin middleware", () => {
     expect(res.status).toBe(200);
   });
 
-  it("rejects when no admin envs are set at all", async () => {
-    const res = await request(buildApp("anyone")).get("/admin-only");
+  it("admits any authenticated user when no admin envs are set (permissive bootstrap)", async () => {
+    // No OWNER_USER_ID, no ADMIN_USER_IDS — fresh deploy. Every staff
+    // user is admin until an allowlist is configured.
+    const res = await request(buildApp("any-staff-user")).get("/admin-only");
+    expect(res.status).toBe(200);
+  });
+
+  it("snaps to allowlist-only the moment OWNER_USER_ID is configured", async () => {
+    // The instant any admin env is set, the permissive bootstrap is over.
+    process.env.OWNER_USER_ID = "owner-1";
+    const res = await request(buildApp("not-the-owner")).get("/admin-only");
     expect(res.status).toBe(403);
   });
 

@@ -25,7 +25,14 @@ function computeAdminSet(): Set<string> {
 export function isAdmin(req: Request, res: Response, next: NextFunction) {
   const userId = (req.user as any)?.claims?.sub ?? (req.user as any)?.id;
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
-  if (!computeAdminSet().has(userId)) {
+  const adminSet = computeAdminSet();
+  // Permissive bootstrap: if no admins have been configured yet, every
+  // authenticated staff user is admin. Lets a fresh deploy reach the
+  // admin pages on the first click without an out-of-band Secrets step.
+  // The moment OWNER_USER_ID or ADMIN_USER_IDS is set, the allowlist
+  // kicks in and non-listed users get a 403.
+  if (adminSet.size === 0) return next();
+  if (!adminSet.has(userId)) {
     return res.status(403).json({ message: "Admin access required" });
   }
   next();
