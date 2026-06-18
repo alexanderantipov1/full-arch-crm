@@ -133,6 +133,25 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  // Local-dev bypass: when LOCAL_DEV_AUTH_BYPASS=true, every request is
+  // treated as authenticated as a synthetic staff user. Lets developers
+  // bring up the SPA on http://localhost:5001 without provisioning a
+  // real Replit OAuth app. NEVER set this in any environment that holds
+  // real PHI — the bypass grants full PHI capabilities downstream via
+  // principalFromReq.
+  if (process.env.LOCAL_DEV_AUTH_BYPASS === "true") {
+    (req as any).user = {
+      claims: {
+        sub: "local-dev-user",
+        email: "dev@localhost",
+        first_name: "Local",
+        last_name: "Dev",
+      },
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    };
+    return next();
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {
