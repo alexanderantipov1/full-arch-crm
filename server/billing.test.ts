@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     createBillingClaim: vi.fn(),
     updateBillingClaim: vi.fn(),
     getPreflightResult: vi.fn(),
+    createFollowUp: vi.fn().mockResolvedValue({ id: 99 }),
     createAuditLog: vi.fn().mockResolvedValue(undefined),
   },
 }));
@@ -228,5 +229,100 @@ describe("PHI audit logging for billing routes", () => {
     await new Promise((resolve) => setImmediate(resolve));
 
     expect(mocks.storage.createAuditLog).not.toHaveBeenCalled();
+  });
+});
+
+describe("PATCH /api/billing/claims/:id — denial → Work Queue follow-up", () => {
+  it("creates a high-priority follow-up when a claim transitions into denied", async () => {
+    // Prior state: claim was 'submitted'; the PATCH flips it to 'denied'.
+    mocks.storage.getBillingClaims.mockResolvedValue([
+      { id: 5, patientId: 42, claimStatus: "submitted", claimNumber: "CLM-001" },
+    ]);
+    mocks.storage.updateBillingClaim.mockResolvedValue({
+      id: 5,
+      patientId: 42,
+      claimNumber: "CLM-001",
+      claimStatus: "denied",
+      denialReason: "Not medically necessary",
+    });
+
+    const res = await request(app)
+      .patch("/api/billing/claims/5")
+      .send({ claimStatus: "denied", denialReason: "Not medically necessary" });
+
+    expect(res.status).toBe(200);
+    expect(mocks.storage.createFollowUp).toHaveBeenCalledOnce();
+    const followUp = mocks.storage.createFollowUp.mock.calls[0][0];
+    expect(followUp).toMatchObject({
+      patientId: 42,
+      followUpType: "denial",
+      status: "pending",
+      priority: "high",
+      assignedTo: "test-user",
+    });
+    expect(followUp.nextAction).toMatch(/CLM-001/);
+    expect(followUp.nextAction).toMatch(/appeal/i);
+    expect(followUp.notes).toMatch(/Not medically necessary/);
+    // dueDate is 5 days out — just check the shape is YYYY-MM-DD.
+    expect(followUp.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("does NOT create a follow-up if the claim was already denied (idempotent on re-PATCH)", async () => {
+    mocks.storage.getBillingClaims.mockResolvedValue([
+      { id: 6, patientId: 42, claimStatus: "denied", claimNumber: "CLM-002" },
+    ]);
+    mocks.storage.updateBillingClaim.mockResolvedValue({
+      id: 6,
+      patientId: 42,
+      claimStatus: "denied",
+      denialReason: "Updated reason",
+    });
+
+    const res = await request(app)
+      .patch("/api/billing/claims/6")
+      .send({ denialReason: "Updated reason" });
+
+    expect(res.status).toBe(200);
+    expect(mocks.storage.createFollowUp).not.toHaveBeenCalled();
+  });
+
+  it("does NOT create a follow-up for non-denial status changes", async () => {
+    mocks.storage.getBillingClaims.mockResolvedValue([
+      { id: 7, patientId: 42, claimStatus: "submitted", claimNumber: "CLM-003" },
+    ]);
+    mocks.storage.updateBillingClaim.mockResolvedValue({
+      id: 7,
+      patientId: 42,
+      claimStatus: "paid",
+    });
+
+    await request(app)
+      .patch("/api/billing/claims/7")
+      .send({ denialReason: "Paid in full" });
+
+    expect(mocks.storage.createFollowUp).not.toHaveBeenCalled();
+  });
+
+  it("does not fail the claim update if follow-up creation throws", async () => {
+    mocks.storage.getBillingClaims.mockResolvedValue([
+      { id: 8, patientId: 42, claimStatus: "submitted" },
+    ]);
+    mocks.storage.updateBillingClaim.mockResolvedValue({
+      id: 8,
+      patientId: 42,
+      claimStatus: "denied",
+      denialReason: "X",
+    });
+    mocks.storage.createFollowUp.mockRejectedValueOnce(new Error("db down"));
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await request(app)
+      .patch("/api/billing/claims/8")
+      .send({ claimStatus: "denied", denialReason: "X" });
+
+    // Primary action (claim update) still succeeds — the queue write was secondary.
+    expect(res.status).toBe(200);
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
   });
 });

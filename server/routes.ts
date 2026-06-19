@@ -13,6 +13,7 @@ import { registerMcpRoutes } from "./mcp/route";
 import { generateMcpApiKey, sanitizeMcpApiKey } from "./mcp/keys";
 import { isAdmin } from "./middleware/admin";
 import { phiService, PhiAccessDeniedError } from "./services/phi";
+import { identityService } from "./services/identity";
 import { anthropic, askClaude, AiPolicyBlockedError } from "./services/ai";
 import {
   suggestCodesTool,
@@ -216,6 +217,22 @@ export async function registerRoutes(
       pattern: /^\/api\/portal\//,
       resourceType: "patient_portal",
       getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+    {
+      pattern: /^\/api\/work-queue/,
+      resourceType: "work_queue",
+      getPatientId: (req: any) => parseNumericId(req.body?.patientId || req.query?.patientId),
+    },
+    {
+      pattern: /^\/api\/timeline\/patient\/(\d+)/,
+      resourceType: "person_timeline",
+      getPatientId: (_req: any, match: RegExpMatchArray) => parseNumericId(match[1]),
+      getResourceId: (_req: any, match: RegExpMatchArray) => match[1],
+    },
+    {
+      pattern: /^\/api\/case-journey/,
+      resourceType: "case_journey",
+      getPatientId: (req: any) => parseNumericId(req.query?.patientId),
     },
   ];
 
@@ -654,10 +671,49 @@ export async function registerRoutes(
         }
       }
 
+      // Snapshot the prior status before the update so we can detect the
+      // "transitioned into denied" edge — we only want to auto-spawn one
+      // follow-up per denial, not on every subsequent PATCH that keeps it
+      // denied.
+      const claims = await storage.getBillingClaims();
+      const priorClaim = claims.find((c) => c.id === id);
+      const wasAlreadyDenied = priorClaim?.claimStatus === "denied";
+
       const claim = await storage.updateBillingClaim(id, data);
       if (!claim) {
         return res.status(404).json({ message: "Claim not found" });
       }
+
+      // Denial → Work Queue task. When a claim flips into 'denied', drop
+      // a follow-up onto the Work Queue so the denial has an owner, a due
+      // date, and is visible in the same list staff already work from.
+      // No new schema; piggybacks on the existing `follow_ups` table that
+      // the Work Queue read model already aggregates.
+      if (claim.claimStatus === "denied" && !wasAlreadyDenied) {
+        try {
+          const dueDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0];
+          const reason = claim.denialReason ?? data.denialReason ?? "(no reason on file)";
+          const claimRef = claim.claimNumber ? `claim ${claim.claimNumber}` : `claim id ${claim.id}`;
+          await storage.createFollowUp({
+            patientId: claim.patientId,
+            followUpType: "denial",
+            dueDate,
+            status: "pending",
+            priority: "high",
+            assignedTo: principalFromReq(req).userId,
+            nextAction: `Review denial on ${claimRef} and prepare appeal`,
+            notes: `Denial reason: ${reason}`,
+          } as any);
+        } catch (err) {
+          // Don't fail the claim update if the queue write fails — log it
+          // so the operator sees it. The claim status change is the
+          // primary action; the work-queue entry is secondary.
+          console.error("Failed to create denial follow-up:", err);
+        }
+      }
+
       res.json(claim);
     } catch (error: unknown) {
       console.error("Error updating claim:", error);
@@ -1049,6 +1105,182 @@ topPriorities must be an array of objects with provider, reason, action, and hip
       if (error instanceof AiPolicyBlockedError) return res.status(403).json({ message: error.message });
       console.error("Error generating SRM AI brief:", error);
       res.status(500).json({ message: "Failed to generate SRM AI brief" });
+    }
+  });
+
+  // ============ UNIFIED WORK QUEUE ============
+  // The single prioritized list of the next action for every active lead and
+  // patient. Tenant-scoped from the session principal so DSOs only see their
+  // own work; single-office deployments (no tenant) see everything.
+  app.get("/api/work-queue", isAuthenticated, async (req, res) => {
+    try {
+      const principal = principalFromReq(req);
+      const entityType =
+        req.query.entityType === "patient" || req.query.entityType === "lead"
+          ? (req.query.entityType as "patient" | "lead")
+          : undefined;
+      const assignedTo =
+        req.query.mine === "true"
+          ? principal.userId
+          : typeof req.query.assignedTo === "string"
+            ? req.query.assignedTo
+            : undefined;
+
+      const queue = await storage.getWorkQueue({
+        tenantId: principal.tenantId,
+        assignedTo,
+        entityType,
+      });
+      res.json(queue);
+    } catch (error) {
+      console.error("Error fetching work queue:", error);
+      res.status(500).json({ message: "Failed to fetch work queue" });
+    }
+  });
+
+  // Complete a patient follow-up directly from the queue.
+  app.post("/api/work-queue/follow-up/:id/complete", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseNumericId(req.params.id);
+      if (!id) return res.status(400).json({ message: "Invalid follow-up id" });
+      const { userId } = getAuditUser(req);
+      const outcome = typeof req.body?.outcome === "string" ? req.body.outcome : undefined;
+      const updated = await storage.completeFollowUp(id, { outcome, completedBy: userId });
+      if (!updated) return res.status(404).json({ message: "Follow-up not found" });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error completing follow-up:", error);
+      res.status(400).json({ message: "Failed to complete follow-up" });
+    }
+  });
+
+  // ============ INTERACTION TIMELINE ============
+  // One chronological history per person. Patient timelines surface PHI and are
+  // audited via the trackedPhiEndpoints middleware above.
+  app.get("/api/timeline/:entityType/:id", isAuthenticated, async (req, res) => {
+    try {
+      const entityType = req.params.entityType;
+      if (entityType !== "patient" && entityType !== "lead") {
+        return res.status(400).json({ message: "entityType must be 'patient' or 'lead'" });
+      }
+      const id = parseNumericId(req.params.id);
+      if (!id) return res.status(400).json({ message: "Invalid id" });
+      const timeline = await storage.getPersonTimeline(entityType, id);
+      if (!timeline.subject) return res.status(404).json({ message: "Not found" });
+      res.json(timeline);
+    } catch (error) {
+      console.error("Error fetching timeline:", error);
+      res.status(500).json({ message: "Failed to fetch timeline" });
+    }
+  });
+
+  // ============ FULL-ARCH CASE JOURNEY ============
+  // The pipeline view of every active treatment case: stage, blockers, progress.
+  app.get("/api/case-journey", isAuthenticated, async (req, res) => {
+    try {
+      const principal = principalFromReq(req);
+      const journey = await storage.getCaseJourney({ tenantId: principal.tenantId });
+      res.json(journey);
+    } catch (error) {
+      console.error("Error fetching case journey:", error);
+      res.status(500).json({ message: "Failed to fetch case journey" });
+    }
+  });
+
+  // ============ IDENTITY UNIFICATION ============
+  // Surface and resolve duplicate identities (same human across patient/lead
+  // records). Pre-PHI per IdentityService doctrine, but still authenticated.
+  app.get("/api/identity/duplicates", isAuthenticated, async (req, res) => {
+    try {
+      const principal = principalFromReq(req);
+      const result = await storage.getIdentityDuplicates({ tenantId: principal.tenantId });
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching identity duplicates:", error);
+      res.status(500).json({ message: "Failed to fetch identity duplicates" });
+    }
+  });
+
+  app.get("/api/identity/person/:uid", isAuthenticated, async (req, res) => {
+    try {
+      const profile = await storage.getIdentityProfile(String(req.params.uid));
+      if (!profile.person) return res.status(404).json({ message: "Person not found" });
+      res.json(profile);
+    } catch (error) {
+      console.error("Error fetching identity profile:", error);
+      res.status(500).json({ message: "Failed to fetch identity profile" });
+    }
+  });
+
+  // Resolve a duplicate cluster: pick the most complete record as the seed,
+  // resolve-or-create one canonical person, and link every record to it.
+  app.post("/api/identity/resolve-cluster", isAuthenticated, async (req, res) => {
+    try {
+      const principal = principalFromReq(req);
+      const patientIds = Array.isArray(req.body?.patientIds)
+        ? req.body.patientIds.map((n: unknown) => parseNumericId(n)).filter((n: number | undefined): n is number => !!n)
+        : [];
+      const leadIds = Array.isArray(req.body?.leadIds)
+        ? req.body.leadIds.map((n: unknown) => parseNumericId(n)).filter((n: number | undefined): n is number => !!n)
+        : [];
+      if (patientIds.length + leadIds.length < 2) {
+        return res.status(400).json({ message: "A cluster needs at least two records to resolve" });
+      }
+
+      const { patients: patientRows, leads: leadRows } = await storage.getIdentityMembers(patientIds, leadIds);
+      if (patientRows.length + leadRows.length < 2) {
+        return res.status(404).json({ message: "Records not found" });
+      }
+
+      // Seed selection: prefer a patient with a date of birth (strongest
+      // identity signal), then any patient, then the first lead.
+      const seed =
+        patientRows.find((p: any) => p.dateOfBirth) ||
+        patientRows[0] ||
+        leadRows[0];
+
+      const resolved = await identityService.resolveOrCreatePerson({
+        firstName: seed.firstName ?? null,
+        lastName: seed.lastName ?? null,
+        email: seed.email ?? null,
+        phone: seed.phone ?? null,
+        dateOfBirth: seed.dateOfBirth ?? null,
+        source: "manual",
+        tenantId: principal.tenantId ?? null,
+      });
+      const personUid = resolved.person.id;
+
+      for (const p of patientRows) await storage.setPatientPersonUid(p.id, personUid);
+      for (const l of leadRows) await storage.setLeadPersonUid(l.id, personUid);
+
+      const { userId, userEmail } = getAuditUser(req);
+      await storage.createAuditLog({
+        userId,
+        userEmail: userEmail || null,
+        action: "merge",
+        resourceType: "person_identity",
+        resourceId: personUid,
+        patientId: patientRows[0]?.id ?? null,
+        ipAddress: req.ip || req.socket?.remoteAddress || null,
+        userAgent: req.headers["user-agent"] || null,
+        details: {
+          personUid,
+          via: resolved.via,
+          linkedPatients: patientRows.map((p: any) => p.id),
+          linkedLeads: leadRows.map((l: any) => l.id),
+        },
+        phiAccessed: false,
+      });
+
+      res.json({
+        personUid,
+        via: resolved.via,
+        linkedPatients: patientRows.length,
+        linkedLeads: leadRows.length,
+      });
+    } catch (error: any) {
+      console.error("Error resolving identity cluster:", error);
+      res.status(400).json({ message: error.message || "Failed to resolve identity cluster" });
     }
   });
 
