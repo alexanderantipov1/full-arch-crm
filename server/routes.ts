@@ -234,6 +234,15 @@ export async function registerRoutes(
       resourceType: "case_journey",
       getPatientId: (req: any) => parseNumericId(req.query?.patientId),
     },
+    {
+      pattern: /^\/api\/identity/,
+      resourceType: "person_identity",
+      getPatientId: (req: any) => {
+        const patientIds = Array.isArray(req.body?.patientIds) ? req.body.patientIds : [];
+        return parseNumericId(patientIds[0] || req.query?.patientId);
+      },
+      getResourceId: (req: any) => String(req.params?.uid || req.body?.personUid || ""),
+    },
   ];
 
   app.use((req, res, next) => {
@@ -1143,9 +1152,10 @@ topPriorities must be an array of objects with provider, reason, action, and hip
     try {
       const id = parseNumericId(req.params.id);
       if (!id) return res.status(400).json({ message: "Invalid follow-up id" });
+      const principal = principalFromReq(req);
       const { userId } = getAuditUser(req);
       const outcome = typeof req.body?.outcome === "string" ? req.body.outcome : undefined;
-      const updated = await storage.completeFollowUp(id, { outcome, completedBy: userId });
+      const updated = await storage.completeFollowUp(id, { outcome, completedBy: userId, tenantId: principal.tenantId });
       if (!updated) return res.status(404).json({ message: "Follow-up not found" });
       res.json(updated);
     } catch (error) {
@@ -1165,7 +1175,8 @@ topPriorities must be an array of objects with provider, reason, action, and hip
       }
       const id = parseNumericId(req.params.id);
       if (!id) return res.status(400).json({ message: "Invalid id" });
-      const timeline = await storage.getPersonTimeline(entityType, id);
+      const principal = principalFromReq(req);
+      const timeline = await storage.getPersonTimeline(entityType, id, { tenantId: principal.tenantId });
       if (!timeline.subject) return res.status(404).json({ message: "Not found" });
       res.json(timeline);
     } catch (error) {
@@ -1203,7 +1214,8 @@ topPriorities must be an array of objects with provider, reason, action, and hip
 
   app.get("/api/identity/person/:uid", isAuthenticated, async (req, res) => {
     try {
-      const profile = await storage.getIdentityProfile(String(req.params.uid));
+      const principal = principalFromReq(req);
+      const profile = await storage.getIdentityProfile(String(req.params.uid), { tenantId: principal.tenantId });
       if (!profile.person) return res.status(404).json({ message: "Person not found" });
       res.json(profile);
     } catch (error) {
@@ -1227,7 +1239,9 @@ topPriorities must be an array of objects with provider, reason, action, and hip
         return res.status(400).json({ message: "A cluster needs at least two records to resolve" });
       }
 
-      const { patients: patientRows, leads: leadRows } = await storage.getIdentityMembers(patientIds, leadIds);
+      const { patients: patientRows, leads: leadRows } = await storage.getIdentityMembers(patientIds, leadIds, {
+        tenantId: principal.tenantId,
+      });
       if (patientRows.length + leadRows.length < 2) {
         return res.status(404).json({ message: "Records not found" });
       }
@@ -1250,8 +1264,8 @@ topPriorities must be an array of objects with provider, reason, action, and hip
       });
       const personUid = resolved.person.id;
 
-      for (const p of patientRows) await storage.setPatientPersonUid(p.id, personUid);
-      for (const l of leadRows) await storage.setLeadPersonUid(l.id, personUid);
+      for (const p of patientRows) await storage.setPatientPersonUid(p.id, personUid, { tenantId: principal.tenantId });
+      for (const l of leadRows) await storage.setLeadPersonUid(l.id, personUid, { tenantId: principal.tenantId });
 
       const { userId, userEmail } = getAuditUser(req);
       await storage.createAuditLog({
@@ -1269,7 +1283,7 @@ topPriorities must be an array of objects with provider, reason, action, and hip
           linkedPatients: patientRows.map((p: any) => p.id),
           linkedLeads: leadRows.map((l: any) => l.id),
         },
-        phiAccessed: false,
+        phiAccessed: true,
       });
 
       res.json({
@@ -2026,6 +2040,7 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
 
   app.post("/api/era/auto-post-all", isAuthenticated, async (req, res) => {
     try {
+      const principal = principalFromReq(req);
       const postings = await storage.getPaymentPostings();
       const pending = postings.filter(p => p.postingStatus === "pending" && !p.varianceFlag);
       let posted = 0;
@@ -2033,7 +2048,46 @@ Generate a compelling appeal letter that addresses the denial reason with clinic
         await storage.updatePaymentPosting(posting.id, { postingStatus: "posted", autoPosted: true });
         posted++;
       }
-      res.json({ posted });
+
+      // Variance-flagged postings can't be auto-posted — they need a human.
+      // For each one without an open reconciliation task, drop a follow-up
+      // on the Work Queue so it surfaces in the same place denials and
+      // eligibility gaps land. Idempotent: we scan existing pending
+      // follow-ups for a `Posting #<id>` marker before creating a new one.
+      const variancePending = postings.filter(p => p.postingStatus === "pending" && p.varianceFlag);
+      let variancesQueued = 0;
+      for (const posting of variancePending) {
+        if (!posting.patientId) continue;
+        try {
+          const marker = `Posting #${posting.id}`;
+          const existing = await storage.getFollowUps({
+            patientId: posting.patientId,
+            status: "pending",
+          });
+          if (existing.some(f => (f.notes ?? "").includes(marker) || (f.nextAction ?? "").includes(marker))) {
+            continue;
+          }
+          const dueDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0];
+          const variance = posting.varianceReason ?? "amount mismatch";
+          await storage.createFollowUp({
+            patientId: posting.patientId,
+            followUpType: "payment_variance",
+            dueDate,
+            status: "pending",
+            priority: "high",
+            assignedTo: principal.userId,
+            nextAction: `Reconcile ${marker} — ${variance}`,
+            notes: `Payment posting variance flagged. ${marker}, payer ${posting.payerName ?? "(unknown)"}, paid ${posting.paymentAmount}.`,
+          } as any);
+          variancesQueued++;
+        } catch (err) {
+          console.error("Failed to queue variance follow-up:", err);
+        }
+      }
+
+      res.json({ posted, variancesQueued });
     } catch (error) {
       console.error("Error auto-posting ERA:", error);
       res.status(500).json({ message: "Failed to auto-post payments" });
