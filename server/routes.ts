@@ -2184,6 +2184,12 @@ Return this exact JSON shape:
       if (m) parsed = JSON.parse(m[0]) as EligibilityAIResponse;
     }
 
+    // Capture the prior eligibility status BEFORE the create so we can
+    // detect transitions into a coverage gap. Without this guard a
+    // batch re-check or forceRefresh would re-spawn the same follow-up.
+    const priorCheck = await storage.getLatestEligibilityCheckByPatient(patientId);
+    const priorStatus = priorCheck?.eligibilityStatus ?? null;
+
     const check = await storage.createEligibilityCheck({
       patientId,
       insuranceId: primaryInsurance?.id || null,
@@ -2196,6 +2202,35 @@ Return this exact JSON shape:
       terminationDate: parsed.terminationDate || primaryInsurance?.terminationDate || null,
       rawResponse: parsed,
     });
+
+    // Coverage-gap → Work Queue. When eligibility returns inactive or
+    // terminated AND the prior status wasn't already in a gap, spawn a
+    // high-priority follow-up. The 2-day SLA is tighter than the denial
+    // pattern because a coverage gap blocks today's appointment, not a
+    // future appeal cycle. Same fail-soft posture: a queue-write failure
+    // is logged but doesn't fail the eligibility result.
+    const GAP = new Set(["inactive", "terminated"]);
+    const newStatus = String(check.eligibilityStatus ?? "");
+    if (GAP.has(newStatus) && !GAP.has(String(priorStatus ?? ""))) {
+      try {
+        const dueDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0];
+        await storage.createFollowUp({
+          patientId,
+          followUpType: "eligibility_gap",
+          dueDate,
+          status: "pending",
+          priority: "high",
+          assignedTo: principal.userId,
+          nextAction: `Verify insurance with patient — eligibility returned ${newStatus}`,
+          notes: `Eligibility status: ${newStatus}${priorStatus ? ` (was ${priorStatus})` : ""}.`,
+        } as any);
+      } catch (err) {
+        console.error("Failed to create eligibility-gap follow-up:", err);
+      }
+    }
+
     return { ...check, cached: false };
   }
 
