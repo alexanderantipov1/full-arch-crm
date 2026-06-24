@@ -10,6 +10,8 @@ import {
   paymentLimiter,
 } from "./middleware/rate-limit";
 import { registerMcpRoutes } from "./mcp/route";
+import { bookingRouter } from "./booking/booking-routes";
+import { waitlistRouter } from "./waitlist/waitlist-routes";
 import { generateMcpApiKey, sanitizeMcpApiKey } from "./mcp/keys";
 import { isAdmin } from "./middleware/admin";
 import { phiService, PhiAccessDeniedError } from "./services/phi";
@@ -125,6 +127,12 @@ export async function registerRoutes(
   // MCP server surface for external AI clients (Claude Code, Codex, etc.).
   // Auth is bearer-token (MCP_API_KEY), distinct from staff OIDC sessions.
   registerMcpRoutes(app);
+
+  // Patient-facing online booking widget + internal waitlist manager.
+  // Booking slot/request/status endpoints are intentionally public (no auth) so
+  // the widget can be embedded on the practice website / Google Business Profile.
+  app.use(bookingRouter);
+  app.use(waitlistRouter);
 
   const getAuditUser = (req: any) => ({
     userId: req.user?.claims?.sub || req.user?.id || "unknown",

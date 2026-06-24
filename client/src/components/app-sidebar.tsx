@@ -63,6 +63,8 @@ import {
   Bell,
   Key,
   GitBranch,
+  Globe,
+  Clock,
 } from "lucide-react";
 import {
   Sidebar,
@@ -88,6 +90,8 @@ const homeItems = [
 const patientsItems = [
   { title: "Patients", url: "/patients", icon: Users },
   { title: "Appointments", url: "/appointments", icon: Calendar },
+  { title: "Online Booking", url: "/booking-admin", icon: Globe },
+  { title: "Waitlist", url: "/waitlist", icon: Clock },
   { title: "Reminders", url: "/reminders", icon: Phone },
   { title: "Lead Management", url: "/leads", icon: UserPlus },
   { title: "Patient Intake", url: "/intake", icon: ClipboardCheck },

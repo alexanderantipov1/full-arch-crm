@@ -108,6 +108,9 @@ import BusinessIntelligencePage from "@/pages/business-intelligence";
 import MessagesPage from "@/pages/messages";
 import DentalChartingPage from "@/pages/dental-charting";
 import OnboardingPage from "@/pages/onboarding";
+import PatientBookingPage from "@/pages/patient-booking";
+import BookingAdminPage from "@/pages/booking-admin";
+import WaitlistPage from "@/pages/waitlist";
 import { useQuery } from "@tanstack/react-query";
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
@@ -260,6 +263,8 @@ function Router() {
         <Route path="/business-intelligence" component={BusinessIntelligencePage} />
         <Route path="/messages" component={MessagesPage} />
         <Route path="/union-flow" component={UnionFlowPage} />
+        <Route path="/booking-admin" component={BookingAdminPage} />
+        <Route path="/waitlist" component={WaitlistPage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>
@@ -276,6 +281,8 @@ function App() {
             <Route path="/all-on-6-billing" component={AllOn6Page} />
             <Route path="/dental-implant-billing" component={DentalImplantBillingPage} />
             <Route path="/about" component={AboutPage} />
+            <Route path="/book" component={PatientBookingPage} />
+            <Route path="/patient-booking" component={PatientBookingPage} />
             <Route>
               <Router />
             </Route>
