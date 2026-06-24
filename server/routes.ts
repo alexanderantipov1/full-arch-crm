@@ -10,6 +10,7 @@ import {
   paymentLimiter,
 } from "./middleware/rate-limit";
 import { registerMcpRoutes } from "./mcp/route";
+import { scribeRouter } from "./scribe/routes";
 import { generateMcpApiKey, sanitizeMcpApiKey } from "./mcp/keys";
 import { isAdmin } from "./middleware/admin";
 import { phiService, PhiAccessDeniedError } from "./services/phi";
@@ -114,6 +115,7 @@ export async function registerRoutes(
   app.use("/api/coding/suggest", aiLimiter);
   app.use("/api/appeals/generate", aiLimiter);
   app.use("/api/perio/ai-assessment", aiLimiter);
+  app.use("/api/scribe/generate", aiLimiter);
   app.use("/api/workflows", aiLimiter);
   app.use("/api/payments/create-intent", paymentLimiter);
   app.use("/api/payments/confirm", paymentLimiter);
@@ -125,6 +127,9 @@ export async function registerRoutes(
   // MCP server surface for external AI clients (Claude Code, Codex, etc.).
   // Auth is bearer-token (MCP_API_KEY), distinct from staff OIDC sessions.
   registerMcpRoutes(app);
+
+  // AI Scribe — dictation → structured SOAP notes + CDT code suggestions
+  app.use(scribeRouter);
 
   const getAuditUser = (req: any) => ({
     userId: req.user?.claims?.sub || req.user?.id || "unknown",
