@@ -100,6 +100,7 @@ import ProviderIntelPage from "@/pages/provider-intel";
 import PayerIntelPage from "@/pages/payer-intel";
 import MultiLocationPage from "@/pages/multi-location";
 import RcmPage from "@/pages/rcm";
+import RcmToolsPage from "@/pages/rcm-tools";
 import FinancialPage from "@/pages/financial";
 import MarketingSuitePage from "@/pages/marketing";
 import NpsPage from "@/pages/nps";
@@ -253,6 +254,7 @@ function Router() {
         <Route path="/payer-intel" component={PayerIntelPage} />
         <Route path="/multi-location" component={MultiLocationPage} />
         <Route path="/rcm" component={RcmPage} />
+        <Route path="/rcm-tools" component={RcmToolsPage} />
         <Route path="/financial" component={FinancialPage} />
         <Route path="/marketing-classic" component={MarketingSuitePage} />
         <Route path="/nps" component={NpsPage} />
