@@ -136,6 +136,7 @@ const billingItems = [
   { title: "Payment Tracking", url: "/payments", icon: CreditCard },
   { title: "ERA Processing", url: "/era-processing", icon: Receipt },
   { title: "Appeals Engine", url: "/appeals", icon: Gavel },
+  { title: "Insurance Calling", url: "/insurance-calling", icon: Phone },
   { title: "Eligibility Check", url: "/eligibility", icon: Shield },
   { title: "Cost Calculator", url: "/calculator", icon: Calculator },
   { title: "Revenue Cycle", url: "/rcm", icon: Activity },

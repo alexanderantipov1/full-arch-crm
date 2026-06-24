@@ -94,6 +94,7 @@ import AIPhonePage from "@/pages/ai-phone";
 import VoiceToCodePage from "@/pages/voice-to-code";
 import CaseAcceptancePage from "@/pages/case-acceptance";
 import UnionFlowPage from "@/pages/union-flow";
+import InsuranceCallingPage from "@/pages/insurance-calling";
 import TelehealthPage from "@/pages/telehealth";
 import FeeOptimizerPage from "@/pages/fee-optimizer";
 import ProviderIntelPage from "@/pages/provider-intel";
@@ -260,6 +261,7 @@ function Router() {
         <Route path="/business-intelligence" component={BusinessIntelligencePage} />
         <Route path="/messages" component={MessagesPage} />
         <Route path="/union-flow" component={UnionFlowPage} />
+        <Route path="/insurance-calling" component={InsuranceCallingPage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>
