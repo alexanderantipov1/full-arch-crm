@@ -1,0 +1,24 @@
+mission: household-identity-grouping-v1
+epic: ENG-552
+tasks:
+  ENG-341:
+    title: "A — phone/email non-unique (drop global UNIQUE for shared kinds)"
+    class: contract_change
+    owner: claude-code (implement) + codex (cross-review)
+    workspace: worktree
+    branch_base: main
+    owned_paths:
+      - packages/identity/models.py
+      - packages/identity/service.py
+      - packages/db/alembic/versions/*  # new revision only
+      - tests/identity/*
+    shared_paths:
+      - packages/identity/repository.py  # read; declare if changed
+    forbidden_paths:
+      - infra/**            # no deploy/env changes in A
+      - packages/db/alembic/versions/<existing merged revisions>  # immutable
+    verification: lint + mypy + identity tests + alembic drift/upgrade-downgrade
+    integration_mode: draft PR -> Codex cross-review -> operator merge (prod migration)
+    gates:
+      - propose-before-implement (contract_change)
+      - no merge / no deploy without explicit operator approval

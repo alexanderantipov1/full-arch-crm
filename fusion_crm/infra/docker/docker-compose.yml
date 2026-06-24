@@ -1,0 +1,198 @@
+name: fusion-crm
+
+# Notes:
+# * Run from the repo root: `docker compose -f infra/docker/docker-compose.yml up -d`
+# * Service ports are bound to localhost only — never expose Postgres/Redis
+#   directly to the office LAN; route traffic through the API.
+# * Mount your GCP service-account JSON read-only into the worker container at
+#   /secrets/gcp-sa.json and set GOOGLE_APPLICATION_CREDENTIALS accordingly in .env.
+
+x-app-env: &app-env
+  APP_ENV: ${APP_ENV:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  SECRET_KEY: ${SECRET_KEY}
+  DATABASE_URL: ${DATABASE_URL}
+  DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
+  REDIS_URL: ${REDIS_URL}
+  GCS_BUCKET: ${GCS_BUCKET:-}
+  GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/secrets/gcp-sa.json}
+  BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+  BACKUP_LOCAL_DIR: ${BACKUP_LOCAL_DIR:-/var/backups/fusion}
+  # --- M1 vertical-slice env (added 2026-05-01) ---
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+  SALESFORCE_CLIENT_ID: ${SALESFORCE_CLIENT_ID:-}
+  SALESFORCE_CLIENT_SECRET: ${SALESFORCE_CLIENT_SECRET:-}
+  SALESFORCE_CALLBACK_URL: ${SALESFORCE_CALLBACK_URL:-}
+  SALESFORCE_DOMAIN: ${SALESFORCE_DOMAIN:-}
+  CARESTACK_IDP_BASE_URL: ${CARESTACK_IDP_BASE_URL:-}
+  CARESTACK_API_BASE_URL: ${CARESTACK_API_BASE_URL:-}
+  CARESTACK_API_VERSION: ${CARESTACK_API_VERSION:-}
+  CARESTACK_CLIENT_ID: ${CARESTACK_CLIENT_ID:-}
+  CARESTACK_CLIENT_SECRET: ${CARESTACK_CLIENT_SECRET:-}
+  CARESTACK_VENDOR_KEY: ${CARESTACK_VENDOR_KEY:-}
+  CARESTACK_ACCOUNT_KEY: ${CARESTACK_ACCOUNT_KEY:-}
+  CARESTACK_ACCOUNT_ID: ${CARESTACK_ACCOUNT_ID:-}
+  WEB_CORS_ORIGINS: ${WEB_CORS_ORIGINS:-}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fusion}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fusion}
+      POSTGRES_DB: ${POSTGRES_DB:-fusion}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-schemas.sql:/docker-entrypoint-initdb.d/00-init-schemas.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fusion} -d ${POSTGRES_DB:-fusion}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      API_HOST: ${API_HOST:-0.0.0.0}
+      API_PORT: ${API_PORT:-8000}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - backups:/var/backups/fusion
+      # Mount the GCP service-account key read-only. Path on host is up to you.
+      # - /etc/fusion/secrets/gcp-sa.json:/secrets/gcp-sa.json:ro
+
+  # --- Interactive corporate messenger layer (ENG-433 / ENG-434) ---
+  # Mattermost is an EXTERNAL provider (like Salesforce/CareStack), reached only
+  # through our ChatProvider adapter — never forked. It runs its OWN database
+  # (mattermost-db), physically separate from the canonical 8-schema Postgres,
+  # so architectural invariant #1 is preserved.
+  #
+  # Gated behind compose profile "chat": a plain `docker compose up` does NOT
+  # start these. Bring them up explicitly:
+  #   docker compose -f infra/docker/docker-compose.yml --profile chat up -d
+  #
+  # Version is PINNED (lesson from large-scale operators: do not chase releases;
+  # the v7 built-in-AI CPU regression took ~1.5 years to fully remove, fixed in
+  # v9). Bump deliberately — see infra/docker/mattermost/README.md.
+  mattermost-db:
+    image: postgres:16-alpine
+    profiles: ["chat"]
+    restart: unless-stopped
+    environment:
+      # Local-dev credentials only; prod uses a separate DB per ADR-0006 / ENG-442.
+      POSTGRES_USER: ${MATTERMOST_DB_USER:-mmuser}
+      POSTGRES_PASSWORD: ${MATTERMOST_DB_PASSWORD:-mmpass}
+      POSTGRES_DB: ${MATTERMOST_DB_NAME:-mattermost}
+      # Keep the locale ENGLISH. Switching Mattermost's default locale to a
+      # non-English value disables half of Mattermost's own indexes and forces
+      # table scans (operator lesson). English is the default; do not override.
+      LANG: C
+    volumes:
+      - mmdbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MATTERMOST_DB_USER:-mmuser} -d ${MATTERMOST_DB_NAME:-mattermost}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mattermost:
+    image: mattermost/mattermost-team-edition:10.5
+    # The official Mattermost image is amd64-only (no native arm64). On Apple
+    # Silicon, Docker must run it via Rosetta, NOT qemu — under qemu the Go
+    # runtime crashes with "fatal error: lfstack.push invalid packing". Enable
+    # Docker Desktop → Settings → General → "Use Rosetta for x86/amd64
+    # emulation" (needs the Apple Virtualization framework VM manager). On amd64
+    # hosts this platform pin is a no-op. See infra/docker/mattermost/README.md.
+    platform: linux/amd64
+    profiles: ["chat"]
+    restart: unless-stopped
+    depends_on:
+      mattermost-db:
+        condition: service_healthy
+    environment:
+      # DB wiring to the dedicated mattermost-db service (compose network DNS).
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: >-
+        postgres://${MATTERMOST_DB_USER:-mmuser}:${MATTERMOST_DB_PASSWORD:-mmpass}@mattermost-db:5432/${MATTERMOST_DB_NAME:-mattermost}?sslmode=disable&connect_timeout=10
+      # Local browser URL. Inside the compose network other services reach the
+      # bot API at http://mattermost:8065 (no public tunnel needed for inbound).
+      MM_SERVICESETTINGS_SITEURL: ${MATTERMOST_SITE_URL:-http://127.0.0.1:8065}
+      # Capabilities our integration relies on (bots, webhooks, slash, actions).
+      MM_SERVICESETTINGS_ENABLEBOTACCOUNTCREATION: "true"
+      MM_SERVICESETTINGS_ENABLEINCOMINGWEBHOOKS: "true"
+      MM_SERVICESETTINGS_ENABLEOUTGOINGWEBHOOKS: "true"
+      MM_SERVICESETTINGS_ENABLECOMMANDS: "true"
+      MM_SERVICESETTINGS_ENABLEPOSTUSERNAMEOVERRIDE: "true"
+      MM_SERVICESETTINGS_ENABLEPOSTICONOVERRIDE: "true"
+      # Mattermost blocks outgoing integrations (webhooks/slash) from calling
+      # internal/private/loopback addresses by default ("address forbidden").
+      # Our local inbound endpoint lives on the host at host.docker.internal,
+      # which is a private address — allowlist it so outgoing webhooks reach the
+      # Fusion API. LOCAL DEV ONLY; prod uses a public chat.* + real API host.
+      MM_SERVICESETTINGS_ALLOWEDUNTRUSTEDINTERNALCONNECTIONS: "host.docker.internal 127.0.0.1 localhost api"
+      # File store stays local in dev; prod points at GCS (ENG-442).
+      MM_FILESETTINGS_DRIVERNAME: local
+      MM_FILESETTINGS_DIRECTORY: /mattermost/data/
+    ports:
+      - "127.0.0.1:8065:8065"
+    volumes:
+      - mmdata:/mattermost/data
+      - mmconfig:/mattermost/config
+      - mmlogs:/mattermost/logs
+      - mmplugins:/mattermost/plugins
+      - mmclientplugins:/mattermost/client/plugins
+      - mmbleve:/mattermost/bleve-indexes
+
+volumes:
+  pgdata:
+  redisdata:
+  backups:
+  mmdbdata:
+  mmdata:
+  mmconfig:
+  mmlogs:
+  mmplugins:
+  mmclientplugins:
+  mmbleve:

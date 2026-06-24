@@ -1,0 +1,98 @@
+mission: current
+scope:
+  production_reviewer_commit:
+    commit: 44d704e
+    status: separate
+    note: "Contains production-reviewer agent work only."
+  dirty_follow_up:
+    status: separate
+    paths:
+      - .agents/orchestration/current/decision-log.md
+      - .agents/strategy/CANDIDATE_MISSIONS.md
+      - apps/web/components/integrations/SfLeadsPanel.tsx
+      - apps/web/components/layout/AppShell.tsx
+      - apps/web/lib/api/hooks/useSfLeads.ts
+      - apps/web/tests/e2e/staff-smoke.spec.ts
+tasks:
+  ENG-227-MIGRATION:
+    linear_issue_id: ENG-227
+    owner: codex/migration-drift-worker
+    status: completed
+    report: reports/ENG-227-MIGRATION-worker-report.md
+  ENG-227-VERIFY-SCAN:
+    linear_issue_id: ENG-227
+    owner: codex/verification-scan-worker
+    status: completed
+    report: reports/ENG-227-VERIFY-SCAN-worker-report.md
+  ENG-228-INGEST-METADATA:
+    linear_issue_id: ENG-228
+    owner: codex/ingest-metadata-worker
+    status: completed
+    report: reports/ENG-228-INGEST-METADATA-worker-report.md
+  ENG-228-OUTREACH:
+    linear_issue_id: ENG-228
+    owner: codex/outreach-worker
+    status: completed
+    report: reports/ENG-228-OUTREACH-worker-report.md
+  ENG-228-TENANT-ISOLATION:
+    linear_issue_id: ENG-228
+    owner: codex/tenant-isolation-worker
+    status: superseded
+    superseded_by:
+      - ENG-229
+      - ENG-230
+      - ENG-231
+    report: reports/ENG-228-TENANT-ISOLATION-worker-report.md
+  ENG-229-CONTRACT-REVIEW:
+    linear_issue_id: ENG-229
+    owner: codex/tenant-contract-review-worker
+    status: completed
+    report: reports/ENG-229-CONTRACT-REVIEW-worker-report.md
+  ENG-229-SAFETY-NET-DRAFT:
+    linear_issue_id: ENG-229
+    owner: codex/tenant-safety-net-draft-worker
+    status: completed
+    report: reports/ENG-229-SAFETY-NET-DRAFT-worker-report.md
+  ENG-230-CREDENTIAL-SCOPE:
+    linear_issue_id: ENG-230
+    owner: codex/tenant-credential-scope-worker
+    status: completed
+    report: reports/ENG-230-CREDENTIAL-SCOPE-worker-report.md
+  ENG-230-VERIFY-SCAN:
+    linear_issue_id: ENG-230
+    owner: codex/tenant-credential-verifier
+    status: completed
+    report: reports/ENG-230-VERIFY-SCAN-worker-report.md
+  ENG-231-METHOD-MAP:
+    linear_issue_id: ENG-231
+    owner: codex
+    status: completed
+    report: reports/ENG-231-METHOD-MAP-worker-report.md
+  ENG-231-FIXTURE-SCAN:
+    linear_issue_id: ENG-231
+    owner: codex
+    status: completed
+    report: reports/ENG-231-FIXTURE-SCAN-worker-report.md
+  ENG-232-TYPING-SCAN:
+    linear_issue_id: ENG-232
+    owner: codex
+    status: completed
+    report: reports/ENG-232-TYPING-SCAN-worker-report.md
+  ENG-233-SALESFORCE-KEEPALIVE:
+    linear_issue_id: ENG-233
+    owner: codex
+    status: completed
+    report: reports/ENG-233-worker-report.md
+    scope:
+      - Salesforce OAuth token keepalive worker path
+      - credential refresh persistence
+      - reconnect state surfacing
+  ENG-234-PROD-SCHEDULER:
+    linear_issue_id: ENG-234
+    owner: codex
+    status: completed
+    report: reports/ENG-234-worker-report.md
+    scope:
+      - canonical Cloud Run Job and Cloud Scheduler wiring
+      - operator production activation without CI_MODE=1
+      - production job and scheduler state verification

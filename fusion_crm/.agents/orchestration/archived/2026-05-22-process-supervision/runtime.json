@@ -1,0 +1,52 @@
+{
+  "mission_id": "process-supervision",
+  "updated_at": "2026-05-22T05:25:00Z",
+  "handoffs": [
+    {
+      "id": "handoff-eng226-001",
+      "created_at": "2026-05-22T05:20:00Z",
+      "task_id": "MISSION-OPEN",
+      "linear_issue_id": "ENG-226",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-226/process-supervision-granular-activity-states-m-3",
+      "from_role": "strategy",
+      "from_agent": "codex",
+      "to_role": "orchestrator",
+      "to_agent": "claude-code",
+      "reason": "Strategy candidate 'Process Supervision And Granular Activity States' accepted by orchestrator. M-1 (ENG-224) and M-2 (ENG-225) both landed. Final mission of the orchestrator-runtime cleanup arc.",
+      "status": "completed"
+    },
+    {
+      "id": "handoff-eng226-002",
+      "created_at": "2026-05-22T05:25:00Z",
+      "task_id": "TASK-A",
+      "linear_issue_id": "ENG-226",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-226/process-supervision-granular-activity-states-m-3",
+      "from_role": "orchestrator",
+      "from_agent": "claude-code",
+      "to_role": "worker",
+      "to_agent": "claude-code",
+      "reason": "Doctor approved self-execute via /orchestrator. Worker takes Tasks A-H sequentially. Pre-flight clean: branch eduardk/eng-226-process-supervision did not exist.",
+      "status": "accepted"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "worker-eng226-001",
+      "role": "worker",
+      "agent": "claude-code",
+      "task_id": "TASK-A",
+      "linear_issue_id": "ENG-226",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-226/process-supervision-granular-activity-states-m-3",
+      "linear_status": "In Progress",
+      "linear_title": "Process supervision + granular activity states (M-3)",
+      "status": "ready-for-integration",
+      "phase": "verifier-and-integrator-pending",
+      "worktree": ".",
+      "branch": "eduardk/eng-226-process-supervision",
+      "last_activity": "2026-05-22T05:57:00Z",
+      "needs_human": true,
+      "risk": "medium",
+      "current_note": "All 8 tasks done. 98/4-skip skill + 19 dashboard + make verify all green. Worker report written. Awaiting commit/push/PR approval."
+    }
+  ]
+}

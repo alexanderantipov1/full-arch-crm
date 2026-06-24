@@ -1,0 +1,35 @@
+mission_id: process-supervision
+linear_issue_id: ENG-226
+linear_issue_url: https://linear.app/fusion-dental-implants/issue/ENG-226/process-supervision-granular-activity-states-m-3
+
+owners:
+  orchestrator: claude-code
+  worker: pending
+  verifier: claude-code
+  integrator: pending-human
+
+scope_allow:
+  - .agents/skills/agent-orchestrator/scripts/pid_check.py
+  - .agents/skills/agent-orchestrator/scripts/activity_heuristic.py
+  - .agents/skills/agent-orchestrator/scripts/worker_ctl.py
+  - .agents/skills/agent-orchestrator/scripts/start_control_plane.py
+  - .agents/skills/agent-orchestrator/scripts/status_wave.py
+  - .agents/skills/agent-orchestrator/tests/
+  - .agents/dashboard/server.py
+  - .agents/orchestration/CLAUDE.md
+  - .agents/skills/agent-orchestrator/SKILL.md
+  - .agents/skills/agent-orchestrator/tests/README.md
+  - .agents/orchestration/process-supervision/
+
+scope_deny:
+  - apps/
+  - packages/
+  - infra/
+  - .env*
+  - .claude/
+  - docs/
+  - .agents/orchestration/archived/
+  - .agents/dashboard/static/   # UI redesign deferred
+
+risk: medium
+contains_phi: false

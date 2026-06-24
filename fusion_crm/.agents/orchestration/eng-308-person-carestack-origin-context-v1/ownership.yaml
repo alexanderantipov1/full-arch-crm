@@ -1,0 +1,39 @@
+mission: current
+mission_alias: eng-308-person-carestack-origin-context-v1
+linear_anchor: ENG-308
+owner_role: orchestrator
+owner_agent: claude-code
+tasks:
+  - task_id: ENG-308
+    title: "Person card: surface true CareStack identity & origin context"
+    linear_id: ENG-308
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-308/person-card-surface-true-carestack-identity-and-origin-context
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - packages/ingest/repository.py
+      - packages/ingest/schemas.py
+      - packages/ingest/service.py
+      - packages/ingest/carestack_*.py        # adding list_providers to the client + a small ingest service
+      - packages/ingest/models.py             # new carestack_provider model if a table is added
+      - packages/db/alembic/versions/         # one new revision if needed
+      - apps/api/routers/persons.py
+      - apps/api/schemas/                     # if PersonDetailOut lives here
+      - apps/web/app/(staff)/persons/[uid]/page.tsx
+      - apps/web/lib/api/schemas/person.ts
+      - apps/web/lib/msw/fixtures/persons.ts
+      - apps/web/tests/unit/                  # FinancialSummaryCard.test.tsx extension or new PersonCardIdentity.test.tsx
+      - infra/scripts/backfill_providers.py   # NEW
+      - tests/ingest/                          # new origin + providers tests
+      - tests/api/test_person_detail.py
+      - tests/infra/test_backfill_providers.py # NEW
+notes:
+  - "Frontend wins are visible; backend lands origin aggregator + providers
+    ingest + backfill script. Mirror sum_accounting_totals_by_patient
+    pattern + backfill_payment_summary.py shape exactly."
+  - "Provider name resolution renders '—' until the operator runs the new
+    backfill — same gating pattern as ENG-305 / ENG-307."
+  - "Do NOT touch apps/web/lib/msw/handlers.ts (unrelated WIP stream)."
+  - "If a new alembic revision lands, it must be ONE new file with no edits
+    to shipped revisions."

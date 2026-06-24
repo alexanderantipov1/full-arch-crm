@@ -1,0 +1,78 @@
+{
+  "mission_id": "tenant-integrations-reconnect-ui",
+  "updated_at": "2026-05-21T01:42:37Z",
+  "handoffs": [
+    {
+      "id": "handoff-07ac43f9",
+      "created_at": "2026-05-21T01:42:37Z",
+      "task_id": "MISSION-OPEN",
+      "linear_issue_id": "ENG-214",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-214/tenant-integrations-sf-carestack-reconnect-edit-disconnect-ui",
+      "from_role": "strategy",
+      "from_agent": "claude-code",
+      "to_role": "orchestrator",
+      "to_agent": "claude-code",
+      "reason": "Candidate mission 'Tenant Integrations: SF + CareStack Reconnect / Edit / Disconnect UI' accepted by Orchestrator. Linear issue ENG-214 created. Mission folder opened.",
+      "status": "completed"
+    },
+    {
+      "id": "handoff-worker-start",
+      "created_at": "2026-05-21T01:43:00Z",
+      "task_id": "TASK-A-H",
+      "linear_issue_id": "ENG-214",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-214/tenant-integrations-sf-carestack-reconnect-edit-disconnect-ui",
+      "from_role": "orchestrator",
+      "from_agent": "claude-code",
+      "to_role": "worker",
+      "to_agent": "claude-code",
+      "reason": "Tasks A through H dispatched as a single in-session worker pass. Scope: medium (UI wiring + 2 modals + helper + tests). Strictly limited to apps/web/ files per contract.md.",
+      "status": "completed"
+    },
+    {
+      "id": "handoff-worker-verifier",
+      "created_at": "2026-05-21T02:15:00Z",
+      "task_id": "TASK-A-H",
+      "linear_issue_id": "ENG-214",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-214/tenant-integrations-sf-carestack-reconnect-edit-disconnect-ui",
+      "from_role": "worker",
+      "from_agent": "claude-code",
+      "to_role": "verifier",
+      "to_agent": "claude-code",
+      "reason": "Implementation complete. 30/30 vitest tests pass. TypeScript + ESLint clean. Stale ENG-128 placeholder gone. Worker report at reports/TASK-A-H-worker-report.md. Manual smoke pending user OK in browser.",
+      "status": "accepted"
+    },
+    {
+      "id": "handoff-verifier-integrator",
+      "created_at": "2026-05-21T02:18:00Z",
+      "task_id": "MISSION-DONE",
+      "linear_issue_id": "ENG-214",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-214/tenant-integrations-sf-carestack-reconnect-edit-disconnect-ui",
+      "from_role": "verifier",
+      "from_agent": "claude-code",
+      "to_role": "integrator",
+      "to_agent": "claude-code",
+      "reason": "Verifier ACCEPT. V1-V6 sweep passed: full vitest (30 tests, 7 files) green, tsc clean, eslint clean, stale placeholder gone, new files present, scope contained. Manual smoke pending user OK but acceptance criteria covered by automated tests + verified DOM patterns. Ready for integrator commit + PR.",
+      "status": "accepted"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "04f19df59f86",
+      "role": "orchestrator",
+      "agent": "claude-code",
+      "task_id": "MISSION-OPEN",
+      "linear_issue_id": "ENG-214",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-214/tenant-integrations-sf-carestack-reconnect-edit-disconnect-ui",
+      "linear_status": "Backlog",
+      "linear_title": "Tenant Integrations: SF + CareStack reconnect / edit / disconnect UI",
+      "status": "running",
+      "phase": "planning",
+      "worktree": ".",
+      "branch": "eduardk/eng-214-tenant-integrations-sf-carestack-reconnect-edit-disconnect",
+      "last_activity": "2026-05-21T01:42:37Z",
+      "needs_human": false,
+      "risk": "low",
+      "current_note": "Mission opened. Preparing Task A worker prompt. In-session role transition to Worker on next step."
+    }
+  ]
+}

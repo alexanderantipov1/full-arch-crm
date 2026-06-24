@@ -1,0 +1,71 @@
+mission: full-fidelity-ingestion-v1
+epic: ENG-425
+branch: eng-425-full-fidelity-ingestion-v1
+integration_mode: bundle-single-branch
+review: cross-runtime (prefer Codex reviewer) before integration — contract-changing
+
+tasks:
+  - id: ENG-426
+    block: A
+    class: contract_change
+    owned_paths:
+      - packages/ingest/models.py
+      - packages/ingest/repository.py
+      - packages/ingest/service.py
+      - packages/ingest/schemas.py
+      - packages/db/alembic/versions/
+    shared_paths:
+      - packages/ingest/  # registry is the shared contract for B/C/D
+    forbidden_paths:
+      - .env*
+      - packages/db/alembic/versions/  # existing shipped migrations are immutable
+    verification: ruff, mypy, pytest, alembic check
+
+  - id: ENG-427
+    block: B
+    class: contract_change
+    owned_paths:
+      - packages/integrations/salesforce/client.py
+      - packages/ingest/sf_lead_service.py
+      - packages/ingest/sf_contact_service.py
+      - packages/ingest/sf_account_service.py
+      - packages/ingest/sf_opportunity_service.py
+      - packages/ingest/sf_event_service.py
+      - packages/ingest/sf_task_service.py
+      - packages/ingest/sf_case_service.py
+      - packages/ingest/sf_opportunity_history_service.py
+    depends_on: [ENG-426]
+    verification: ruff, mypy, pytest, real-data SF smoke
+
+  - id: ENG-428
+    block: C
+    class: normal
+    owned_paths:
+      - apps/worker/jobs/
+    depends_on: [ENG-426, ENG-427]
+    verification: ruff, mypy, pytest
+
+  - id: ENG-429
+    block: D
+    class: normal
+    owned_paths:
+      - packages/ingest/carestack_*_service.py
+    depends_on: [ENG-426]
+    verification: ruff, mypy, pytest
+
+  - id: ENG-430
+    block: E
+    class: normal
+    owned_paths:
+      - infra/scripts/
+    depends_on: [ENG-427]
+    verification: backfill dry-run + idempotency, real-data spot-check
+
+  - id: ENG-431
+    block: F
+    class: docs
+    owned_paths:
+      - docs/decisions/
+      - CLAUDE.md
+      - packages/ingest/CLAUDE.md
+    verification: docs-only

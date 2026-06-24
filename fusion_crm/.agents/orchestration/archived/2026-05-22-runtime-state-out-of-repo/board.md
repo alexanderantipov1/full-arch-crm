@@ -1,0 +1,14 @@
+# Mission Board — Move Orchestrator Session Runtime State Out Of The Repository (M-1)
+
+| Task | Linear | Owner | Agent | Status | Worktree | Branch | Report | Needs human | Updated |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| MISSION-OPEN | [ENG-224](https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1) | orchestrator | claude-code | running | . | main | - | no | 2026-05-22T02:56:00Z |
+| TASK-A | [ENG-224](https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1) | worker | pending | planned | . | eduardk/eng-224-runtime-state-out-of-repo | - | yes | 2026-05-22T02:56:00Z |
+| TASK-B | [ENG-224](https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1) | worker | pending | blocked-by-TASK-A | . | eduardk/eng-224-runtime-state-out-of-repo | - | no | 2026-05-22T02:56:00Z |
+| TASK-C | [ENG-224](https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1) | worker | pending | blocked-by-TASK-B | . | eduardk/eng-224-runtime-state-out-of-repo | - | no | 2026-05-22T02:56:00Z |
+| TASK-D | [ENG-224](https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1) | worker | pending | blocked-by-TASK-A | . | eduardk/eng-224-runtime-state-out-of-repo | - | no | 2026-05-22T02:56:00Z |
+| TASK-E | [ENG-224](https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1) | worker | pending | blocked-by-TASK-B | . | eduardk/eng-224-runtime-state-out-of-repo | - | no | 2026-05-22T02:56:00Z |
+| TASK-F | [ENG-224](https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1) | worker | pending | blocked-by-TASK-B,D,E | . | eduardk/eng-224-runtime-state-out-of-repo | - | no | 2026-05-22T02:56:00Z |
+| TASK-G | [ENG-224](https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1) | worker | pending | blocked-by-TASK-F | . | eduardk/eng-224-runtime-state-out-of-repo | - | no | 2026-05-22T02:56:00Z |
+| VERIFY | [ENG-224](https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1) | verifier | claude-code | blocked-by-TASK-G | . | eduardk/eng-224-runtime-state-out-of-repo | - | no | 2026-05-22T02:56:00Z |
+| INTEGRATE | [ENG-224](https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1) | integrator | pending-human | blocked-by-VERIFY | . | eduardk/eng-224-runtime-state-out-of-repo | - | yes | 2026-05-22T02:56:00Z |

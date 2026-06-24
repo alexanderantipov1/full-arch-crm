@@ -1,0 +1,25 @@
+mission: carestack-payment-location-v1
+linear_anchor: ENG-267
+owner_role: orchestrator
+owner_agent: claude-code
+depends_on: carestack-billing-surface-v1 (payment events), carestack-ar-risk-v1 (outstanding/ar-risk)
+tasks:
+  - task_id: ENG-267
+    title: "Location-scope CareStack payment & treatment dashboard metrics"
+    linear_id: ENG-267
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-267/location-scope-carestack-payment-and-treatment-dashboard-metrics
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - packages/ingest/carestack_accounting_transaction_service.py
+      - packages/ingest/carestack_treatment_service.py
+      - packages/interaction/service.py
+      - packages/interaction/repository.py
+      - apps/api/routers/dashboard.py
+      - apps/web (treatment/payments widget — tenant-wide hint on outstanding)
+      - tests/
+notes:
+  - "No new schema — location_id stored in interaction.event payload."
+  - "Outstanding/AR-risk stay tenant-wide (payment_summary has no location)."
+  - "Read-only CareStack. No PHI."

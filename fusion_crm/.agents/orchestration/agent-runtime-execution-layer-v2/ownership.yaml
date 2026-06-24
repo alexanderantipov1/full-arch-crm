@@ -1,0 +1,33 @@
+mission_id: agent-runtime-execution-layer-v2
+linear_parent: ENG-363
+owner: orchestrator
+status: completed
+tasks:
+  ENG-364:
+    title: ARX-01 Mission Setup And Orchestrator Runtime Sync
+    owner: orchestrator
+    status: completed
+  ENG-365:
+    title: ARX-02 Approved Query And Read Model Matching V2
+    owner: worker
+    status: completed
+  ENG-366:
+    title: ARX-03 Approved Tool Execution Registry Expansion V2
+    owner: worker
+    status: completed
+  ENG-367:
+    title: ARX-04 Run History Operations And Audit Review V1
+    owner: worker
+    status: completed
+  ENG-368:
+    title: ARX-05 Approval Workflow Integration V1
+    owner: worker
+    status: completed
+  ENG-369:
+    title: ARX-06 DIA And Semantic Catalog Linkage V2
+    owner: worker
+    status: completed
+  ENG-370:
+    title: ARX-07 Evals, Documentation, Production Smoke, And Closure
+    owner: worker
+    status: completed

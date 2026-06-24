@@ -1,0 +1,20 @@
+mission: carestack-event-location-backfill-v1
+linear_anchor: ENG-270
+owner_role: orchestrator
+owner_agent: claude-code
+depends_on: ENG-267/268 (location emit), ENG-269 (dedup that dropped location)
+tasks:
+  - task_id: ENG-270
+    title: "Backfill location_id onto existing CareStack events"
+    linear_id: ENG-270
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-270/backfill-location-id-onto-existing-carestack-events-regression-from
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - packages/db/alembic/versions/   # new data-migration revision
+      - tests/
+notes:
+  - "Data-only migration UPDATE (append-only exception, like ENG-269). No schema/model change."
+  - "Backfills from ingest.raw_event.locationId via tenant.location mapping. No PHI."
+  - "Runs in prod via alembic Job on next deploy."

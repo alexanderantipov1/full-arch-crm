@@ -1,0 +1,18 @@
+Error: Input must be provided either through stdin or as a prompt argument when using --print
+Q1 complete. Summary of what was done:
+
+**Files changed** (within Q1's owned write scope only):
+- `packages/identity/models.py` — added `MatchCandidate` ORM + `make_person_pair_key` helper
+- `packages/identity/schemas.py` — added `MatchCandidateIn` / `MatchCandidateOut` DTOs
+- `packages/identity/repository.py` — added 5 repository methods, all `for_tenant`-scoped
+- `packages/identity/service.py` — added `add_match_candidate` + `find_open_match_for_pair` with status/confidence/self-match/accepted-person/PHI guards
+- `packages/db/alembic/versions/20260518_2010_e1f2a3b4c5d6_add_identity_match_candidate.py` — new additive revision (head `b4c2e1f9a5d7` → `e1f2a3b4c5d6`)
+- `tests/identity/test_match_candidate_model.py` + `tests/identity/test_match_candidate_service.py` — 17 new tests
+
+**Verification (all green):**
+- `pytest tests/identity -q` → 42 passed
+- `make verify` → ruff, mypy, deploy-critical pytest all clean
+- `alembic upgrade head` → applied; `alembic check` → "No new upgrade operations detected"; `downgrade -1`/`upgrade head` round-trip clean
+- `git diff --check` → no output
+
+Report written to `.agents/orchestration/20260517-113000-parallel-startup-wave/reports/Q1.md`. Deviations from P2 (notably keeping `hint_id` as bare UUID until ENG-183 lands the hints table, and using a service-side PHI deny-list) and ENG-183/ENG-185 follow-ups are documented there.

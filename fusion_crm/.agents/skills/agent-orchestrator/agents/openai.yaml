@@ -1,0 +1,8 @@
+interface:
+  display_name: "Agent Orchestrator"
+  short_description: "Launch and track Linear-backed agent workers"
+  default_prompt: "Use $agent-orchestrator to accept a Strategy handoff, create Linear-backed execution tasks, and launch dashboard-visible workers."
+
+policy:
+  allow_implicit_invocation: true
+

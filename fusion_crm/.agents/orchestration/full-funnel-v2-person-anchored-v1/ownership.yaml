@@ -1,0 +1,60 @@
+mission: full-funnel-v2-person-anchored-v1
+epic: ENG-480
+design_doc: docs/analytics/full-funnel-v2-person-anchored.md
+
+tasks:
+  - id: ENG-481
+    title: Backend person-anchored read model + API
+    url: https://linear.app/fusion-dental-implants/issue/ENG-481
+    class: contract_change
+    runtime: claude-code
+    workspace: worktree
+    branch_base: main
+    depends_on: []
+    owned_paths:
+      - packages/analytics/**
+      - apps/api/routers/dashboard.py
+    read_paths:
+      - packages/ops/**
+      - packages/interaction/**
+      - packages/identity/**
+      - packages/marketing/**
+    shared_paths:
+      - apps/api/routers/dashboard.py  # funnel route + response shape (contract)
+    forbidden_paths:
+      - packages/**/migrations/**
+      - .env*
+      - infra/**
+    verification: lint + typecheck + endpoint smoke + reconciliation spot-checks
+
+  - id: ENG-482
+    title: Frontend funnel v2 (toggle, show/no-show, closed-won=money)
+    url: https://linear.app/fusion-dental-implants/issue/ENG-482
+    class: normal
+    runtime: claude-code
+    workspace: worktree
+    branch_base: main
+    depends_on: [ENG-481]
+    owned_paths:
+      - apps/web/app/(staff)/analytics/funnel/**
+      - apps/web/lib/api/schemas/fullFunnel.ts
+      - apps/web/lib/api/hooks/useFullFunnel.ts
+    forbidden_paths:
+      - .env*
+
+  - id: ENG-483
+    title: Verify on real data + integration tests
+    url: https://linear.app/fusion-dental-implants/issue/ENG-483
+    class: normal
+    runtime: claude-code
+    workspace: self
+    depends_on: [ENG-481, ENG-482]
+    owned_paths:
+      - tests/**
+    forbidden_paths:
+      - .env*
+
+policy:
+  commit: forbidden without explicit user approval
+  push: forbidden without explicit user approval
+  migrations: none expected (read-model only); STOP + escalate if one appears

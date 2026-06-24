@@ -1,0 +1,8 @@
+Report written to `.agents/orchestration/20260517-103524-eng-178-eng-180-deploy-smoke-recovery/reports/A2.md`.
+
+Key findings:
+- **No live evidence**: `gh run`, `gh api`, and `gcloud logging read` are outside this session's harness allowlist (`don't ask` mode). Stop-condition triggered; report is repo-side only.
+- **ENG-180 audience pinning** is on `main` at `cb4d37e` and is correctly threaded into the smoke job (`IAP_AUDIENCE: ${{ env.IAP_OAUTH_CLIENT_ID }}`, line 670).
+- **Diagnostic gap stands**: `BODY=$(check "/healthz")` still swallows the HTTP status / body lines emitted by `check()` and `fail()`. Auto-rollback wiring (`$GITHUB_OUTPUT`) is unaffected, so rollback semantics are intact even when the failure is invisible.
+- **Most likely root cause** (without live logs): HTTP status mismatch on `/healthz` through IAP, with `commit_sha` mismatch as secondary candidate. Application 5xx is least likely because the upstream anonymous boot smoke would have caught it.
+- **Suggested next**: A1 logging fix first → re-run A2 with widened permissions and broader Cloud Logging filters (drop the `revision_name` predicate and add a `timestamp>=` window; also check `http_load_balancer` and IAP audit logs). Concrete filter strings included in the report.

@@ -1,0 +1,66 @@
+mission: marketing-per-tenant-credentials-v1
+epic: ENG-488
+base_branch: eng-481-full-funnel-v2-backend  # stacked on the funnel PR; rebase onto main once PR #171 merges
+
+tasks:
+  - id: ENG-489
+    title: provider kinds + credential payload schemas
+    url: https://linear.app/fusion-dental-implants/issue/ENG-489
+    class: contract_change   # adds a migration
+    branch: eng-489-marketing-creds-provider-kinds
+    depends_on: []
+    owned_paths:
+      - packages/tenant/models.py
+      - packages/tenant/schemas.py
+      - packages/db/alembic/versions/**   # one NEW revision only
+    forbidden_paths:
+      - .env*
+    verification: migration applies on temp DB + new provider_kinds accepted; ruff/mypy
+
+  - id: ENG-490
+    title: from_credential + per-tenant pull
+    url: https://linear.app/fusion-dental-implants/issue/ENG-490
+    class: normal
+    depends_on: [ENG-489]
+    owned_paths:
+      - packages/integrations/google_ads/**
+      - packages/integrations/meta_ads/**
+      - packages/integrations/google_analytics/**
+      - packages/integrations/google_search_console/**
+      - apps/worker/jobs/marketing_pull.py
+
+  - id: ENG-491
+    title: integration settings API + UI
+    url: https://linear.app/fusion-dental-implants/issue/ENG-491
+    class: contract_change   # API + Zod contract
+    depends_on: [ENG-489]
+    owned_paths:
+      - apps/api/routers/integrations.py
+      - packages/tenant/credential_service.py
+      - apps/web/components/integrations/**
+      - apps/web/lib/api/schemas/tenant.ts
+      - apps/web/app/(staff)/integrations/**
+
+  - id: ENG-492
+    title: historical backfill (~12 months)
+    url: https://linear.app/fusion-dental-implants/issue/ENG-492
+    class: normal
+    depends_on: [ENG-490]
+    owned_paths:
+      - infra/scripts/**
+      - apps/worker/jobs/**
+
+  - id: ENG-493
+    title: prod Cloud Run Job + Scheduler
+    url: https://linear.app/fusion-dental-implants/issue/ENG-493
+    class: contract_change   # deploy/infra
+    depends_on: [ENG-490]
+    owned_paths:
+      - infra/scripts/deploy_cloud_run.sh
+      - infra/env/PRODUCTION.md
+    note: read docs/DEPLOYMENT_RULES.md; operator runs the actual prod deploy
+
+policy:
+  commit: forbidden without explicit user approval
+  push: forbidden without explicit user approval
+  prod_deploy: operator-run only

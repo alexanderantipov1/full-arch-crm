@@ -1,0 +1,80 @@
+mission: dev-lead-sources-explorer-v1
+tasks:
+  ENG-391:
+    owner: claude-code/self-execute
+    linear: ENG-391
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-391/dev-lead-sources-explorer-hierarchical-source-tree-with-funnel-counts
+    paths:
+      - packages/ops/repository.py
+      - packages/ops/service.py
+      - packages/ops/schemas.py
+      - apps/api/routers/ops.py
+      - apps/web/lib/api/schemas/leadSources.ts
+      - apps/web/lib/api/hooks/useLeadSources.ts
+      - apps/web/app/(staff)/dev/lead-sources/
+      - apps/web/components/layout/AppShell.tsx
+      - tests/ops/
+      - tests/integration/test_lead_source_explorer.py
+      - tests/integration/test_tenant_isolation.py
+      - packages/interaction/repository.py
+      - packages/interaction/service.py
+      - apps/web/tests/unit/LeadSourcesPage.test.tsx
+  ENG-393:
+    owner: claude-code/self-execute
+    linear: ENG-393
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-393/lead-sources-explorer-last-touch-attribution-normalized-utm-source
+    paths:
+      - packages/ops/repository.py
+      - packages/ops/service.py
+      - tests/integration/test_lead_source_explorer.py
+      - tests/ops/
+  ENG-394:
+    owner: claude-code/self-execute
+    linear: ENG-394
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-394/lead-sources-explorer-virtual-channel-level-facebookgoogle-alias
+    paths:
+      - packages/ops/repository.py
+      - packages/ops/service.py
+      - packages/ops/schemas.py
+      - apps/api/routers/ops.py
+      - apps/web/lib/api/schemas/leadSources.ts
+      - apps/web/lib/api/hooks/useLeadSources.ts
+      - apps/web/app/(staff)/dev/lead-sources/
+      - apps/web/tests/unit/LeadSourcesPage.test.tsx
+      - tests/integration/test_lead_source_explorer.py
+      - tests/ops/
+  ENG-395:
+    owner: claude-code/self-execute
+    linear: ENG-395
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-395/lead-sources-explorer-drill-down-show-person-name-phone-email-instead
+    paths:
+      - apps/api/routers/ops.py
+      - apps/web/app/(staff)/dev/lead-sources/
+      - apps/web/lib/api/hooks/useLeadSources.ts
+      - apps/web/lib/api/schemas/leadSources.ts
+      - apps/web/tests/unit/LeadSourcesPage.test.tsx
+      - packages/ops/repository.py
+      - packages/ops/schemas.py
+      - packages/ops/service.py
+      - tests/integration/test_lead_source_explorer.py
+      - tests/ops/
+  ENG-398:
+    owner: claude-code/self-execute
+    linear: ENG-398
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-398/lead-sources-explorer-location-clinic-filter
+    paths:
+      - apps/api/routers/ops.py
+      - apps/web/app/(staff)/dev/lead-sources/
+      - apps/web/lib/api/hooks/useLeadSources.ts
+      - packages/ops/repository.py
+      - packages/ops/service.py
+      - tests/integration/test_lead_source_explorer.py
+  ENG-399:
+    owner: claude-code/self-execute
+    linear: ENG-399
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-399/pm-payments-period-preset-dropdown-next-to-custom-date-range
+    paths:
+      - apps/web/app/(staff)/project-manager/payments/page.tsx
+shared_no_touch:
+  - .agents/dashboard/  # parallel session holds uncommitted edits
+  - packages/db/alembic/  # no migration expected for this task

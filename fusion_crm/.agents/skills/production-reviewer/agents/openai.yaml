@@ -1,0 +1,7 @@
+interface:
+  display_name: "Production Reviewer"
+  short_description: "Audit mission state, unfinished work, risks, and cross-agent coordination"
+  default_prompt: "Use $production-reviewer to audit the current Fusion CRM mission from git, runtime files, Linear, PRs, CI, and worker reports."
+
+policy:
+  allow_implicit_invocation: true

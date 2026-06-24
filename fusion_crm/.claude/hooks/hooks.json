@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'input=$(cat); cmd=$(echo \"$input\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get(\\\"tool_input\\\",{}).get(\\\"command\\\",\\\"\\\"))\" 2>/dev/null); if echo \"$cmd\" | grep -qE \"(rm -rf|git push --force|git push -f|git reset --hard|alembic downgrade|make db-downgrade|DROP TABLE|DROP DATABASE|TRUNCATE )\"; then echo \"{\\\"decision\\\": \\\"block\\\", \\\"reason\\\": \\\"Destructive or migration-rollback command blocked. Architectural invariant: migrations are immutable; data is append-only.\\\"}\"; else echo \"{}\"; fi'",
+            "timeout": 3
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'input=$(cat); p=$(echo \"$input\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get(\\\"tool_input\\\",{}).get(\\\"file_path\\\",\\\"\\\"))\" 2>/dev/null); case \"$p\" in *.env*|*/.env|*/secrets*) echo \"{\\\"decision\\\": \\\"block\\\", \\\"reason\\\": \\\"Never modify .env or secret files via agent — user edits by hand.\\\"}\" ;; *packages/db/alembic/versions/*) echo \"{\\\"decision\\\": \\\"block\\\", \\\"reason\\\": \\\"Migrations are immutable once shipped. Create a new revision instead (make db-revision M=...).\\\"}\" ;; *) echo \"{}\" ;; esac'",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+R2 report written. Summary:
+
+- **Scope respected**: only `reports/R2.md` was edited; no product files touched.
+- **R1 not present yet** — plan keyed off P2 §"Match Policy" + Q1 evidence; R1 dependencies (`ingest.normalized_person_hint` model + `IngestService.capture_normalized_person_hint`) are listed explicitly.
+- **Current hidden path identified**: `packages/ingest/sf_lead_service.py:172-229` `_resolve_person(...)`, with the boundary-violation at line 180 (`self._identity._repo.find_source_link`) flagged.
+- **New service boundary**: `IdentityService.resolve_or_create_from_hint(...)` in `packages/identity/service.py`, with a `ResolveFromHintResult` DTO so the SF/CareStack pipelines can stay above the matching policy.
+- **PR split**: PR A (identity-only skeleton + tier ladder + tests), PR B (SF cutover + test rewrite), optional PR C (FK migration after R1 lands).
+- **Risks called out**: PHI/raw payload, tenant isolation, idempotency (re-pull guards on hint + source_link + candidate), source-link write ordering inside auto-accept, `is_reactivation` continuity, open candidates not blocking pull.
+- **Acceptance criteria + verification gates** specified.
+- **Contract changes** flagged for Codex review before PR A: `ResolveFromHintResult` shape, `MatchHintIn` adapter, threshold values, `MATCH_RULES` tuple, source-link-inside-auto-accept ordering.
+
+Stopping here per protocol — no commit, push, merge, or deploy.

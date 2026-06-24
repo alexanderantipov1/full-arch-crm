@@ -1,0 +1,16 @@
+All other modified/untracked paths are pre-existing (Q1/R1 work, prior waves) and were present in the starting git status. The only addition from this session is the assigned report path.
+
+## Summary
+
+S2 task complete. Wrote `.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S2.md` with:
+
+- **Current Salesforce ingest flow** — every step of `SfLeadIngestService.pull_recent` + `_resolve_person` (a/b/c/d ladder), plus the 9 existing tests in `tests/ingest/test_sf_lead_service.py` and their mock surface.
+- **Proposed cutover steps (1–6 + optional 7)** — bind the `RawEvent` return, call `capture_normalized_person_hint`, construct `MatchHintIn` from the R1 hint, call `resolve_or_create_from_hint`, map `was_existing_person_match` → `is_reactivation`, drop the 5 obsolete identity calls. Step 7 (FK migration) deferred because wave is migration-free.
+- **Single-PR write scope** — `packages/ingest/sf_lead_service.py` + `tests/ingest/test_sf_lead_service.py` (+ a one-paragraph CLAUDE.md note). No identity edits, no migrations, no routes, no apps/.
+- **Test rewrite plan** — table mapping each existing test to its new mock surface, plus two new branch tests (`open_candidate` + hint capture uses `raw_event.id`).
+- **Verification commands** — focused `pytest tests/ingest tests/identity tests/api/test_integrations_salesforce.py -q`, `alembic check`, `git diff --check`, then `make verify`.
+- **Risk analysis** — PHI/raw payload (identity never sees the SOQL record), tenant isolation, idempotency under re-pull (raw event + hint + match candidate + source link layers), open candidates not blocking the pull, `is_reactivation` semantic preservation.
+- **Pending S1 verification** — explicit contract assumption table flagged for Codex to confirm against `reports/S1.md` once S1 lands.
+- **Blockers** — hard dep: S1 must merge first; soft dep: contract names per `tasks/S1.md`.
+
+No commits, pushes, merges, deploys, env edits, migrations, or files outside the assigned write scope were touched.

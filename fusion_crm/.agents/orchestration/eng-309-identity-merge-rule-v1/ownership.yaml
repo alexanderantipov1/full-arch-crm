@@ -1,0 +1,30 @@
+mission: current
+mission_alias: eng-309-identity-merge-rule-v1
+linear_anchor: ENG-309
+owner_role: orchestrator
+owner_agent: claude-code
+tasks:
+  - task_id: ENG-309
+    title: "Identity-resolution: hard-block merge across different DOB / SSN"
+    linear_id: ENG-309
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-309/identity-resolution-hard-block-merge-across-different-dob-ssn
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - packages/identity/                                  # the resolver lives here per pre-flight
+      - packages/ingest/                                    # only if the call site needs updating
+      - tests/identity/
+      - tests/infra/test_audit_identity_merges.py           # NEW (if audit script in this ticket)
+      - tests/infra/test_split_wrong_merged_persons.py      # NEW (if un-merge script in this ticket)
+      - infra/scripts/audit_identity_merges.py              # NEW
+      - infra/scripts/split_wrong_merged_persons.py         # NEW (conditional on audit count)
+notes:
+  - "High-priority — financial UI shows household-level sums instead of
+    per-person. Operators cannot trust Paid/Balance until this lands."
+  - "Hard rule: DOB-mismatch OR SSN-mismatch = no merge. Soft signals
+    only apply once the hard checks pass."
+  - "Un-merge script is conditional: if audit count is small (≤50),
+    include here; else file follow-up ENG-311."
+  - "After this lands, ENG-310 (per-pid names + PHI panel) makes the
+    multi-link expander self-documenting."

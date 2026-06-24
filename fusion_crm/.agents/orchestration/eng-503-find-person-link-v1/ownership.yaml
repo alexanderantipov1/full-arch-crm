@@ -1,0 +1,37 @@
+mission: eng-503-find-person-link-v1
+linear_issue_id: ENG-503
+linear_issue_url: https://linear.app/fusion-dental-implants/issue/ENG-503
+task_class: contract_change
+branch_base: origin/main
+integration_mode: pr
+review: cross-runtime  # Claude Code implements -> Codex reviewer before integration
+
+owned_paths:
+  - apps/api/routers/persons.py
+  - apps/api/routers/people_search.py            # new (moved backend search)
+  - apps/web/app/api/people/search/route.ts
+  - apps/web/app/(staff)/people/search/live/route.ts
+  - apps/web/components/people/PeopleSearchResults.tsx
+  - apps/web/lib/api/schemas/peopleSearch.ts
+  - apps/web/lib/api/hooks/usePeopleSearch.ts
+  - tests/api/test_persons_search.py             # new
+  - tests/api/test_people_search_resolve.py      # new
+  - apps/web/tests/unit/PeopleSearchResults.test.tsx
+
+shared_paths:
+  # Touch with care — declare in contract.md, Integrator/cross-runtime review required.
+  - apps/web/lib/api/schemas/peopleSearch.ts     # linked_person_uids behavior
+  - apps/api/routers/persons.py                  # PersonSummaryOut reuse
+
+forbidden_paths:
+  - alembic/                                     # no migration expected
+  - packages/identity/                           # read-only via IdentityService only
+  - .env*
+  - infra/                                        # no deploy/env changes
+
+verification:
+  - .venv/bin/ruff check apps/api
+  - .venv/bin/mypy apps/api/routers/persons.py
+  - .venv/bin/python -m pytest tests/api/test_persons_search.py tests/api/test_people_search_resolve.py -v
+  - cd apps/web && pnpm tsc --noEmit
+  - cd apps/web && pnpm test PeopleSearchResults

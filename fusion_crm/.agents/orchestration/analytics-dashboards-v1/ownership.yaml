@@ -1,0 +1,34 @@
+mission: analytics-dashboards-v1
+epic: ENG-468
+task_class: contract_change
+execution_model: sequential_single_branch_pipeline
+worker_runtime: claude-code
+reviewer_runtime: codex
+branch: eng-468-analytics-dashboards
+branch_base: eng-465-marketing-web-analytics
+workspace: shared_epic_branch_in_session_agents
+integration_mode: bundled_pr_morning
+requires_integrator_review: true
+requires_cross_runtime_review: true
+commit_policy: commit_local_yes_push_pr_morning
+verification_policy: ruff_mypy_pytest_overnight_live_render_morning
+
+owned_paths:
+  - docs/analytics/**
+  - packages/analytics/**            # new analytics read layer (or extend insight)
+  - apps/web/app/(staff)/analytics/**
+  - apps/web/lib/api/schemas/**       # new analytics schemas
+  - apps/web/lib/api/hooks/**         # new analytics hooks
+
+shared_paths:
+  - apps/api/routers/dashboard.py     # additive endpoints, sequential only
+  - apps/web/components/layout/AppShell.tsx  # additive nav entries
+  - packages/marketing/service.py     # ENG-470 may extend ad_spend aggregates
+
+forbidden_paths:
+  - .env*
+  - packages/db/alembic/versions/*   # shipped revisions immutable
+  - DataBase_Fusion/**               # read-only reference, never edit
+
+if_shared_path_needed: additive_only_sequential
+if_main_advances: sync_before_pr

@@ -1,0 +1,22 @@
+mission: interaction-event-idempotency-v1
+linear_anchor: ENG-269
+owner_role: orchestrator
+owner_agent: claude-code
+tasks:
+  - task_id: ENG-269
+    title: "Idempotent interaction.event emission + dedupe existing"
+    linear_id: ENG-269
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-269/idempotent-interactionevent-emission-stop-re-pull-duplication-5-dedupe
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - packages/db/alembic/versions/   # new revision (dedupe + unique index)
+      - packages/interaction/repository.py
+      - packages/interaction/service.py
+      - packages/ingest/*               # callers: treat conflict as no-op
+      - tests/
+notes:
+  - "Migration DELETEs duplicate interaction.event rows — deliberate one-time exception to append-only; recorded in decision-log."
+  - "Dedup key: (tenant_id, source_provider, source_kind, source_external_id, kind) WHERE source_external_id IS NOT NULL."
+  - "Prod dedupe happens via the alembic Cloud Run Job on next deploy."

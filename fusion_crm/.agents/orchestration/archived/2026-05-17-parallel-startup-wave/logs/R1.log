@@ -1,0 +1,15 @@
+R1 done. Summary for the orchestrator:
+
+**Implementation**
+- New `NormalizedPersonHint` ORM (`packages/ingest/models.py`), `NormalizedPersonHint{In,Out}` DTOs (`schemas.py`), three repo methods (`add_normalized_person_hint`, `find_hint_by_raw_event`, `list_unresolved_hints`), and the `capture_normalized_person_hint` service method.
+- New additive migration `c7d8e9f1a2b3` (down `e1f2a3b4c5d6` = Q1) creating `ingest.normalized_person_hint` with `UNIQUE(tenant_id, raw_event_id)`, five tenant-scoped indexes, FK to `ingest.raw_event`, and the tenant FK. No DB CHECK on source enums — service validates against `identity.SOURCE_SYSTEMS / SOURCE_KINDS` (documented deviation).
+- 18 new tests in `tests/ingest/test_normalized_person_hint_{model,service}.py`.
+
+**Verification**
+- `pytest tests/ingest -q` → 31 passed
+- `pytest tests/ingest tests/identity tests/ops -q` → 95 passed (no adjacent-domain regressions)
+- `make verify` → ruff + mypy clean (154 files), 24 deploy-critical tests pass
+- `git diff --check` → clean
+- `alembic check` **could not be invoked** from this Claude session — `.claude/settings.local.json` allow-list rejects every alembic CLI/Python-API form. Documented in R1 as a session-environmental blocker (not a code issue), with an inspection-equivalent ORM/DDL cross-check table.
+
+Report at `.agents/orchestration/20260517-113000-parallel-startup-wave/reports/R1.md`. Per the brief, no commits/pushes/Linear updates were performed — those belong to Codex orchestrator.

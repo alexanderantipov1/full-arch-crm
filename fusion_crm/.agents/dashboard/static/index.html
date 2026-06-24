@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agent Mission Control</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+      /* Simplified-view overrides (additive to styles.css). */
+      .mc-card {
+        background: var(--surface, #ffffff);
+        border: 1px solid var(--line, #d8ddd9);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.25rem;
+      }
+      .mc-card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+      }
+      .mc-card-head h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted, #69717a);
+      }
+      .mc-card-head .count {
+        font-size: 0.85rem;
+        color: var(--muted, #69717a);
+      }
+      .mc-issue {
+        padding: 0.85rem 0;
+        border-top: 1px solid var(--line, #d8ddd9);
+      }
+      .mc-issue:first-of-type { border-top: 0; padding-top: 0; }
+      .mc-issue-head {
+        display: flex;
+        gap: 0.6rem;
+        align-items: baseline;
+        flex-wrap: wrap;
+        margin-bottom: 0.5rem;
+      }
+      .mc-issue-head a, .mc-issue-head strong {
+        color: var(--ink, #202428);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .mc-issue-head a:hover { text-decoration: underline; }
+      .mc-issue-title { color: var(--ink, #202428); }
+      .mc-issue-meta { color: var(--muted, #69717a); font-size: 0.85rem; }
+      .mc-sessions { list-style: none; padding: 0; margin: 0; }
+      .mc-session {
+        display: grid;
+        grid-template-columns: 12px 1fr auto auto;
+        gap: 0.6rem;
+        align-items: center;
+        padding: 0.25rem 0;
+        font-size: 0.9rem;
+        color: var(--ink, #202428);
+      }
+      .mc-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--muted, #69717a);
+      }
+      .mc-dot.active { background: #4cd479; box-shadow: 0 0 6px rgba(76, 212, 121, 0.5); }
+      .mc-dot.attention { background: #f5b94c; }
+      .mc-dot.danger { background: #f37070; }
+      .mc-dot.done { background: #5a6abf; }
+      .mc-session-role { font-family: ui-monospace, SFMono-Regular, monospace; }
+      .mc-session-status { color: var(--muted, #69717a); font-size: 0.85rem; }
+      .mc-session-when { color: var(--muted, #69717a); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+      .mc-attention-item {
+        display: flex;
+        gap: 0.6rem;
+        padding: 0.5rem 0;
+        border-top: 1px dashed var(--line, #d8ddd9);
+      }
+      .mc-attention-item:first-of-type { border-top: 0; padding-top: 0; }
+      .mc-attention-icon { font-size: 1.05rem; }
+      .mc-attention-body strong { display: block; color: var(--ink, #202428); }
+      .mc-attention-body span { color: var(--muted, #69717a); font-size: 0.88rem; }
+      .mc-activity-row {
+        display: grid;
+        grid-template-columns: 80px 1fr;
+        gap: 0.75rem;
+        padding: 0.3rem 0;
+        font-size: 0.9rem;
+        color: var(--ink, #202428);
+      }
+      .mc-activity-row .when { color: var(--muted, #69717a); font-variant-numeric: tabular-nums; }
+      .mc-activity-row code { font-family: ui-monospace, SFMono-Regular, monospace; }
+      .mc-repo-section { margin-top: 0.5rem; }
+      .mc-repo-section:first-child { margin-top: 0; }
+      .mc-repo-section h4 {
+        margin: 0 0 0.4rem 0;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted, #69717a);
+      }
+      .mc-repo-row {
+        display: grid;
+        grid-template-columns: 72px auto 1fr;
+        gap: 0.5rem;
+        padding: 0.25rem 0;
+        font-size: 0.88rem;
+        color: var(--ink, #202428);
+        align-items: baseline;
+      }
+      .mc-repo-row .when { color: var(--muted, #69717a); font-variant-numeric: tabular-nums; }
+      .mc-repo-row code {
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        color: #8aa9ff;
+      }
+      .mc-repo-row .subject { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .mc-repo-row .meta { color: var(--muted, #69717a); font-size: 0.8rem; }
+      .mc-pr-row {
+        display: grid;
+        grid-template-columns: 8px 56px 1fr auto;
+        gap: 0.5rem;
+        padding: 0.3rem 0;
+        align-items: center;
+        font-size: 0.88rem;
+      }
+      .mc-pr-num a { color: #8aa9ff; text-decoration: none; font-family: ui-monospace, SFMono-Regular, monospace; }
+      .mc-pr-num a:hover { text-decoration: underline; }
+      .mc-pr-title { color: var(--ink, #202428); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .mc-pr-branch { color: var(--muted, #69717a); font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.8rem; }
+      .mc-pr-when { color: var(--muted, #69717a); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+      .mc-empty {
+        color: var(--muted, #69717a);
+        font-style: italic;
+        padding: 0.5rem 0;
+      }
+      .mc-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--muted, #69717a);
+        cursor: pointer;
+        user-select: none;
+        margin-left: auto;
+      }
+      .advanced-panel { display: none; }
+      body.show-advanced .advanced-panel { display: block; }
+      .nav-advanced { display: none; }
+      body.show-advanced .nav-advanced { display: inline-flex; }
+      .mission-tracking {
+        font-size: 0.85rem;
+        color: var(--muted, #69717a);
+      }
+      .mission-tracking strong { color: var(--ink, #202428); }
+      .mission-tracking .reason { opacity: 0.75; font-style: italic; }
+      .mission-tracking.unresolved { color: #f37070; }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">MC</div>
+          <div>
+            <h1>Mission Control</h1>
+            <p>Read-only agent cockpit</p>
+          </div>
+        </div>
+        <nav aria-label="Dashboard sections">
+          <a href="#mc-plan">Plan</a>
+          <a href="#mc-workflow">Workflow</a>
+          <a href="#mc-workers">Workers</a>
+          <a href="#mc-verify">Verify</a>
+          <a href="#mc-process">Process</a>
+          <a href="#mc-active">Active</a>
+          <a href="#mc-live-agents">Agents</a>
+          <a href="#mc-attention">Attention</a>
+          <a href="#mc-activity">Activity</a>
+          <a href="#decisions" class="nav-advanced">Decisions</a>
+          <a href="#handoffs" class="nav-advanced">Handoffs</a>
+          <a href="#execution" class="nav-advanced">Execution</a>
+          <a href="#strategy" class="nav-advanced">Strategy</a>
+          <a href="#git" class="nav-advanced">Git</a>
+          <a href="#logs" class="nav-advanced">Logs</a>
+        </nav>
+      </aside>
+
+      <main>
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">localhost / read-only</p>
+            <h2>Agent Mission Control</h2>
+          </div>
+          <div class="status-strip">
+            <span id="refreshState">Loading</span>
+            <span id="generatedAt">No snapshot yet</span>
+            <span id="missionTracking" class="mission-tracking">Mission: resolving…</span>
+            <label class="mc-toggle">
+              <input type="checkbox" id="toggleAdvanced" />
+              <span>Show advanced panels</span>
+            </label>
+          </div>
+        </header>
+
+        <!-- SIMPLIFIED VIEW -->
+
+        <section id="mc-plan" class="mc-card">
+          <div class="mc-card-head">
+            <h3>Plan checklist</h3>
+            <span class="count" id="mcPlanCount">no data</span>
+          </div>
+          <div id="mcPlan"></div>
+        </section>
+
+        <section id="mc-workflow" class="mc-card">
+          <div class="mc-card-head">
+            <h3>Workflow / DAG</h3>
+            <span class="count" id="mcWorkflowCount">no data</span>
+          </div>
+          <div id="mcWorkflow"></div>
+        </section>
+
+        <section id="mc-workers" class="mc-card">
+          <div class="mc-card-head">
+            <h3>Workers</h3>
+            <span class="count" id="mcWorkersCount">0 workers</span>
+          </div>
+          <div id="mcWorkers"></div>
+        </section>
+
+        <section id="mc-verify" class="mc-card">
+          <div class="mc-card-head">
+            <h3>Verification gate</h3>
+            <span class="count" id="mcVerifyCount">no data</span>
+          </div>
+          <div id="mcVerify"></div>
+        </section>
+
+        <section id="mc-process" class="mc-card">
+          <div class="mc-card-head">
+            <h3>Process control</h3>
+            <span class="count" id="mcProcessCount">no data</span>
+          </div>
+          <div id="mcProcess"></div>
+        </section>
+
+        <section id="mc-repo" class="mc-card">
+          <div class="mc-card-head">
+            <h3>Repo activity</h3>
+            <span class="count" id="mcRepoCount">no data</span>
+          </div>
+          <div id="mcRepo"></div>
+        </section>
+
+        <section id="mc-active" class="mc-card">
+          <div class="mc-card-head">
+            <h3>Active work</h3>
+            <span class="count" id="mcActiveCount">0 issues</span>
+          </div>
+          <div id="mcActive"></div>
+        </section>
+
+        <section id="mc-live-agents" class="mc-card">
+          <div class="mc-card-head">
+            <h3>Live agent activity</h3>
+            <span class="count" id="mcLiveAgentsCount">0 sessions</span>
+          </div>
+          <div id="mcLiveAgents"></div>
+        </section>
+
+        <section id="mc-attention" class="mc-card">
+          <div class="mc-card-head">
+            <h3>Needs your attention</h3>
+            <span class="count" id="mcAttentionCount">0 items</span>
+          </div>
+          <div id="mcAttention"></div>
+        </section>
+
+        <section id="mc-activity" class="mc-card">
+          <div class="mc-card-head">
+            <h3>Recent activity</h3>
+            <span class="count">last 5 handoffs</span>
+          </div>
+          <div id="mcActivity"></div>
+        </section>
+
+        <!-- ADVANCED PANELS (hidden by default) -->
+
+        <section id="overview" class="section advanced-panel">
+          <div class="section-head">
+            <h3>Overview</h3>
+            <p>Raw counters and runtime layer detection.</p>
+          </div>
+          <div class="metric-grid">
+            <article class="metric"><span>Decision items</span><strong id="decisionCount">0</strong></article>
+            <article class="metric"><span>Mission files</span><strong id="missionFileCount">0</strong></article>
+            <article class="metric"><span>Strategy items</span><strong id="strategyItemCount">0</strong></article>
+            <article class="metric"><span>Changed files</span><strong id="changedFileCount">0</strong></article>
+            <article class="metric"><span>Active sessions</span><strong id="activeSessionCount">0</strong></article>
+            <article class="metric"><span>Handoffs</span><strong id="handoffCount">0</strong></article>
+          </div>
+          <div id="emptyStates" class="notice-list"></div>
+        </section>
+
+        <section id="decisions" class="section advanced-panel">
+          <div class="section-head">
+            <h3>Decision Inbox</h3>
+            <p>Every logged line — markers and routine handoffs alike. Use the simplified Attention panel for the curated subset.</p>
+          </div>
+          <div id="decisionInbox" class="item-list"></div>
+        </section>
+
+        <section id="handoffs" class="section advanced-panel">
+          <div class="section-head">
+            <h3>Agent Handoffs (full)</h3>
+            <p>All recorded transitions, structured + unstructured.</p>
+          </div>
+          <div id="handoffTrail" class="handoff-list"></div>
+        </section>
+
+        <section id="execution" class="section two-col advanced-panel">
+          <div>
+            <div class="section-head">
+              <h3>Execution Control</h3>
+              <p>Per-session detail + mission artifacts.</p>
+            </div>
+            <div id="runtimeSessions" class="item-list runtime-list"></div>
+            <div id="missionFiles" class="file-grid"></div>
+          </div>
+          <div>
+            <div class="section-head compact"><h3>Orchestrator</h3></div>
+            <div id="orchestratorState" class="panel"></div>
+          </div>
+        </section>
+
+        <section id="strategy" class="section advanced-panel">
+          <div class="section-head">
+            <h3>Strategy Control</h3>
+            <p>Inbox, candidate missions, strategy artifacts.</p>
+          </div>
+          <div id="strategyState" class="file-grid"></div>
+        </section>
+
+        <section id="git" class="section two-col advanced-panel">
+          <div>
+            <div class="section-head"><h3>Git Status</h3></div>
+            <pre id="gitStatus" class="code-block"></pre>
+          </div>
+          <div>
+            <div class="section-head compact"><h3>Diff Summary</h3></div>
+            <pre id="diffStat" class="code-block"></pre>
+          </div>
+        </section>
+
+        <section id="logs" class="section advanced-panel">
+          <div class="section-head">
+            <h3>Recent Runlog</h3>
+            <p>Tail of the configured mission runlog.</p>
+          </div>
+          <pre id="runlog" class="code-block tall"></pre>
+        </section>
+      </main>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+</html>

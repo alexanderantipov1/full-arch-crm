@@ -1,0 +1,13 @@
+R3 verification scout report written. Summary:
+
+**R1 report availability** — `reports/R1.md` and `reports/R2.md` were NOT present when R3 finished. R1 verification is therefore marked pending; Codex must re-run the post-R1 review checklist once R1 lands.
+
+**Alembic chain** — single head reconstructed from file inspection (harness denied `alembic heads`/`check` calls): current head is `e1f2a3b4c5d6` (Q1 — identity.match_candidate). R1's new revision must set `down_revision = "e1f2a3b4c5d6"`; any other parent creates a parallel head and would require a merge migration that the Wave R contract forbids.
+
+**Pre-existing model dirty state** — the `M packages/ingest/models.py` (adding `ix_raw_event_tenant_id`) is Q0/ENG-188 reconciliation, not drift; R1 should keep it as-is.
+
+**Ownership/contract** — R1 / R2 / R3 write scopes are fully disjoint from Q1 and from each other. Only coupling between R1 and Q1 is the Alembic chain dependency and the deferred `hint_id → ingest.normalized_person_hint.id` FK, which must be a NEW additive revision *after* R1, not an edit of Q1.
+
+**Codex review checklist** for the post-R1 block includes: file-diff boundary check against `ownership.md`, migration-shape (down_revision, single new file, `op.f(...)` naming), ORM/schema parity for `alembic check` cleanliness, service hygiene (no `packages.identity.*` imports from ingest, recursive PHI/raw-payload deny-list mirroring Q1), and focused verification commands (`pytest tests/ingest`, `alembic upgrade head` / `downgrade -1` / `upgrade head`, `alembic check`, `git diff --check`, `make verify`, `pytest tests/identity` regression).
+
+No product or migration files were touched; the only file written is `.agents/orchestration/20260517-113000-parallel-startup-wave/reports/R3.md`.

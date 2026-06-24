@@ -1,0 +1,27 @@
+mission: carestack-billing-surface-v1
+linear_anchor: ENG-257
+owner_role: orchestrator
+owner_agent: claude-code
+depends_on: carestack-billing-ingest-v1 (merged fab2c28)
+tasks:
+  - task_id: ENG-257
+    title: "Surface CareStack partial payments — timeline + dashboard"
+    linear_id: ENG-257
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-257/task-g-implement-minimum-carestack-treatmentpayment-dashboard-slice
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - packages/db/alembic/versions/  # new revision only
+      - packages/interaction/models.py
+      - packages/interaction/schemas.py
+      - packages/interaction/service.py
+      - packages/interaction/CLAUDE.md
+      - packages/ingest/carestack_accounting_transaction_service.py
+      - packages/ingest/service.py            # payment-summary balances read
+      - apps/api/routers/dashboard.py
+      - apps/web (PM dashboard treatment/payments widget + Zod schema)
+      - tests/
+notes:
+  - "Migration only WIDENS existing interaction.event CHECK constraints — no new schema/domain."
+  - "CareStack stays read-only. No PHI in summaries/logs/dashboard."

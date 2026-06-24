@@ -1,0 +1,34 @@
+mission: current
+mission_alias: eng-306-person-card-financials-v1
+linear_anchor: ENG-306
+owner_role: orchestrator
+owner_agent: claude-code
+tasks:
+  - task_id: ENG-306
+    title: "Person-card financial summary + Payments badge from authoritative payment-summary"
+    linear_id: ENG-306
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-306/person-card-financial-summary-payments-badge-from-authoritative
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - apps/web/app/(staff)/people/                          # or wherever the patient detail route lives — confirmed by pre-flight
+      - apps/web/app/(staff)/project-manager/payments/
+      - apps/web/components/                                  # any new shared FinancialSummary component lands here
+      - apps/web/lib/                                          # any Zod schema + fetcher updates
+      - apps/web/tests/                                        # vitest additions
+      - apps/api/routers/                                      # only if per-patient API endpoint needed
+      - packages/ingest/                                       # only if new repository method needed
+      - tests/api/                                             # if API route added
+      - tests/ingest/                                          # if repository method added
+notes:
+  - "Frontend-first ticket. Backend change is conditional: only if the
+    existing LatestPaymentSummaryBalancesOut aggregate is tenant-wide only.
+    Pre-flight will tell us."
+  - "Data path already landed in ENG-305 (merged 50da948). UI consumes raw_event
+    rows of type carestack.payment_summary.snapshot via the existing aggregate
+    or its per-patient variant."
+  - "No real CareStack calls. ENG-307 (backlog) is the gate for the real
+    backfill run. UI must gracefully handle empty state."
+  - "Do NOT touch apps/web/lib/msw/handlers.ts — unrelated WIP from another
+    stream."

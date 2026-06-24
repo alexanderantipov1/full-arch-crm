@@ -1,0 +1,69 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+!.env.production.template
+secrets/
+*.pem
+*.key
+
+# Imported Replit project export (separate codebase; carries its own live
+# secrets — never commit it into this repo).
+DataBase_Fusion/
+
+# Per-user agent configs (Claude Code / Codex / etc.)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.codex/settings.local.json
+.codex/settings.local.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Build / dist
+dist/
+build/
+
+# Backups
+backups/
+*.dump
+*.sql.gz
+
+# Docker
+*.pid
+.claude/worktrees/
+
+# Orchestrator runtime telemetry (M-1 / ENG-224).
+# These files live under FUSION_AGENT_RUNTIME_HOME or
+# ~/.fusion-agent-orchestrator/<repo-hash>/<mission-id>/, not in repo.
+# .gitignore here is defense-in-depth — paths.py is the primary layer.
+.agents/orchestration/*/runtime.json
+.agents/orchestration/*/runlog.md
+.agents/orchestration/*/board.md
+.agents/orchestration/*/linear-sync.md
+.agents/orchestration/*/prompts/
+.agents/orchestration/*/logs/
+
+# Historical snapshots under archived/ stay committed as the source of
+# truth for past missions — re-include them despite the wildcard above.
+!.agents/orchestration/archived/**/runtime.json
+!.agents/orchestration/archived/**/runlog.md
+!.agents/orchestration/archived/**/board.md
+!.agents/orchestration/archived/**/linear-sync.md
+!.agents/orchestration/archived/**/prompts/
+!.agents/orchestration/archived/**/logs/

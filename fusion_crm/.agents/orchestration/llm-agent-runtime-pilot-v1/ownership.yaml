@@ -1,0 +1,37 @@
+mission_id: llm-agent-runtime-pilot-v1
+linear_parent: ENG-354
+owner: orchestrator
+status: active
+tasks:
+  ENG-355:
+    title: LLM-01 Mission Setup And Linear Sync
+    owner: orchestrator
+    status: completed
+  ENG-356:
+    title: LLM-02 OpenAI Gateway And Prompt Contract V1
+    owner: worker
+    status: in_review
+  ENG-357:
+    title: LLM-03 Approved Tool Planning And Policy Gate V1
+    owner: worker
+    status: in_review
+  ENG-358:
+    title: LLM-04 Agent Run Execution API V1
+    owner: worker
+    status: in_review
+  ENG-359:
+    title: LLM-05 Dev LLM Chat Workbench V1
+    owner: worker
+    status: next
+  ENG-360:
+    title: LLM-06 Evaluation, Audit, And Safety Tests V1
+    owner: worker
+    status: todo
+  ENG-361:
+    title: LLM-07 Documentation, Production Smoke, And Closure
+    owner: worker
+    status: in_review
+  ENG-362:
+    title: LLM-08 Approved Analytics Tool Execution V1
+    owner: worker
+    status: in_review

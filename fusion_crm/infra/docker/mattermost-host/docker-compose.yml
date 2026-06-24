@@ -1,0 +1,126 @@
+# Production Mattermost compose for the dedicated GCE host (ENG-494 / Block I).
+# Runs ON the VM at /opt/mattermost/. Ports this stack to prod from the LOCAL
+# `chat`-profile services in infra/docker/docker-compose.yml, with three prod
+# differences:
+#   1. Postgres is a SEPARATE managed Cloud SQL instance (fusion-mm-pg), reached
+#      over its PRIVATE IP directly — the VM lives in fusion-vpc, which is peered
+#      to the Cloud SQL servicenetworking range, so no cloud-sql-proxy sidecar is
+#      needed (simpler; one fewer moving part). See README "Design decisions".
+#   2. File store is GCS via the S3-compatible endpoint, NOT a local volume.
+#   3. Caddy terminates TLS for chat.fusioncrm.app (automatic Let's Encrypt).
+#
+# ✅ ENG-501 (PHI/BAA go/no-go) = GO (operator decision 2026-06-17). This host
+#    carries real patient name + phone (ENG-460) → it is a PHI system. Keep the
+#    cost + PHI caution; logs stay PHI-free.
+#
+# Secrets: this file references ${VARS} ONLY. Values come from an env file on the
+# VM (/opt/mattermost/mattermost.env, chmod 600, NEVER committed). See
+# mattermost.env.example. The MM bot token / webhook secret are NOT here — they
+# live in tenant.integration_credential (ENG-496), resolved by the platform.
+#
+# Run on the VM:
+#   docker compose -f docker-compose.yml --env-file mattermost.env up -d
+
+name: fusion-mm-prod
+
+services:
+  # --- Mattermost server (official image, pinned 10.5 — same tag as local) ------
+  mattermost:
+    image: mattermost/mattermost-team-edition:10.5
+    # NOTE: no `platform: linux/amd64` and no Rosetta — the GCE VM is amd64 native.
+    restart: unless-stopped
+    environment:
+      # --- Database: dedicated managed Cloud SQL via its PRIVATE IP --------------
+      # MM_DB_HOST is the fusion-mm-pg PRIVATE IP (printed by
+      # provision_mattermost_cloudsql.sh). sslmode=require: Cloud SQL is
+      # configured --require-ssl; the connection rides the private fusion-vpc path.
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: >-
+        postgres://${MM_DB_USER:-mmuser}:${MM_DB_PASSWORD}@${MM_DB_HOST}:5432/${MM_DB_NAME:-mattermost}?sslmode=require&connect_timeout=10
+
+      # --- Public site URL (https, real host — DEPLOYMENT_RULES §4: no localhost) -
+      MM_SERVICESETTINGS_SITEURL: ${MM_SITE_URL:-https://chat.fusioncrm.app}
+
+      # --- Capabilities our integration relies on --------------------------------
+      MM_SERVICESETTINGS_ENABLEBOTACCOUNTCREATION: "true"
+      MM_SERVICESETTINGS_ENABLEINCOMINGWEBHOOKS: "true"
+      MM_SERVICESETTINGS_ENABLEOUTGOINGWEBHOOKS: "true"
+      MM_SERVICESETTINGS_ENABLECOMMANDS: "true"
+      MM_SERVICESETTINGS_ENABLEPOSTUSERNAMEOVERRIDE: "true"
+      MM_SERVICESETTINGS_ENABLEPOSTICONOVERRIDE: "true"
+
+      # --- Outgoing-webhook target allowlist -------------------------------------
+      # PROD uses the PUBLIC API host (not host.docker.internal). The outgoing
+      # webhook + action_callback_base point at the Fusion API public host so
+      # Mattermost can call /integrations/chat/mattermost/webhook back.
+      MM_SERVICESETTINGS_ALLOWEDUNTRUSTEDINTERNALCONNECTIONS: ${MM_ALLOWED_INTERNAL:-fusioncrm.app}
+
+      # --- File store: GCS via S3-compatible endpoint ----------------------------
+      # GCS exposes an S3-compatible API at storage.googleapis.com authenticated
+      # with HMAC interoperability keys. MM's S3 driver does NOT use the VM's
+      # attached SA for object auth, so HMAC keys are required (see README
+      # "Design decisions" / smoke step). Keys come from Secret Manager via the
+      # env file. If you instead choose the local-disk filestore fallback, set
+      # MM_FILESETTINGS_DRIVERNAME=local + a persistent disk and back up to GCS.
+      MM_FILESETTINGS_DRIVERNAME: ${MM_FILESTORE_DRIVER:-amazons3}
+      MM_FILESETTINGS_AMAZONS3BUCKET: ${MM_GCS_BUCKET:-fusion-crm-mattermost}
+      MM_FILESETTINGS_AMAZONS3ENDPOINT: ${MM_GCS_ENDPOINT:-storage.googleapis.com}
+      MM_FILESETTINGS_AMAZONS3SSL: "true"
+      MM_FILESETTINGS_AMAZONS3REGION: ${MM_GCS_REGION:-us-west1}
+      MM_FILESETTINGS_AMAZONS3ACCESSKEYID: ${MM_GCS_HMAC_ACCESS_KEY}
+      MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY: ${MM_GCS_HMAC_SECRET_KEY}
+
+      # --- Locale: keep ENGLISH (non-English locale disables MM's own indexes) ---
+      MM_LOCALIZATIONSETTINGS_DEFAULTSERVERLOCALE: en
+      MM_LOCALIZATIONSETTINGS_DEFAULTCLIENTLOCALE: en
+    expose:
+      - "8065"   # internal only — Caddy fronts it; no host port published
+    volumes:
+      # MM config + logs + plugins persist on the VM disk. Message data lives in
+      # Cloud SQL; attachments live in GCS — neither is on this volume.
+      - mmconfig:/mattermost/config
+      - mmlogs:/mattermost/logs
+      - mmplugins:/mattermost/plugins
+      - mmclientplugins:/mattermost/client/plugins
+      - mmbleve:/mattermost/bleve-indexes
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8065/api/v4/system/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # --- Caddy reverse proxy: TLS termination for chat.fusioncrm.app --------------
+  # Automatic Let's Encrypt cert + auto-renew. Proxies websockets transparently.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      mattermost:
+        condition: service_started
+    ports:
+      - "443:443"          # public HTTPS (the only published TCP port)
+      - "443:443/udp"      # HTTP/3 (QUIC) — optional but free with Caddy
+      # - "80:80"          # uncomment ONLY if ACME HTTP-01 is needed instead of
+      #                    # TLS-ALPN-01 (and run provision_mattermost_host.sh
+      #                    # with OPEN_HTTP80=1 to open the matching firewall rule).
+    environment:
+      MM_SITE_DOMAIN: ${MM_SITE_DOMAIN:-chat.fusioncrm.app}
+      ACME_EMAIL: ${ACME_EMAIL:-eduard@drantipov.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data        # persisted certs (survive restarts → no re-issue storms)
+      - caddyconfig:/config
+
+volumes:
+  mmconfig:
+  mmlogs:
+  mmplugins:
+  mmclientplugins:
+  mmbleve:
+  caddydata:
+  caddyconfig:
+
+networks:
+  default:
+    name: fusion-mm-prod

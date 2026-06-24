@@ -1,0 +1,25 @@
+mission_id: dashboard-auto-track
+linear_issue_id: ENG-223
+linear_issue_url: https://linear.app/fusion-dental-implants/issue/ENG-223/dashboard-auto-track-active-mission-resolve-mission-per-snapshot
+
+owners:
+  orchestrator: claude-code
+  worker: pending
+  verifier: claude-code
+  integrator: pending-human
+
+scope_allow:
+  - .agents/dashboard/
+  - .agents/skills/agent-orchestrator/tests/
+  - .agents/orchestration/dashboard-auto-track/
+
+scope_deny:
+  - apps/
+  - packages/
+  - infra/
+  - .env*
+  - .claude/
+  - docs/
+
+risk: low
+contains_phi: false

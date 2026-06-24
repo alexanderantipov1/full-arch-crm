@@ -1,0 +1,31 @@
+mission: current
+mission_alias: eng-310-person-card-household-links-v1
+linear_anchor: ENG-310
+owner_role: orchestrator
+owner_agent: claude-code
+tasks:
+  - task_id: ENG-310
+    title: "Patient details panel + per-pid names + household links"
+    linear_id: ENG-310
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-310/patient-details-panel-surface-phi-fields-dob-phones-email-address-per
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - packages/ingest/repository.py
+      - packages/ingest/schemas.py
+      - packages/ingest/service.py
+      - apps/api/routers/persons.py
+      - apps/web/app/(staff)/persons/[uid]/page.tsx
+      - apps/web/lib/api/schemas/person.ts
+      - apps/web/lib/msw/fixtures/persons.ts
+      - apps/web/tests/unit/
+      - tests/ingest/
+      - tests/api/test_person_detail.py
+notes:
+  - "Household key = normalized phone/email ONLY. accountId is a clinic
+    default on 55K pids — FORBIDDEN. Resolve via raw_event payload, NOT
+    PersonIdentifier (unique constraint hides siblings post-split)."
+  - "Links are navigational only — no financial/consultation merge."
+  - "Reuse ENG-308 CarestackOriginRowOut + the ? tooltip from 0d44247."
+  - "Do NOT touch apps/web/lib/msw/handlers.ts."

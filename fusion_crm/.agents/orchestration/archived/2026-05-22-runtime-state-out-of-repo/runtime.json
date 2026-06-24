@@ -1,0 +1,52 @@
+{
+  "mission_id": "runtime-state-out-of-repo",
+  "updated_at": "2026-05-22T03:02:00Z",
+  "handoffs": [
+    {
+      "id": "handoff-eng224-001",
+      "created_at": "2026-05-22T02:56:00Z",
+      "task_id": "MISSION-OPEN",
+      "linear_issue_id": "ENG-224",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1",
+      "from_role": "strategy",
+      "from_agent": "codex",
+      "to_role": "orchestrator",
+      "to_agent": "claude-code",
+      "reason": "Strategy candidate 'Move Session Runtime State Out Of The Repository' accepted by orchestrator. ENG-224 created from the resolved-decisions handoff. M-2 (worktrees) and M-3 (process supervision) remain blocked-by this mission.",
+      "status": "completed"
+    },
+    {
+      "id": "handoff-eng224-002",
+      "created_at": "2026-05-22T03:02:00Z",
+      "task_id": "TASK-A",
+      "linear_issue_id": "ENG-224",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1",
+      "from_role": "orchestrator",
+      "from_agent": "claude-code",
+      "to_role": "worker",
+      "to_agent": "claude-code",
+      "reason": "Doctor approved self-execute via /orchestrator. Worker takes over Tasks A-G in sequence. Pre-flight clean: branch eduardk/eng-224-runtime-state-out-of-repo did not exist locally or on remote.",
+      "status": "accepted"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "worker-eng224-001",
+      "role": "worker",
+      "agent": "claude-code",
+      "task_id": "TASK-A",
+      "linear_issue_id": "ENG-224",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1",
+      "linear_status": "In Progress",
+      "linear_title": "Move orchestrator session runtime state out of the repository (M-1)",
+      "status": "running",
+      "phase": "task-a-paths-helper",
+      "worktree": ".",
+      "branch": "eduardk/eng-224-runtime-state-out-of-repo",
+      "last_activity": "2026-05-22T03:02:00Z",
+      "needs_human": false,
+      "risk": "medium",
+      "current_note": "Worker started on Tasks A-G. paths.py + unit test next."
+    }
+  ]
+}
