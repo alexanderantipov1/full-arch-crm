@@ -13,6 +13,7 @@ import type {
   SimPatient,
   SimScenario,
 } from "./types";
+import { getKBScoreBonus } from "./knowledge-base";
 
 interface OutcomeBand {
   min: number; // inclusive lower score bound
@@ -101,6 +102,10 @@ abstract class BaseAgent {
     // Insurance friction lowers the odds of a clean conversion.
     if (patient.insuranceType === "none") score -= 6;
     else if (patient.insuranceType === "medicaid") score -= 3;
+
+    // Learned rules from approved hypotheses feed back into scoring so the
+    // knowledge base measurably improves outcomes for affected scenarios.
+    score += getKBScoreBonus(patient.scenario);
 
     return Math.max(0, Math.min(100, Math.round(score)));
   }

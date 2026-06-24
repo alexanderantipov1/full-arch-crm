@@ -25,6 +25,8 @@ import {
   Lightbulb,
   DollarSign,
   Activity,
+  BookOpen,
+  Trash2,
 } from "lucide-react";
 
 interface SimPatient {
@@ -74,6 +76,23 @@ interface SimEvolution {
   implementedAt: string;
 }
 
+interface KBRule {
+  id: string;
+  title: string;
+  rule: string;
+  affectedScenarios: string[];
+  confidence: number;
+  appliedAt: string;
+  sourceHypothesisId: string;
+  scoreImpact: number;
+}
+
+interface KnowledgeBase {
+  version: number;
+  rules: KBRule[];
+  lastUpdatedAt: string | null;
+}
+
 interface SimState {
   runCount: number;
   totalEpisodes: number;
@@ -89,6 +108,7 @@ interface SimState {
 }
 
 const STATE_KEY = ["/api/simulation/state"];
+const KB_KEY = ["/api/simulation/knowledge-base"];
 
 function scoreColor(score: number): string {
   if (score > 70) return "text-green-600 dark:text-green-400";
@@ -128,8 +148,13 @@ export default function SimulationPage() {
       query.state.data?.isRunning ? 5000 : false,
   });
 
+  const { data: kb } = useQuery<KnowledgeBase>({ queryKey: KB_KEY });
+
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: STATE_KEY });
+
+  const invalidateKB = () =>
+    queryClient.invalidateQueries({ queryKey: KB_KEY });
 
   const runMutation = useMutation({
     mutationFn: async () => {
@@ -173,7 +198,22 @@ export default function SimulationPage() {
       );
       return res.json();
     },
-    onSuccess: (data: SimState) => queryClient.setQueryData(STATE_KEY, data),
+    onSuccess: (data: SimState) => {
+      queryClient.setQueryData(STATE_KEY, data);
+      // Approving a hypothesis adds a knowledge-base rule.
+      invalidateKB();
+    },
+  });
+
+  const deleteRuleMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest(
+        "DELETE",
+        `/api/simulation/knowledge-base/${id}`,
+      );
+      return res.json();
+    },
+    onSuccess: () => invalidateKB(),
   });
 
   const patientName = (id: string) =>
@@ -182,6 +222,12 @@ export default function SimulationPage() {
   const avg = state?.avgScore ?? 0;
   const pendingHypotheses =
     state?.hypotheses.filter((h) => h.status === "pending") ?? [];
+
+  const kbRules = kb?.rules ?? [];
+  const avgConfidence =
+    kbRules.length > 0
+      ? kbRules.reduce((acc, r) => acc + r.confidence, 0) / kbRules.length
+      : 0;
 
   const kpis = [
     { label: "Total Runs", value: state?.runCount ?? 0, icon: Repeat },
@@ -502,6 +548,131 @@ export default function SimulationPage() {
         ) : (
           <p className="text-sm text-muted-foreground">
             No evolutions yet. Approve a hypothesis to record one.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <div className="mb-3 flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Knowledge Base</h2>
+        </div>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Rules are automatically added when you approve hypotheses and persist
+          across server restarts.
+        </p>
+
+        <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Rules
+              </CardTitle>
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold" data-testid="kb-total-rules">
+                {kbRules.length}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Avg Confidence
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {kbRules.length > 0 ? `${Math.round(avgConfidence * 100)}%` : "—"}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Last Updated
+              </CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm font-medium">
+                {kb?.lastUpdatedAt
+                  ? new Date(kb.lastUpdatedAt).toLocaleDateString()
+                  : "—"}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {kbRules.length > 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Scenarios</TableHead>
+                    <TableHead className="text-right">Confidence</TableHead>
+                    <TableHead className="text-right">Score Impact</TableHead>
+                    <TableHead>Applied</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {kbRules.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="max-w-[260px]">
+                        <div className="font-medium">{r.title}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {r.rule}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {r.affectedScenarios.length > 0 ? (
+                            r.affectedScenarios.map((s) => (
+                              <Badge key={s} variant="outline">
+                                {s.replace(/_/g, " ")}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              all
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {Math.round(r.confidence * 100)}%
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-green-600 dark:text-green-400">
+                        +{r.scoreImpact.toFixed(1)} pts
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(r.appliedAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => deleteRuleMutation.mutate(r.id)}
+                          disabled={deleteRuleMutation.isPending}
+                          data-testid={`button-delete-rule-${r.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No rules yet. Approve a hypothesis to add a persistent rule.
           </p>
         )}
       </div>

@@ -3,6 +3,7 @@
 
 import { Router } from "express";
 import { simulationEngine } from "./engine";
+import { getKB, deleteRule } from "./knowledge-base";
 
 export const simulationRouter = Router();
 
@@ -43,6 +44,20 @@ simulationRouter.post("/api/simulation/reject/:id", (req, res) => {
 
 simulationRouter.post("/api/simulation/reset", (_req, res) => {
   res.json(simulationEngine.resetState());
+});
+
+// Persistent knowledge base of approved-hypothesis rules.
+simulationRouter.get("/api/simulation/knowledge-base", (_req, res) => {
+  res.json(getKB());
+});
+
+simulationRouter.delete("/api/simulation/knowledge-base/:id", (req, res) => {
+  const deleted = deleteRule(req.params.id);
+  if (deleted) {
+    res.json({ deleted: true });
+  } else {
+    res.status(404).json({ error: "Rule not found" });
+  }
 });
 
 // Export the full state as a downloadable JSON file.

@@ -13,6 +13,7 @@ import {
   generateHypotheses,
   scoreRun,
 } from "./learning";
+import { addRule } from "./knowledge-base";
 import type { SimEpisode, SimState } from "./types";
 
 const STATE_PATH = path.join(import.meta.dirname, "state.json");
@@ -112,6 +113,10 @@ export class SimulationEngine {
     const evolution = applyEvolution(hypothesis, baselineScore, newScore);
     this.state.evolutions.push(evolution);
     this.state.avgScore = newScore;
+
+    // Persist the approved hypothesis as a durable knowledge-base rule so it
+    // survives restarts and keeps influencing agents in future runs.
+    addRule(hypothesis, evolution.newScore - evolution.baselineScore);
 
     this.saveState();
     return this.state;
