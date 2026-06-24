@@ -10,6 +10,7 @@ import {
   paymentLimiter,
 } from "./middleware/rate-limit";
 import { registerMcpRoutes } from "./mcp/route";
+import { simulationRouter } from "./simulation/routes";
 import { generateMcpApiKey, sanitizeMcpApiKey } from "./mcp/keys";
 import { isAdmin } from "./middleware/admin";
 import { phiService, PhiAccessDeniedError } from "./services/phi";
@@ -118,6 +119,9 @@ export async function registerRoutes(
   app.use("/api/payments/create-intent", paymentLimiter);
   app.use("/api/payments/confirm", paymentLimiter);
   app.use("/api", generalApiLimiter);
+
+  // Simulation + self-improvement API (synthetic data only, no PHI).
+  app.use(simulationRouter);
 
   // Register chat routes for AI
   registerChatRoutes(app);

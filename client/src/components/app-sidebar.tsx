@@ -145,6 +145,7 @@ const billingItems = [
 
 const aiToolsItems = [
   { title: "AI Command Center", url: "/ai-hub", icon: Sparkles },
+  { title: "AI Simulation", url: "/simulation", icon: Brain },
 ];
 
 const growthItems = [
