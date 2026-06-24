@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import NotFound from "@/pages/not-found";
 import SimulationPage from "@/pages/simulation";
+import DSOSimulatorPage from "@/pages/dso-simulator";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import PatientsPage from "@/pages/patients";
@@ -262,6 +263,7 @@ function Router() {
         <Route path="/messages" component={MessagesPage} />
         <Route path="/union-flow" component={UnionFlowPage} />
         <Route path="/simulation" component={SimulationPage} />
+        <Route path="/dso-simulator" component={DSOSimulatorPage} />
         <Route component={NotFound} />
       </Switch>
     </AuthenticatedLayout>

@@ -63,6 +63,7 @@ import {
   Bell,
   Key,
   GitBranch,
+  Network,
 } from "lucide-react";
 import {
   Sidebar,
@@ -146,6 +147,7 @@ const billingItems = [
 const aiToolsItems = [
   { title: "AI Command Center", url: "/ai-hub", icon: Sparkles },
   { title: "AI Simulation", url: "/simulation", icon: Brain },
+  { title: "DSO Simulator", url: "/dso-simulator", icon: Network },
 ];
 
 const growthItems = [

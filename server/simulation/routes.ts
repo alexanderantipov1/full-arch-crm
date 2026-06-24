@@ -3,8 +3,45 @@
 
 import { Router } from "express";
 import { simulationEngine } from "./engine";
+import { dsoSimulator, type PracticeArchetype } from "./dso-simulator";
 
 export const simulationRouter = Router();
+
+// Run a single practice-archetype location through all simulation agents.
+simulationRouter.post("/api/simulation/dso/run-location", async (req, res) => {
+  try {
+    const archetype = (req.body?.archetype ?? "dso_satellite") as PracticeArchetype;
+    const patientCount = Number(req.body?.patientCount) || 15;
+    const result = await dsoSimulator.runLocation(archetype, patientCount);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message ?? err) });
+  }
+});
+
+// Run the full multi-location network and roll up expansion recommendations.
+simulationRouter.post("/api/simulation/dso/run-network", async (req, res) => {
+  try {
+    const archetypes = req.body?.archetypes as PracticeArchetype[] | undefined;
+    const patientCount = Number(req.body?.patientCount) || 15;
+    const result = await dsoSimulator.runNetwork(archetypes, patientCount);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message ?? err) });
+  }
+});
+
+simulationRouter.get("/api/simulation/dso/archetypes", (_req, res) => {
+  res.json({
+    archetypes: [
+      "solo_gp",
+      "implant_specialist",
+      "dso_satellite",
+      "multi_specialty",
+      "startup_location",
+    ],
+  });
+});
 
 // Kick off a single synchronous batch and return the resulting state.
 simulationRouter.post("/api/simulation/run", async (req, res) => {
