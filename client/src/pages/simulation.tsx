@@ -5,7 +5,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Table,
   TableBody,
@@ -33,6 +47,10 @@ import {
   ArrowUp,
   ArrowRight,
   ArrowDown,
+  Beaker,
+  Trophy,
+  CheckCircle2,
+  ChevronDown,
 } from "lucide-react";
 
 interface SimPatient {
@@ -132,8 +150,74 @@ interface HealthReport {
   aiAnalysis: string;
 }
 
+interface AgentVariant {
+  id: string;
+  name: string;
+  baseAgent: string;
+  promptAddition: string;
+  description: string;
+}
+
+interface ABTestConfig {
+  id: string;
+  name: string;
+  baseAgentName: string;
+  variantA: AgentVariant;
+  variantB: AgentVariant;
+  patientCount: number;
+  status: "pending" | "running" | "complete" | "error";
+  createdAt: string;
+  error?: string;
+}
+
+interface ABTestResult {
+  testId: string;
+  variantAAvgScore: number;
+  variantBAvgScore: number;
+  variantAConversionRate: number;
+  variantBConversionRate: number;
+  variantAEpisodeCount: number;
+  variantBEpisodeCount: number;
+  winner: "A" | "B" | "tie";
+  improvement: number;
+  confidence: "low" | "medium" | "high";
+  recommendation: string;
+  completedAt: string;
+}
+
+interface ABSuiteResponse {
+  tests: ABTestConfig[];
+  results: Record<string, ABTestResult>;
+  promotedVariants: AgentVariant[];
+}
+
 const STATE_KEY = ["/api/simulation/state"];
 const CYCLES_KEY = ["/api/simulation/orchestrate/cycles"];
+const AB_SUITE_KEY = ["/api/simulation/ab/suite"];
+
+const AB_AGENT_OPTIONS = [
+  "PatientAcquisitionAgent",
+  "ClinicalDecisionAgent",
+  "RevenueOptimizationAgent",
+  "RecallRecoveryAgent",
+  "DSOScalingAgent",
+  "ComplianceAgent",
+];
+
+const WINNER_VARIANTS: Record<
+  ABTestResult["winner"],
+  "default" | "secondary" | "outline"
+> = {
+  A: "default",
+  B: "default",
+  tie: "secondary",
+};
+
+const WINNER_COLOR: Record<ABTestResult["winner"], string> = {
+  A: "text-blue-600 dark:text-blue-400",
+  B: "text-green-600 dark:text-green-400",
+  tie: "text-muted-foreground",
+};
 
 const NEXT_ACTION_VARIANTS: Record<
   OrchestrationCycle["nextAction"],
@@ -319,6 +403,49 @@ export default function SimulationPage() {
     },
     onSuccess: (data: HealthReport) => setHealth(data),
   });
+
+  // --- A/B testing state ---
+  const [abAgent, setAbAgent] = useState(AB_AGENT_OPTIONS[0]);
+  const [abName, setAbName] = useState("");
+  const [abDescription, setAbDescription] = useState("");
+  const [abPromptAddition, setAbPromptAddition] = useState("");
+  const [abPatientCount, setAbPatientCount] = useState(20);
+  const [promotedOpen, setPromotedOpen] = useState(false);
+
+  const { data: abSuite } = useQuery<ABSuiteResponse>({
+    queryKey: AB_SUITE_KEY,
+  });
+
+  const invalidateAbSuite = () =>
+    queryClient.invalidateQueries({ queryKey: AB_SUITE_KEY });
+
+  const createAndRunAbTest = useMutation({
+    mutationFn: async () => {
+      const createRes = await apiRequest("POST", "/api/simulation/ab/create", {
+        name: abName || `${abAgent} test`,
+        baseAgentName: abAgent,
+        variantBDescription: abDescription,
+        variantBPromptAddition: abPromptAddition,
+        patientCount: abPatientCount,
+      });
+      const test: ABTestConfig = await createRes.json();
+      const runRes = await apiRequest(
+        "POST",
+        `/api/simulation/ab/run/${test.id}`,
+      );
+      return runRes.json();
+    },
+    onSuccess: () => {
+      setAbName("");
+      setAbDescription("");
+      setAbPromptAddition("");
+      invalidateAbSuite();
+    },
+  });
+
+  const abTests = abSuite?.tests ?? [];
+  const abResults = abSuite?.results ?? {};
+  const promotedVariants = abSuite?.promotedVariants ?? [];
 
   const patientName = (id: string) =>
     state?.patients.find((p) => p.id === id)?.name ?? "—";
@@ -966,6 +1093,239 @@ export default function SimulationPage() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Beaker className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">A/B Agent Testing</h2>
+        </div>
+
+        {/* New A/B test form */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">New A/B Test</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">Agent</Label>
+                <Select value={abAgent} onValueChange={setAbAgent}>
+                  <SelectTrigger data-testid="select-ab-agent">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AB_AGENT_OPTIONS.map((a) => (
+                      <SelectItem key={a} value={a}>
+                        {a}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">
+                  Test name
+                </Label>
+                <Input
+                  value={abName}
+                  onChange={(e) => setAbName(e.target.value)}
+                  placeholder="e.g. Urgency tone experiment"
+                  data-testid="input-ab-name"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm text-muted-foreground">
+                What change are you testing?
+              </Label>
+              <Input
+                value={abDescription}
+                onChange={(e) => setAbDescription(e.target.value)}
+                placeholder="Description of variant B"
+                data-testid="input-ab-description"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm text-muted-foreground">
+                Additional instruction for Variant B
+              </Label>
+              <Textarea
+                rows={4}
+                value={abPromptAddition}
+                onChange={(e) => setAbPromptAddition(e.target.value)}
+                placeholder="Extra prompt suffix injected into the agent for variant B…"
+                data-testid="textarea-ab-prompt"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">
+                  Patient count
+                </Label>
+                <Input
+                  type="number"
+                  min={5}
+                  value={abPatientCount}
+                  onChange={(e) => setAbPatientCount(Number(e.target.value))}
+                  data-testid="input-ab-patient-count"
+                />
+              </div>
+            </div>
+            <Button
+              onClick={() => createAndRunAbTest.mutate()}
+              disabled={
+                createAndRunAbTest.isPending || !abPromptAddition.trim()
+              }
+              data-testid="button-create-ab-test"
+            >
+              <Play className="mr-2 h-4 w-4" />
+              {createAndRunAbTest.isPending ? "Running…" : "Create & Run Test"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Test results */}
+        {abTests.length > 0 ? (
+          <div className="space-y-3">
+            {abTests.map((test) => {
+              const result = abResults[test.id];
+              if (!result) return null;
+              const autoPromoted =
+                result.winner === "B" && result.confidence === "high";
+              return (
+                <Card key={test.id} data-testid={`card-ab-${test.id}`}>
+                  <CardHeader className="pb-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <CardTitle className="text-base">
+                          {test.name}
+                        </CardTitle>
+                        <p className="text-xs text-muted-foreground">
+                          {test.baseAgentName}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={WINNER_VARIANTS[result.winner]}>
+                          <span className={WINNER_COLOR[result.winner]}>
+                            {result.winner === "tie"
+                              ? "Tie"
+                              : `Winner: ${result.winner}`}
+                          </span>
+                        </Badge>
+                        <Badge
+                          variant={
+                            CONFIDENCE_VARIANTS[result.confidence] ?? "outline"
+                          }
+                        >
+                          {result.confidence}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-md border p-3">
+                        <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                          Variant A (control)
+                        </p>
+                        <div className="mt-1 flex items-baseline justify-between text-sm">
+                          <span className="text-muted-foreground">Score</span>
+                          <span
+                            className={`font-medium ${scoreColor(
+                              result.variantAAvgScore,
+                            )}`}
+                          >
+                            {result.variantAAvgScore.toFixed(1)}
+                          </span>
+                        </div>
+                        <div className="flex items-baseline justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            Conversion
+                          </span>
+                          <span className="font-medium">
+                            {Math.round(result.variantAConversionRate * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="rounded-md border p-3">
+                        <p className="text-xs font-medium text-green-600 dark:text-green-400">
+                          Variant B (challenger)
+                        </p>
+                        <div className="mt-1 flex items-baseline justify-between text-sm">
+                          <span className="text-muted-foreground">Score</span>
+                          <span
+                            className={`font-medium ${scoreColor(
+                              result.variantBAvgScore,
+                            )}`}
+                          >
+                            {result.variantBAvgScore.toFixed(1)}
+                          </span>
+                        </div>
+                        <div className="flex items-baseline justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            Conversion
+                          </span>
+                          <span className="font-medium">
+                            {Math.round(result.variantBConversionRate * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-sm font-bold">{result.recommendation}</p>
+                    {autoPromoted && (
+                      <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Auto-promoted to production
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No A/B tests yet. Create one to compare two prompt variants.
+          </p>
+        )}
+
+        {/* Promoted variants */}
+        <Collapsible open={promotedOpen} onOpenChange={setPromotedOpen}>
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="button-toggle-promoted"
+            >
+              <Trophy className="mr-2 h-4 w-4" />
+              Promoted Variants ({promotedVariants.length})
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3 space-y-2">
+            {promotedVariants.length > 0 ? (
+              promotedVariants.map((v) => (
+                <Card key={v.id}>
+                  <CardContent className="py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">{v.name}</span>
+                      <Badge variant="outline">{v.baseAgent}</Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {v.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No variants promoted yet. A high-confidence Variant B win
+                auto-promotes here.
+              </p>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </div>
   );

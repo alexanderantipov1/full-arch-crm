@@ -258,3 +258,83 @@ export const ALL_AGENTS: BaseAgent[] = [
   new DSOScalingAgent(),
   new ComplianceAgent(),
 ];
+
+// Resolve an agent by name. Accepts both the bare name ("PatientAcquisition")
+// and the "<Name>Agent" form ("PatientAcquisitionAgent") used by callers.
+function resolveAgent(agentName: string): BaseAgent | undefined {
+  const wanted = agentName.replace(/Agent$/, "");
+  return ALL_AGENTS.find((a) => a.agentName === wanted);
+}
+
+// Deterministic, reproducible effect of a prompt addition on an episode.
+// The simulation never calls a real model, so an A/B "prompt suffix" is scored
+// by a pure heuristic instead: instruction keywords that reflect known levers
+// add points, plus a small stable jitter seeded by the prompt + patient so the
+// same (prompt, patient) pair always yields the same delta. An empty addition
+// (the control variant) yields zero delta, leaving the base episode untouched.
+const PROMPT_LEVER_KEYWORDS = [
+  "empathy",
+  "urgency",
+  "financing",
+  "follow up",
+  "follow-up",
+  "value",
+  "benefit",
+  "reassure",
+  "clarity",
+  "personalize",
+  "personalized",
+  "concise",
+];
+
+function promptAdditionDelta(promptAddition: string, patient: SimPatient): number {
+  const text = promptAddition.trim().toLowerCase();
+  if (!text) return 0;
+
+  let delta = 0;
+  for (const kw of PROMPT_LEVER_KEYWORDS) {
+    if (text.includes(kw)) delta += 3;
+  }
+
+  let hash = 0;
+  const seed = `${promptAddition}|${patient.id}`;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  delta += (hash % 9) - 3; // stable jitter in [-3, +5]
+
+  return delta;
+}
+
+// Run a named agent against a patient with an extra instruction appended to its
+// effective prompt. This is the core primitive for A/B testing: variant A
+// passes an empty promptAddition (control) and variant B passes a challenger
+// suffix. Returns a SimEpisode with the same shape as a normal agent run.
+export async function runAgentWithPromptAddition(
+  agentName: string,
+  patient: SimPatient,
+  promptAddition: string,
+): Promise<SimEpisode> {
+  const agent = resolveAgent(agentName);
+  if (!agent) throw new Error(`Unknown agent: ${agentName}`);
+
+  const base = await agent.process(patient);
+
+  const delta = promptAdditionDelta(promptAddition, patient);
+  if (delta === 0) return base;
+
+  const score = Math.max(0, Math.min(100, base.score + delta));
+  const outcome = outcomeForScore(score);
+  const revenueImpact = revenueForOutcome(outcome, patient.treatmentValue);
+  const suffix = promptAddition.trim()
+    ? ` [+prompt: ${promptAddition.trim().slice(0, 60)}]`
+    : "";
+
+  return {
+    ...base,
+    score,
+    outcome,
+    revenueImpact,
+    notes: `${base.notes}${suffix}`,
+  };
+}
