@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json.schemastore.org/mcp.json",
+  "_comment": "Second Brain config — exposes the full-arch-crm Karpathy wiki vault to Claude Code via MCP. On session start Claude calls wiki_context to load the entire system state without any manual summary pasting.",
+
+  "servers": {
+    "full-arch-crm": {
+      "type": "http",
+      "url": "http://localhost:5000/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MCP_API_KEY}",
+        "Content-Type": "application/json"
+      },
+      "description": "full-arch-crm MCP server — Karpathy wiki, clinical tools, agent playbooks, insurance intelligence. HIPAA-compliant ops_safe data only via wiki tools."
+    }
+  },
+
+  "on_session_start": [
+    {
+      "_comment": "Second Brain auto-load: pulls full system context from wiki vault. No session summary needed.",
+      "server": "full-arch-crm",
+      "tool":   "wiki_context",
+      "args":   { "focus": "full", "includeLog": true }
+    }
+  ],
+
+  "tools": {
+    "wiki_context": {
+      "description": "ALWAYS call first. Loads full-arch-crm system state from Karpathy wiki — architecture, agents, active work, recent changes. Replaces manual session summaries.",
+      "alwaysAvailable": true
+    },
+    "wiki_query": {
+      "description": "Ask the wiki any clinical or operational question before making decisions. Grounds responses in accumulated institutional knowledge.",
+      "alwaysAvailable": true
+    },
+    "wiki_ingest": {
+      "description": "Push new learnings, patterns, fixes, or decisions into the wiki for persistence across sessions.",
+      "alwaysAvailable": true
+    },
+    "wiki_lint": {
+      "description": "Weekly maintenance — removes stale entries, resolves contradictions, refreshes KPIs.",
+      "schedule": "0 7 * * 0"
+    }
+  },
+
+  "context_injection": {
+    "system_prompt_prepend": "You are working on full-arch-crm, an AI-native dental PMS SaaS. The system uses the Karpathy wiki pattern — always call wiki_context at session start and wiki_query before any clinical or architectural decision. The wiki is your persistent memory across all sessions. Never re-explain architecture that should be in the wiki — query it instead.",
+    "reminders": [
+      "Call wiki_context if you haven't yet this session",
+      "Call wiki_query before any agent decision or code change",
+      "Call wiki_ingest to preserve any important discovery or fix",
+      "PHI never enters the wiki — ops_safe patterns only"
+    ]
+  }
+}
