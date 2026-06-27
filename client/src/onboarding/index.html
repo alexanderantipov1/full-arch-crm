@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>full-arch-crm · DSO Onboarding</title>
+  <style>
+    /* ── Reset & tokens ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0a0e1a;
+      --surface:     #111827;
+      --surface-2:   #1a2235;
+      --border:      #1f2d45;
+      --accent:      #3b82f6;
+      --accent-hover:#2563eb;
+      --accent-glow: rgba(59,130,246,.25);
+      --success:     #10b981;
+      --danger:      #ef4444;
+      --text:        #f1f5f9;
+      --text-muted:  #94a3b8;
+      --radius:      12px;
+      --radius-sm:   8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 40px 16px 80px;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+    .logo {
+      width: 38px; height: 38px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 18px; color: #fff;
+      letter-spacing: -1px;
+    }
+    .header-title { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
+    .header-sub   { font-size: 13px; color: var(--text-muted); }
+
+    /* ── Progress bar ───────────────────────────────────────────── */
+    .wizard-shell {
+      width: 100%; max-width: 620px;
+    }
+    .progress-bar {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 36px;
+    }
+    .step-pill {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+    .step-pill:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 16px;
+      left: calc(50% + 16px);
+      right: calc(-50% + 16px);
+      height: 2px;
+      background: var(--border);
+      z-index: 0;
+      transition: background .3s;
+    }
+    .step-pill.done:not(:last-child)::after { background: var(--accent); }
+    .step-dot {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--surface-2);
+      border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--text-muted);
+      transition: all .3s;
+      position: relative; z-index: 2;
+    }
+    .step-pill.active .step-dot {
+      background: var(--accent); border-color: var(--accent);
+      color: #fff; box-shadow: 0 0 14px var(--accent-glow);
+    }
+    .step-pill.done .step-dot {
+      background: var(--success); border-color: var(--success); color: #fff;
+    }
+    .step-label {
+      margin-top: 6px; font-size: 11px; color: var(--text-muted);
+      text-align: center; white-space: nowrap;
+      transition: color .3s;
+    }
+    .step-pill.active .step-label { color: var(--accent); font-weight: 600; }
+    .step-pill.done  .step-label  { color: var(--success); }
+
+    /* ── Card ───────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 40px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 22px; font-weight: 700; margin-bottom: 6px;
+    }
+    .card-sub {
+      font-size: 14px; color: var(--text-muted); margin-bottom: 28px; line-height: 1.5;
+    }
+
+    /* ── Form elements ──────────────────────────────────────────── */
+    .field { margin-bottom: 22px; }
+    label  { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text-muted); letter-spacing: .3px; }
+
+    input[type=text], input[type=url], input[type=password], input[type=number], select {
+      width: 100%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+
+    /* Radio group */
+    .radio-group { display: flex; gap: 12px; flex-wrap: wrap; }
+    .radio-card  {
+      flex: 1; min-width: 140px;
+      background: var(--surface-2); border: 2px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+      cursor: pointer; transition: all .2s;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .radio-card:hover { border-color: var(--accent); }
+    .radio-card.selected { border-color: var(--accent); background: rgba(59,130,246,.1); }
+    .radio-card input { display: none; }
+    .radio-dot {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .radio-card.selected .radio-dot {
+      border-color: var(--accent);
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent-glow);
+    }
+    .radio-card.selected .radio-dot::after {
+      content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff;
+    }
+    .radio-text { font-size: 14px; font-weight: 500; }
+
+    /* ── Buttons ────────────────────────────────────────────────── */
+    .btn-row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px; }
+    .btn {
+      padding: 11px 26px; border-radius: var(--radius-sm); font-size: 15px;
+      font-weight: 600; border: none; cursor: pointer; transition: all .2s;
+      letter-spacing: -.1px;
+    }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 14px var(--accent-glow); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-ghost {
+      background: transparent; color: var(--text-muted); border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
+    .btn-success {
+      background: var(--success); color: #fff;
+    }
+    .btn-success:hover { filter: brightness(1.1); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+    /* ── Step panels ────────────────────────────────────────────── */
+    .step-panel { display: none; }
+    .step-panel.active { display: block; }
+
+    /* ── Test connection state ──────────────────────────────────── */
+    .test-box {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 28px 24px;
+      text-align: center; margin-bottom: 24px;
+    }
+    .test-box .icon { font-size: 48px; margin-bottom: 12px; }
+    .test-box .test-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .test-box .test-sub   { font-size: 14px; color: var(--text-muted); }
+
+    /* Spinner */
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Summary card ───────────────────────────────────────────── */
+    .summary-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;
+    }
+    .summary-item {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+    }
+    .summary-item .s-label { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: .4px; text-transform: uppercase; margin-bottom: 4px; }
+    .summary-item .s-value { font-size: 15px; font-weight: 600; }
+    .summary-item.full { grid-column: 1 / -1; }
+    .tenant-id-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 16px;
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;
+      color: var(--accent); margin-bottom: 20px; cursor: pointer;
+    }
+    .tenant-id-row .tid-label { flex: 1; }
+    .tenant-id-row .copy-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 17px; line-height: 1; padding: 2px 6px; border-radius: 4px; transition: color .2s; }
+    .tenant-id-row .copy-btn:hover { color: var(--accent); }
+
+    /* ── Live celebration ───────────────────────────────────────── */
+    .live-box {
+      text-align: center; padding: 12px 0 4px;
+    }
+    .live-badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(16,185,129,.12); border: 1px solid var(--success);
+      color: var(--success); border-radius: 999px; padding: 6px 18px;
+      font-size: 13px; font-weight: 700; letter-spacing: .2px;
+      margin-bottom: 16px;
+    }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.85)} }
+
+    .live-heading { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+    .live-sub     { font-size: 15px; color: var(--text-muted); margin-bottom: 28px; }
+
+    /* ── Dashboard link ─────────────────────────────────────────── */
+    .dash-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      color: var(--accent); font-size: 14px; font-weight: 600;
+      text-decoration: none; padding: 10px 20px;
+      border: 1px solid var(--accent); border-radius: var(--radius-sm);
+      transition: all .2s;
+    }
+    .dash-link:hover { background: var(--accent-glow); }
+
+    /* ── Error message ──────────────────────────────────────────── */
+    .error-msg {
+      background: rgba(239,68,68,.1); border: 1px solid var(--danger);
+      color: var(--danger); border-radius: var(--radius-sm);
+      padding: 10px 14px; font-size: 14px; margin-top: 10px; display: none;
+    }
+
+    /* ── Confetti canvas ────────────────────────────────────────── */
+    #confetti-canvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 9999;
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 520px) {
+      .card { padding: 28px 22px; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .step-pill.active ~ .step-pill .step-label { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">fa</div>
+  <div>
+    <div class="header-title">full-arch-crm</div>
+    <div class="header-sub">DSO Onboarding</div>
+  </div>
+</div>
+
+<!-- Wizard -->
+<div class="wizard-shell">
+
+  <!-- Progress -->
+  <div class="progress-bar" id="progress-bar">
+    <div class="step-pill active" data-step="1">
+      <div class="step-dot">1</div>
+      <div class="step-label">Org Info</div>
+    </div>
+    <div class="step-pill" data-step="2">
+      <div class="step-dot">2</div>
+      <div class="step-label">Database</div>
+    </div>
+    <div class="step-pill" data-step="3">
+      <div class="step-dot">3</div>
+      <div class="step-label">Test</div>
+    </div>
+    <div class="step-pill" data-step="4">
+      <div class="step-dot">4</div>
+      <div class="step-label">Go Live</div>
+    </div>
+  </div>
+
+  <!-- ── Step 1 — Org info ──────────────────────────────────────── -->
+  <div class="step-panel active" id="step-1">
+    <div class="card">
+      <div class="card-title">Organization Info</div>
+      <div class="card-sub">Tell us about your dental organization to get started.</div>
+
+      <div class="field">
+        <label for="orgName">Organization Name</label>
+        <input type="text" id="orgName" placeholder="e.g. Western Dental Partners" autocomplete="organization" />
+        <div class="error-msg" id="err-orgName">Organization name is required.</div>
+      </div>
+
+      <div class="field">
+        <label>Organization Type</label>
+        <div class="radio-group" id="orgType-group">
+          <label class="radio-card selected" data-value="dso">
+            <input type="radio" name="orgType" value="dso" checked />
+            <div class="radio-dot"></div>
+            <div class="radio-text">DSO</div>
+          </label>
+          <label class="radio-card" data-value="group_practice">
+            <input type="radio" name="orgType" value="group_practice" />
+            <div class="radio-dot"></div>
+            <div class="radio-text">Group Practice</div>
+          </label>
+          <label class="radio-card" data-value="single_practice">
+            <input type="radio" name="orgType" value="single_practice" />
+            <div class="radio-dot"></div>
+            <div class="radio-text">Single Practice</div>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="locationCount">Number of Locations</label>
+        <input type="number" id="locationCount" min="1" value="1" placeholder="e.g. 42" />
+        <div class="error-msg" id="err-locationCount">Must be at least 1.</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="s1-next">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 2 — Database connection ──────────────────────────── -->
+  <div class="step-panel" id="step-2">
+    <div class="card">
+      <div class="card-title">Database Connection</div>
+      <div class="card-sub">Select the adapter that matches your practice management system.</div>
+
+      <div class="field">
+        <label for="adapterType">Adapter Type</label>
+        <select id="adapterType">
+          <option value="fusion">Fusion Dental (default)</option>
+          <option value="western_dental">Western Dental</option>
+          <option value="clearchoice">ClearChoice</option>
+          <option value="generic_rest">Generic REST API</option>
+          <option value="mock">Demo Mode</option>
+        </select>
+      </div>
+
+      <div id="generic-fields" style="display:none;">
+        <div class="field">
+          <label for="databaseUrl">Database URL</label>
+          <input type="url" id="databaseUrl" placeholder="https://your-api.example.com/v1" />
+          <div class="error-msg" id="err-databaseUrl">A valid URL is required for Generic REST.</div>
+        </div>
+        <div class="field">
+          <label for="apiKey">API Key</label>
+          <input type="password" id="apiKey" placeholder="sk-…" autocomplete="new-password" />
+        </div>
+      </div>
+
+      <div id="demo-notice" style="display:none; margin-bottom:20px;">
+        <div class="test-box" style="padding:18px 20px; text-align:left;">
+          <div style="font-size:14px; color:var(--text-muted);">
+            <strong style="color:var(--text);">Demo Mode</strong> — No real database required.
+            We'll use sample patient data so you can explore the platform right away.
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="s2-back">← Back</button>
+        <button class="btn btn-primary" id="s2-next">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 3 — Connection test ──────────────────────────────── -->
+  <div class="step-panel" id="step-3">
+    <div class="card">
+      <div class="card-title">Connection Test</div>
+      <div class="card-sub">We're verifying your database connection by fetching a test record.</div>
+
+      <!-- Idle state -->
+      <div class="test-box" id="test-idle">
+        <div class="icon">🔌</div>
+        <div class="test-title">Ready to test</div>
+        <div class="test-sub">Click the button below to verify connectivity.</div>
+      </div>
+
+      <!-- Testing state -->
+      <div class="test-box" id="test-loading" style="display:none;">
+        <div class="spinner"></div>
+        <div class="test-title">Testing connection…</div>
+        <div class="test-sub">This usually takes a few seconds.</div>
+      </div>
+
+      <!-- Success state -->
+      <div class="test-box" id="test-success" style="display:none;">
+        <div class="icon">✅</div>
+        <div class="test-title" style="color:var(--success);">Connected!</div>
+        <div class="test-sub" id="test-success-msg">1 patient record found.</div>
+      </div>
+
+      <!-- Failure state -->
+      <div class="test-box" id="test-fail" style="display:none;">
+        <div class="icon">❌</div>
+        <div class="test-title" style="color:var(--danger);">Connection failed</div>
+        <div class="test-sub" id="test-fail-msg">Please check your credentials and try again.</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="s3-back">← Back</button>
+        <button class="btn btn-primary" id="s3-test">Test Connection</button>
+        <button class="btn btn-primary" id="s3-next" style="display:none;">Continue →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Step 4 — Go live ───────────────────────────────────────── -->
+  <div class="step-panel" id="step-4">
+    <div class="card">
+
+      <!-- Pre-activation view -->
+      <div id="pre-activate">
+        <div class="card-title">Go Live</div>
+        <div class="card-sub">Review your configuration, then activate your tenant to start using full-arch-crm.</div>
+
+        <div class="summary-grid" id="summary-grid">
+          <!-- populated by JS -->
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <div style="font-size:12px; font-weight:600; color:var(--text-muted); letter-spacing:.4px; text-transform:uppercase; margin-bottom:8px;">Tenant ID</div>
+          <div class="tenant-id-row" id="tid-row" title="Click to copy">
+            <span class="tid-label" id="tid-display">—</span>
+            <button class="copy-btn" id="copy-tid" title="Copy to clipboard">⎘</button>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="s4-back">← Back</button>
+          <button class="btn btn-success" id="s4-activate">🚀 Activate Tenant</button>
+        </div>
+        <div class="error-msg" id="err-activate" style="display:none;"></div>
+      </div>
+
+      <!-- Post-activation view -->
+      <div id="post-activate" style="display:none;">
+        <div class="live-box">
+          <div class="live-badge">
+            <div class="live-dot"></div>
+            Live
+          </div>
+          <div class="live-heading">You're live! 🎉</div>
+          <div class="live-sub">Your organization is now connected to full-arch-crm.</div>
+
+          <div style="margin-bottom:8px; font-size:12px; font-weight:600; color:var(--text-muted); letter-spacing:.4px; text-transform:uppercase;">Your Tenant ID</div>
+          <div class="tenant-id-row" id="live-tid-row" title="Click to copy" style="max-width:480px; margin:0 auto 28px;">
+            <span class="tid-label" id="live-tid-display">—</span>
+            <button class="copy-btn" id="live-copy-tid" title="Copy to clipboard">⎘</button>
+          </div>
+
+          <a href="/" class="dash-link">Go to Dashboard →</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div><!-- /wizard-shell -->
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
+  currentStep: 1,
+  orgName: '',
+  orgType: 'dso',
+  locationCount: 1,
+  adapterType: 'fusion',
+  databaseUrl: '',
+  apiKey: '',
+  tenantId: null,
+  testPassed: false,
+};
+
+// ── DOM helpers ───────────────────────────────────────────────────────────────
+const $  = (sel) => document.querySelector(sel);
+const $$ = (sel) => [...document.querySelectorAll(sel)];
+
+function showError(id, show, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = show ? 'block' : 'none';
+  if (msg) el.textContent = msg;
+}
+
+// ── Progress bar ──────────────────────────────────────────────────────────────
+function setStep(n) {
+  // Hide all panels
+  $$('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`step-${n}`).classList.add('active');
+
+  // Update pills
+  $$('.step-pill').forEach(pill => {
+    const s = parseInt(pill.dataset.step, 10);
+    pill.classList.remove('active', 'done');
+    if (s === n) pill.classList.add('active');
+    else if (s < n) {
+      pill.classList.add('done');
+      pill.querySelector('.step-dot').textContent = '✓';
+    } else {
+      pill.querySelector('.step-dot').textContent = s;
+    }
+  });
+
+  state.currentStep = n;
+}
+
+// ── Step 1 ────────────────────────────────────────────────────────────────────
+// Radio cards
+$$('.radio-card').forEach(card => {
+  card.addEventListener('click', () => {
+    $$('.radio-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    card.querySelector('input').checked = true;
+    state.orgType = card.dataset.value;
+  });
+});
+
+$('#s1-next').addEventListener('click', () => {
+  const name = $('#orgName').value.trim();
+  const locs  = parseInt($('#locationCount').value, 10);
+  let ok = true;
+
+  if (!name) { showError('err-orgName', true); ok = false; }
+  else { showError('err-orgName', false); }
+
+  if (!locs || locs < 1) { showError('err-locationCount', true); ok = false; }
+  else { showError('err-locationCount', false); }
+
+  if (!ok) return;
+  state.orgName = name;
+  state.locationCount = locs;
+  setStep(2);
+});
+
+// ── Step 2 ────────────────────────────────────────────────────────────────────
+function onAdapterChange() {
+  const v = $('#adapterType').value;
+  state.adapterType = v;
+  $('#generic-fields').style.display = v === 'generic_rest' ? 'block' : 'none';
+  $('#demo-notice').style.display    = v === 'mock'         ? 'block' : 'none';
+}
+$('#adapterType').addEventListener('change', onAdapterChange);
+
+$('#s2-back').addEventListener('click', () => setStep(1));
+$('#s2-next').addEventListener('click', async () => {
+  const adapter = $('#adapterType').value;
+  state.adapterType = adapter;
+
+  if (adapter === 'generic_rest') {
+    const url = $('#databaseUrl').value.trim();
+    if (!url || !url.startsWith('http')) {
+      showError('err-databaseUrl', true);
+      return;
+    }
+    showError('err-databaseUrl', false);
+    state.databaseUrl = url;
+    state.apiKey = $('#apiKey').value.trim();
+  }
+
+  // Create tenant via API
+  const btn = $('#s2-next');
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
+
+  try {
+    const body = {
+      orgName:       state.orgName,
+      orgType:       state.orgType,
+      adapterType:   state.adapterType,
+      locationCount: state.locationCount,
+    };
+    if (state.adapterType === 'generic_rest') {
+      body.databaseUrl = state.databaseUrl;
+      if (state.apiKey) body.apiKey = state.apiKey;
+    }
+
+    const res  = await fetch('/api/onboarding/tenant', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || 'Failed to create tenant');
+    state.tenantId = data.tenant.tenantId;
+
+    // If demo mode, skip connection test
+    if (state.adapterType === 'mock') {
+      state.testPassed = true;
+      populateSummary();
+      setStep(4);
+    } else {
+      resetTestUI();
+      setStep(3);
+    }
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Continue →';
+  }
+});
+
+// ── Step 3 ────────────────────────────────────────────────────────────────────
+function resetTestUI() {
+  $('#test-idle').style.display    = 'block';
+  $('#test-loading').style.display = 'none';
+  $('#test-success').style.display = 'none';
+  $('#test-fail').style.display    = 'none';
+  $('#s3-test').style.display      = 'inline-flex';
+  $('#s3-next').style.display      = 'none';
+  state.testPassed = false;
+}
+
+$('#s3-back').addEventListener('click', () => { resetTestUI(); setStep(2); });
+
+$('#s3-test').addEventListener('click', async () => {
+  $('#test-idle').style.display    = 'none';
+  $('#test-loading').style.display = 'block';
+  $('#test-success').style.display = 'none';
+  $('#test-fail').style.display    = 'none';
+  $('#s3-test').disabled = true;
+
+  try {
+    const res  = await fetch(`/api/onboarding/tenant/${state.tenantId}/test`, { method: 'POST' });
+    const data = await res.json();
+
+    $('#test-loading').style.display = 'none';
+
+    if (data.success) {
+      $('#test-success').style.display  = 'block';
+      $('#test-success-msg').textContent = data.message || '1 patient record found.';
+      $('#s3-test').style.display       = 'none';
+      $('#s3-next').style.display       = 'inline-flex';
+      state.testPassed = true;
+    } else {
+      $('#test-fail').style.display    = 'block';
+      $('#test-fail-msg').textContent  = data.message || 'Connection failed.';
+      $('#s3-test').disabled = false;
+    }
+  } catch (err) {
+    $('#test-loading').style.display = 'none';
+    $('#test-fail').style.display    = 'block';
+    $('#test-fail-msg').textContent  = 'Network error: ' + err.message;
+    $('#s3-test').disabled = false;
+  }
+});
+
+$('#s3-next').addEventListener('click', () => { populateSummary(); setStep(4); });
+
+// ── Step 4 ────────────────────────────────────────────────────────────────────
+const adapterLabels = {
+  fusion:        'Fusion Dental',
+  western_dental:'Western Dental',
+  clearchoice:   'ClearChoice',
+  generic_rest:  'Generic REST',
+  mock:          'Demo Mode',
+};
+const orgTypeLabels = {
+  dso:             'DSO',
+  group_practice:  'Group Practice',
+  single_practice: 'Single Practice',
+};
+
+function populateSummary() {
+  const grid = $('#summary-grid');
+  grid.innerHTML = `
+    <div class="summary-item">
+      <div class="s-label">Organization</div>
+      <div class="s-value">${escHtml(state.orgName)}</div>
+    </div>
+    <div class="summary-item">
+      <div class="s-label">Type</div>
+      <div class="s-value">${orgTypeLabels[state.orgType] || state.orgType}</div>
+    </div>
+    <div class="summary-item">
+      <div class="s-label">Adapter</div>
+      <div class="s-value">${adapterLabels[state.adapterType] || state.adapterType}</div>
+    </div>
+    <div class="summary-item">
+      <div class="s-label">Locations</div>
+      <div class="s-value">${state.locationCount}</div>
+    </div>
+  `;
+  $('#tid-display').textContent = state.tenantId || '—';
+  $('#live-tid-display').textContent = state.tenantId || '—';
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Copy tenant ID
+function copyTenantId() {
+  if (!state.tenantId) return;
+  navigator.clipboard.writeText(state.tenantId).then(() => {
+    const el = $('#copy-tid');
+    if (el) { el.textContent = '✓'; setTimeout(() => el.textContent = '⎘', 1800); }
+  }).catch(() => {});
+}
+function liveCopyTenantId() {
+  if (!state.tenantId) return;
+  navigator.clipboard.writeText(state.tenantId).then(() => {
+    const el = $('#live-copy-tid');
+    if (el) { el.textContent = '✓'; setTimeout(() => el.textContent = '⎘', 1800); }
+  }).catch(() => {});
+}
+
+$('#copy-tid').addEventListener('click', copyTenantId);
+$('#tid-row').addEventListener('click', (e) => { if (e.target.id !== 'copy-tid') copyTenantId(); });
+$('#live-copy-tid').addEventListener('click', liveCopyTenantId);
+$('#live-tid-row').addEventListener('click', (e) => { if (e.target.id !== 'live-copy-tid') liveCopyTenantId(); });
+
+$('#s4-back').addEventListener('click', () => {
+  if (state.adapterType === 'mock') setStep(2);
+  else setStep(3);
+});
+
+$('#s4-activate').addEventListener('click', async () => {
+  const btn = $('#s4-activate');
+  btn.disabled = true;
+  btn.textContent = 'Activating…';
+  showError('err-activate', false);
+
+  try {
+    const res  = await fetch(`/api/onboarding/tenant/${state.tenantId}/activate`, { method: 'POST' });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || 'Activation failed');
+
+    // Go live!
+    $('#pre-activate').style.display  = 'none';
+    $('#post-activate').style.display = 'block';
+    $('#live-tid-display').textContent = state.tenantId;
+
+    // Update progress bar — all done
+    $$('.step-pill').forEach(pill => {
+      pill.classList.remove('active');
+      pill.classList.add('done');
+      pill.querySelector('.step-dot').textContent = '✓';
+    });
+
+    launchConfetti();
+  } catch (err) {
+    showError('err-activate', true, err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Activate Tenant';
+  }
+});
+
+// ── Confetti ──────────────────────────────────────────────────────────────────
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const colors = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
+  const pieces = [];
+
+  for (let i = 0; i < 160; i++) {
+    pieces.push({
+      x:  Math.random() * canvas.width,
+      y:  Math.random() * canvas.height - canvas.height,
+      r:  Math.random() * 8 + 4,
+      d:  Math.random() * 160 + 80,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      tilt: Math.random() * 10 - 10,
+      tiltAngle: 0,
+      tiltAngleIncrement: Math.random() * 0.07 + 0.05,
+    });
+  }
+
+  let frame = 0;
+  const angle = 0.01;
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      p.tiltAngle += p.tiltAngleIncrement;
+      p.y += (Math.cos(angle + p.d) + 2) * 1.2;
+      p.x += Math.sin(angle) * 0.8;
+      p.tilt = Math.sin(p.tiltAngle - frame / 3) * 12;
+
+      ctx.beginPath();
+      ctx.lineWidth = p.r;
+      ctx.strokeStyle = p.color;
+      ctx.moveTo(p.x + p.tilt + p.r / 4, p.y);
+      ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 4);
+      ctx.stroke();
+    });
+    frame++;
+
+    if (pieces.some(p => p.y < canvas.height + 20)) {
+      requestAnimationFrame(draw);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+  draw();
+
+  // Resize handler
+  const onResize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+  window.addEventListener('resize', onResize, { once: true });
+}
+</script>
+</body>
+</html>
