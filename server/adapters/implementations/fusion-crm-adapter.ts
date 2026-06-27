@@ -2,7 +2,7 @@
  * full-arch-crm — FusionCrmAdapter
  * ─────────────────────────────────
  * HTTP client adapter that calls the fusion_crm REST API
- * (alexanderantipov1/fusion_crm — feature/rest-api-layer → PR #1)
+ * (alexanderantipov1/fusion_crm)
  *
  * Architecture:
  *   full-arch-crm (universal SaaS dental PMS)
@@ -13,6 +13,12 @@
  *
  * HIPAA: All PHI calls write to audit trail BEFORE data is returned.
  *        Audit failures block PHI access in production (BAA mode).
+ *
+ * Env vars consumed:
+ *   FUSION_CRM_URL         — base URL, e.g. http://localhost:8000
+ *   FUSION_CRM_API_KEY     — Bearer token for API authentication
+ *   FUSION_TENANT_ID       — tenant UUID sent as X-Tenant-ID
+ *   FUSION_CRM_TIMEOUT_MS  — request timeout in ms (default 10000)
  */
 
 import type {
@@ -51,6 +57,21 @@ export interface FusionCrmAdapterConfig {
   retryAttempts?: number;   // default 3
 }
 
+// ─── UUID v4 generator (no external deps) ────────────────────────────────────
+
+function uuidv4(): string {
+  // Use crypto.randomUUID when available (Node 16+, all modern browsers)
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // Fallback for older runtimes
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 // ─── Adapter ─────────────────────────────────────────────────────────────────
 
 export class FusionCrmAdapter implements DatabaseAdapter {
@@ -70,6 +91,19 @@ export class FusionCrmAdapter implements DatabaseAdapter {
     this.timeoutMs = config.timeoutMs ?? 10000;
     this.retryAttempts = config.retryAttempts ?? 3;
     this.translator = new SchemaTranslator(FUSION_CRM_MAPPING);
+
+    if (!this.baseUrl) {
+      throw new Error(
+        "[FusionCrmAdapter] FUSION_CRM_URL is not set. " +
+        "Set it in your environment (e.g. FUSION_CRM_URL=http://localhost:8000)."
+      );
+    }
+    if (!this.apiKey) {
+      throw new Error(
+        "[FusionCrmAdapter] FUSION_CRM_API_KEY is not set. " +
+        "Add FUSION_CRM_API_KEY=<your-key> to your .env file."
+      );
+    }
   }
 
   // ─── Core HTTP client ────────────────────────────────────────────────────
@@ -81,6 +115,8 @@ export class FusionCrmAdapter implements DatabaseAdapter {
       body?: unknown;
       phiContext?: PhiAccessContext;
       query?: Record<string, string | number | boolean | undefined>;
+      /** Expected top-level keys for shape validation. All must be present. */
+      expectedShape?: string[];
     } = {}
   ): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`);
@@ -90,10 +126,13 @@ export class FusionCrmAdapter implements DatabaseAdapter {
       }
     }
 
+    const requestId = uuidv4();
+
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
-      "X-Tenant-Id": this.tenantId,
+      "X-Tenant-ID": this.tenantId,
+      "X-Request-ID": requestId,
       "X-Source": "full-arch-crm",
     };
 
@@ -107,18 +146,49 @@ export class FusionCrmAdapter implements DatabaseAdapter {
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
+      const startMs = Date.now();
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
-        const response = await fetch(url.toString(), {
-          method,
-          headers,
-          body: options.body ? JSON.stringify(options.body) : undefined,
-          signal: controller.signal,
-        });
+        let response: Response;
+        try {
+          response = await fetch(url.toString(), {
+            method,
+            headers,
+            body: options.body ? JSON.stringify(options.body) : undefined,
+            signal: controller.signal,
+          });
+        } catch (networkErr) {
+          clearTimeout(timeoutId);
+          const elapsed = Date.now() - startMs;
+          const isAbort = (networkErr as Error).name === "AbortError";
+          console.error(
+            `[FusionCrmAdapter] ${method} ${path} FAILED after ${elapsed}ms` +
+            ` (req=${requestId}, attempt=${attempt}/${this.retryAttempts})` +
+            ` — ${isAbort ? `timeout (>${this.timeoutMs}ms)` : (networkErr as Error).message}`
+          );
+          if (isAbort) {
+            throw new FusionApiNetworkError(
+              path,
+              `fusion_crm is unreachable: request timed out after ${this.timeoutMs}ms. ` +
+              `Verify FUSION_CRM_URL=${this.baseUrl} is accessible and the service is running.`
+            );
+          }
+          throw new FusionApiNetworkError(
+            path,
+            `fusion_crm is unreachable: ${(networkErr as Error).message}. ` +
+            `Verify FUSION_CRM_URL=${this.baseUrl} is accessible and the service is running.`
+          );
+        }
 
         clearTimeout(timeoutId);
+        const elapsed = Date.now() - startMs;
+
+        // ── Request logging ───────────────────────────────────────────────
+        console.log(
+          `[FusionCrmAdapter] ${method} ${path} → ${response.status} (${elapsed}ms, req=${requestId})`
+        );
 
         if (!response.ok) {
           if (response.status === 404) return null as unknown as T;
@@ -127,6 +197,10 @@ export class FusionCrmAdapter implements DatabaseAdapter {
           }
           if (response.status === 429 && attempt < this.retryAttempts) {
             const retryAfter = parseInt(response.headers.get("Retry-After") ?? "2");
+            console.warn(
+              `[FusionCrmAdapter] Rate limited on ${method} ${path} — ` +
+              `retrying in ${retryAfter}s (attempt ${attempt}/${this.retryAttempts})`
+            );
             await sleep(retryAfter * 1000);
             continue;
           }
@@ -135,15 +209,44 @@ export class FusionCrmAdapter implements DatabaseAdapter {
         }
 
         if (response.status === 204) return undefined as unknown as T;
-        return response.json() as Promise<T>;
+
+        const data = await response.json() as T;
+
+        // ── Response shape validation ─────────────────────────────────────
+        if (options.expectedShape && options.expectedShape.length > 0 && data !== null && typeof data === "object") {
+          const dataObj = data as Record<string, unknown>;
+          const missingKeys = options.expectedShape.filter((k) => !(k in dataObj));
+          if (missingKeys.length > 0) {
+            console.warn(
+              `[FusionCrmAdapter] ${method} ${path} — unexpected response shape. ` +
+              `Expected keys: [${options.expectedShape.join(", ")}], ` +
+              `missing: [${missingKeys.join(", ")}]. ` +
+              `Raw response: ${JSON.stringify(data)}`
+            );
+            throw new FusionApiShapeError(
+              path,
+              `Response from fusion_crm is missing expected fields: [${missingKeys.join(", ")}]. ` +
+              `This may indicate an API version mismatch. ` +
+              `Check that FUSION_CRM_URL=${this.baseUrl} points to a compatible fusion_crm instance.`
+            );
+          }
+        }
+
+        return data;
 
       } catch (err) {
         if (err instanceof FusionApiAuthError) throw err;
+        if (err instanceof FusionApiNetworkError) throw err;
+        if (err instanceof FusionApiShapeError) throw err;
         if (err instanceof FusionApiRequestError && err.status < 500) throw err;
         lastError = err as Error;
         if (attempt < this.retryAttempts) {
           const delay = Math.min(1000 * Math.pow(2, attempt - 1), 8000);
-          console.warn(`[FusionCrmAdapter] Retry ${attempt}/${this.retryAttempts}: ${method} ${path} — ${(err as Error).message}`);
+          const elapsed = Date.now() - startMs;
+          console.warn(
+            `[FusionCrmAdapter] Retry ${attempt}/${this.retryAttempts}: ` +
+            `${method} ${path} failed after ${elapsed}ms — ${(err as Error).message}`
+          );
           await sleep(delay);
         }
       }
@@ -157,7 +260,7 @@ export class FusionCrmAdapter implements DatabaseAdapter {
   async healthCheck(): Promise<AdapterHealthStatus> {
     const start = Date.now();
     try {
-      await this.request<{ status: string }>("GET", "/health");
+      await this.request<{ status: string }>("GET", "/healthz");
       return {
         healthy: true,
         adapterType: this.adapterType,
@@ -191,6 +294,7 @@ export class FusionCrmAdapter implements DatabaseAdapter {
           insuranceType: options.insuranceType,
           activeTreatmentPlan: options.activeTreatmentPlan,
         },
+        expectedShape: ["patients", "total"],
       }
     );
     const items: CanonicalPatientSummary[] = (raw?.patients ?? []).map(
@@ -212,7 +316,13 @@ export class FusionCrmAdapter implements DatabaseAdapter {
   }
 
   async searchPatients(query: string, limit = 20): Promise<CanonicalPatientSummary[]> {
-    const raw = await this.request<{ patients: unknown[] }>("GET", "/api/v1/patients/search", { query: { q: query, limit } });
+    const raw = await this.request<{ patients: unknown[] }>(
+      "GET", "/api/v1/patients/search",
+      {
+        query: { q: query, limit },
+        expectedShape: ["patients"],
+      }
+    );
     return (raw?.patients ?? []).map((p) => this.translator.toCanonicalPatientSummary(p as Record<string, unknown>));
   }
 
@@ -254,13 +364,19 @@ export class FusionCrmAdapter implements DatabaseAdapter {
 
   async getInsurance(personUid: string, phiContext: PhiAccessContext): Promise<CanonicalInsurance[]> {
     await this._auditPhi(personUid, phiContext, ["insurance.policyNumber", "insurance.groupNumber"]);
-    const raw = await this.request<{ plans: unknown[] }>("GET", `/api/v1/patients/${personUid}/insurance`, { phiContext });
+    const raw = await this.request<{ plans: unknown[] }>(
+      "GET", `/api/v1/patients/${personUid}/insurance`,
+      { phiContext, expectedShape: ["plans"] }
+    );
     return (raw?.plans ?? []).map((p) => this.translator.toCanonicalInsurance(p as Record<string, unknown>) as CanonicalInsurance);
   }
 
   async checkEligibility(personUid: string, procedureCodes: string[], phiContext: PhiAccessContext): Promise<CanonicalEligibilityResult> {
     await this._auditPhi(personUid, phiContext, ["insurance.eligibility"]);
-    const raw = await this.request<Record<string, unknown>>("POST", `/api/v1/patients/${personUid}/eligibility`, { body: { procedureCodes }, phiContext });
+    const raw = await this.request<Record<string, unknown>>(
+      "POST", `/api/v1/patients/${personUid}/eligibility`,
+      { body: { procedureCodes }, phiContext }
+    );
     return this._toEligibilityResult(personUid, raw);
   }
 
@@ -278,6 +394,7 @@ export class FusionCrmAdapter implements DatabaseAdapter {
           providerId: options.providerId,
           limit: options.limit ?? 50,
         },
+        expectedShape: ["appointments"],
       }
     );
     return (raw?.appointments ?? []).map((a) => this.translator.toCanonicalAppointment(a as Record<string, unknown>) as CanonicalAppointment);
@@ -307,7 +424,10 @@ export class FusionCrmAdapter implements DatabaseAdapter {
 
   async getTreatmentPlans(personUid: string, phiContext: PhiAccessContext): Promise<CanonicalTreatmentPlan[]> {
     await this._auditPhi(personUid, phiContext, ["treatment_plans"]);
-    const raw = await this.request<{ plans: unknown[] }>("GET", `/api/v1/patients/${personUid}/treatment-plans`, { phiContext });
+    const raw = await this.request<{ plans: unknown[] }>(
+      "GET", `/api/v1/patients/${personUid}/treatment-plans`,
+      { phiContext, expectedShape: ["plans"] }
+    );
     return (raw?.plans ?? []).map((p) => this.translator.toCanonicalTreatmentPlan(p as Record<string, unknown>) as CanonicalTreatmentPlan);
   }
 
@@ -334,7 +454,10 @@ export class FusionCrmAdapter implements DatabaseAdapter {
 
   async getClinicalNotes(personUid: string, phiContext: PhiAccessContext): Promise<CanonicalClinicalNote[]> {
     await this._auditPhi(personUid, phiContext, ["clinical_notes"]);
-    const raw = await this.request<{ notes: unknown[] }>("GET", `/api/v1/patients/${personUid}/clinical-notes`, { phiContext });
+    const raw = await this.request<{ notes: unknown[] }>(
+      "GET", `/api/v1/patients/${personUid}/clinical-notes`,
+      { phiContext, expectedShape: ["notes"] }
+    );
     return (raw?.notes ?? []).map((n) => this.translator.toCanonicalClinicalNote(n as Record<string, unknown>) as CanonicalClinicalNote);
   }
 
@@ -347,7 +470,13 @@ export class FusionCrmAdapter implements DatabaseAdapter {
   // ─── CDT Codes ───────────────────────────────────────────────────────────
 
   async searchCdtCodes(query: string, limit = 20): Promise<CdtCodeResult[]> {
-    const raw = await this.request<{ codes: CdtCodeResult[] }>("GET", "/api/v1/cdt-codes", { query: { q: query, limit } });
+    const raw = await this.request<{ codes: CdtCodeResult[] }>(
+      "GET", "/api/v1/cdt-codes",
+      {
+        query: { q: query, limit },
+        expectedShape: ["codes"],
+      }
+    );
     return raw?.codes ?? [];
   }
 
@@ -365,6 +494,7 @@ export class FusionCrmAdapter implements DatabaseAdapter {
           cdtCode: options.cdtCode,
           limit: options.limit ?? 50,
         },
+        expectedShape: ["claims"],
       }
     );
     return (raw?.claims ?? []).map((c) => this.translator.toCanonicalClaim(c as Record<string, unknown>) as CanonicalClaim);
@@ -397,7 +527,10 @@ export class FusionCrmAdapter implements DatabaseAdapter {
 
   async getPriorAuths(personUid: string, phiContext: PhiAccessContext): Promise<CanonicalPriorAuth[]> {
     await this._auditPhi(personUid, phiContext, ["prior_auths"]);
-    const raw = await this.request<{ auths: unknown[] }>("GET", `/api/v1/patients/${personUid}/prior-auths`, { phiContext });
+    const raw = await this.request<{ auths: unknown[] }>(
+      "GET", `/api/v1/patients/${personUid}/prior-auths`,
+      { phiContext, expectedShape: ["auths"] }
+    );
     return (raw?.auths ?? []).map((a) => this._toPriorAuth(a as Record<string, unknown>));
   }
 
@@ -416,7 +549,10 @@ export class FusionCrmAdapter implements DatabaseAdapter {
 
   async getFinancingPlans(personUid: string, phiContext: PhiAccessContext): Promise<CanonicalFinancingPlan[]> {
     await this._auditPhi(personUid, phiContext, ["financing", "financing.accountNumber"]);
-    const raw = await this.request<{ plans: unknown[] }>("GET", `/api/v1/patients/${personUid}/financing`, { phiContext });
+    const raw = await this.request<{ plans: unknown[] }>(
+      "GET", `/api/v1/patients/${personUid}/financing`,
+      { phiContext, expectedShape: ["plans"] }
+    );
     return (raw?.plans ?? []).map((p) => this._toFinancingPlan(p as Record<string, unknown>));
   }
 
@@ -433,7 +569,13 @@ export class FusionCrmAdapter implements DatabaseAdapter {
   }
 
   async queryIntelligence(patternType: string, query: Record<string, unknown>): Promise<AnonymizedIntelligencePattern[]> {
-    const raw = await this.request<{ patterns: AnonymizedIntelligencePattern[] }>("POST", "/api/v1/intelligence/query", { body: { patternType, query } });
+    const raw = await this.request<{ patterns: AnonymizedIntelligencePattern[] }>(
+      "POST", "/api/v1/intelligence/query",
+      {
+        body: { patternType, query },
+        expectedShape: ["patterns"],
+      }
+    );
     return raw?.patterns ?? [];
   }
 
@@ -463,6 +605,7 @@ export class FusionCrmAdapter implements DatabaseAdapter {
           patientId: options.patientId,
         },
         phiContext,
+        expectedShape: ["entries"],
       }
     );
     return raw?.entries ?? [];
@@ -491,7 +634,6 @@ export class FusionCrmAdapter implements DatabaseAdapter {
 
   private _toEligibilityResult(personUid: string, raw: Record<string, unknown>): CanonicalEligibilityResult {
     const coverageDetails = (raw.coverage_details ?? raw) as Record<string, unknown>;
-    // Build procedureCoverageMap from array or map
     const procedureCoverageMap: Record<string, { cdtCode: string; covered: boolean; coveragePercent: number; requiresPriorAuth: boolean; limitations?: string }> = {};
     const coverageArr = raw.procedure_coverage as Array<{ code?: string; cdtCode?: string; covered?: boolean; coveragePercent?: number; coverage_percent?: number; requiresPriorAuth?: boolean; requires_auth?: boolean; limitations?: string }> | undefined;
     if (Array.isArray(coverageArr)) {
@@ -606,6 +748,20 @@ export class FusionApiRequestError extends FusionApiError {
   constructor(path: string, public readonly status: number, message: string, public readonly code?: string) {
     super(path, `HTTP ${status}${code ? ` [${code}]` : ""}: ${message}`);
     this.name = "FusionApiRequestError";
+  }
+}
+
+export class FusionApiNetworkError extends FusionApiError {
+  constructor(path: string, message: string) {
+    super(path, message);
+    this.name = "FusionApiNetworkError";
+  }
+}
+
+export class FusionApiShapeError extends FusionApiError {
+  constructor(path: string, message: string) {
+    super(path, message);
+    this.name = "FusionApiShapeError";
   }
 }
 
