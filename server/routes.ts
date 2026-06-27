@@ -121,6 +121,9 @@ export async function registerRoutes(
   app.use("/api/payments/confirm", paymentLimiter);
   app.use("/api", generalApiLimiter);
 
+  // Simulation + self-improvement API (synthetic data only, no PHI).
+  app.use(simulationRouter);
+
   // Register chat routes for AI
   registerChatRoutes(app);
 

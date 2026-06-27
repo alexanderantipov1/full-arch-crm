@@ -12,6 +12,7 @@ import { SessionTimeout } from "@/components/session-timeout";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import NotFound from "@/pages/not-found";
+import SimulationPage from "@/pages/simulation";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import PatientsPage from "@/pages/patients";
