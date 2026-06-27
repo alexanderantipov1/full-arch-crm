@@ -3,14 +3,10 @@
  * ────────────────────────────────
  * Barrel export for all agents in the full-arch-crm agent suite.
  *
- * Import agents from here, not from their individual modules:
- *
- *   import { runTreatmentCoordinator } from "./agents";
- *   import { runCollectionsAgent }     from "./agents";
- *
  * Agent roster:
  *   - TreatmentCoordinator — nightly case acceptance scoring + follow-up drafting
  *   - CollectionsAgent     — risk scoring + payment plan automation
+ *   - SchedulingAgent      — AI-optimized appointment booking + chair utilization
  */
 
 // ─── Treatment Coordinator ────────────────────────────────────────────────────
@@ -19,6 +15,19 @@ export { runTreatmentCoordinator } from "./treatment-coordinator";
 // ─── Collections Agent ────────────────────────────────────────────────────────
 export { runCollectionsAgent } from "./collections-agent";
 
+// ─── Scheduling Agent ─────────────────────────────────────────────────────────
+export { runSchedulingAgent, computeUrgencyScore } from "./scheduling-agent";
+
 // ─── Shared types ─────────────────────────────────────────────────────────────
-export type { CoordinatorReport, PatientScore, FollowUpDraft, ScoreBreakdown } from "./types";
-export type { CollectionsCase, CollectionsReport, PaymentPlan } from "./types";
+export type {
+  CoordinatorReport,
+  PatientScore,
+  FollowUpDraft,
+  ScoreBreakdown,
+  CollectionsCase,
+  CollectionsReport,
+  PaymentPlan,
+  TimeSlot,
+  BookingRecommendation,
+  SchedulingReport,
+} from "./types";
