@@ -11,6 +11,7 @@ import {
 } from "./middleware/rate-limit";
 import { registerMcpRoutes } from "./mcp/route";
 import { insuranceCallingRouter } from "./insurance-calling/routes";
+import { orchestrationRouter } from "./orchestration/orchestration-routes";
 import { generateMcpApiKey, sanitizeMcpApiKey } from "./mcp/keys";
 import { isAdmin } from "./middleware/admin";
 import { phiService, PhiAccessDeniedError } from "./services/phi";
@@ -134,6 +135,10 @@ export async function registerRoutes(
   // AI Insurance Calling — outbound claim follow-up (Twilio when configured,
   // mock mode otherwise). Router defines its own /api/insurance-calls/* paths.
   app.use(insuranceCallingRouter);
+
+  // Agent Orchestration — nightly multi-agent loop + Slack morning briefing.
+  // Secured by X-Admin-Key header (ADMIN_API_KEY env var) — no session required.
+  app.use("/api/orchestration", orchestrationRouter);
 
   const getAuditUser = (req: any) => ({
     userId: req.user?.claims?.sub || req.user?.id || "unknown",
