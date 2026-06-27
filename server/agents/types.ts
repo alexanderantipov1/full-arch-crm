@@ -115,3 +115,39 @@ export interface SchedulingReport {
   openSlots: TimeSlot[];
   bottlenecks: string[];
 }
+
+// ─── Fraud Detection Agent ────────────────────────────────────────────────────
+
+export type FraudRuleId =
+  | 'duplicate_claim'
+  | 'unbundled_procedure'
+  | 'upcoding'
+  | 'frequency_exceeded'
+  | 'missing_documentation'
+  | 'impossible_day'
+  | 'phantom_patient';
+
+export interface FraudFlag {
+  flagId: string;              // UUID v4
+  ruleId: FraudRuleId;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  patientId?: string;
+  claimId?: string;
+  procedureCodes?: string[];
+  description: string;         // human-readable explanation
+  evidence: string[];          // list of specific data points that triggered the flag
+  recommendedAction: string;
+  detectedAt: string;          // ISO timestamp
+  status: 'open' | 'reviewed' | 'dismissed' | 'escalated';
+}
+
+export interface FraudReport {
+  runDate: string;
+  totalClaimsReviewed: number;
+  totalFlagsRaised: number;
+  byRule: Record<FraudRuleId, number>;
+  bySeverity: Record<FraudFlag['severity'], number>;
+  criticalFlags: FraudFlag[];
+  allFlags: FraudFlag[];
+  estimatedExposure: number;   // dollar amount at risk
+}
