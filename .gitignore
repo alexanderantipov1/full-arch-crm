@@ -4,3 +4,6 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# HIPAA audit logs — append-only, gitignored but directory is tracked
+server/audit/logs/*.log
