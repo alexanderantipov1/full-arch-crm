@@ -10,6 +10,7 @@ import {
   paymentLimiter,
 } from "./middleware/rate-limit";
 import { registerMcpRoutes } from "./mcp/route";
+import { insuranceCallingRouter } from "./insurance-calling/routes";
 import { generateMcpApiKey, sanitizeMcpApiKey } from "./mcp/keys";
 import { isAdmin } from "./middleware/admin";
 import { phiService, PhiAccessDeniedError } from "./services/phi";
@@ -125,6 +126,10 @@ export async function registerRoutes(
   // MCP server surface for external AI clients (Claude Code, Codex, etc.).
   // Auth is bearer-token (MCP_API_KEY), distinct from staff OIDC sessions.
   registerMcpRoutes(app);
+
+  // AI Insurance Calling — outbound claim follow-up (Twilio when configured,
+  // mock mode otherwise). Router defines its own /api/insurance-calls/* paths.
+  app.use(insuranceCallingRouter);
 
   const getAuditUser = (req: any) => ({
     userId: req.user?.claims?.sub || req.user?.id || "unknown",
