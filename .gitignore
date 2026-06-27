@@ -7,3 +7,6 @@ vite.config.ts.*
 
 # HIPAA audit logs — append-only, gitignored but directory is tracked
 server/audit/logs/*.log
+
+# Communication queue — append-only NDJSON, gitignored but directory tracked
+server/communication/queue.json
