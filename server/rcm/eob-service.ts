@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { wikiService } from '../simulation/wiki/wiki-service';
 import { askClaude } from '../services/ai';
 import type { ParsedEOB, EOBPostingResult, EOBLineItem } from './eob-types';
 
@@ -80,6 +81,21 @@ export async function postEOB(eobId: string): Promise<EOBPostingResult> {
   eob.postingStatus = deniedLines.length > 0 ? 'needs_review' : 'posted';
   eob.postingNotes = `Posted ${postedLines.length} lines ($${totalPosted.toFixed(2)}). ${deniedLines.length} denied lines require action. Patient balance: $${patientBalance.toFixed(2)}.`;
   eobStore.set(eobId, eob);
+
+  // Karpathy wiki: ingest each resolved claim line (fire-and-forget, no PHI)
+  for (const line of eob.lineItems) {
+    void wikiService.ingest({
+      type: 'claim_resolved',
+      sourceId: `eob-${eobId}-${line.cdtCode ?? 'unknown'}`,
+      claimData: {
+        payerType: 'ppo',          // TODO: derive from eob.insurerName mapping
+        cdtCode: line.cdtCode ?? 'D0000',
+        outcome: line.denialCode ? 'denied' : 'approved',
+        denialReason: line.denialCode ?? undefined,
+        reimbursement: line.paidAmount,
+      },
+    }).catch((err: Error) => console.warn('[WikiService] EOB ingest error:', err.message));
+  }
 
   return {
     eobId,

@@ -139,3 +139,84 @@ simulationRouter.post("/api/simulation/ab/run/:id", async (req, res) => {
 simulationRouter.get("/api/simulation/ab/suite", (_req, res) => {
   res.json(abTestingEngine.getSuite());
 });
+
+// ── Karpathy Wiki routes ─────────────────────────────────────────────────────
+
+import { wikiService } from "./wiki/wiki-service";
+
+// Query the wiki: agents call this before making decisions
+// GET /api/simulation/wiki/query?category=insurance&key=ppo&question=...
+simulationRouter.get("/api/simulation/wiki/query", async (req, res) => {
+  try {
+    const { category, key, question, topK } = req.query as Record<string, string>;
+    if (!category || !question) {
+      return res.status(400).json({ message: "category and question are required" });
+    }
+    const result = await wikiService.query({
+      category: category as any,
+      key,
+      question,
+      topK: topK ? parseInt(topK) : undefined,
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message ?? err) });
+  }
+});
+
+// Ingest a trigger into the wiki (manual / test)
+simulationRouter.post("/api/simulation/wiki/ingest", async (req, res) => {
+  try {
+    const trigger = req.body;
+    if (!trigger?.type || !trigger?.sourceId) {
+      return res.status(400).json({ message: "type and sourceId are required" });
+    }
+    const result = await wikiService.ingest(trigger);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message ?? err) });
+  }
+});
+
+// Lint pass — weekly health check
+// POST /api/simulation/wiki/lint
+simulationRouter.post("/api/simulation/wiki/lint", async (_req, res) => {
+  try {
+    const result = await wikiService.lint();
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message ?? err) });
+  }
+});
+
+// Wiki index — returns parsed index.md content
+simulationRouter.get("/api/simulation/wiki/index", (_req, res) => {
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const indexPath = path.join(import.meta.dirname, "wiki", "index.md");
+    const content = fs.existsSync(indexPath)
+      ? fs.readFileSync(indexPath, "utf-8")
+      : "# Wiki index not found";
+    res.type("text/plain").send(content);
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message ?? err) });
+  }
+});
+
+// Wiki log — last N entries
+simulationRouter.get("/api/simulation/wiki/log", (_req, res) => {
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const logPath = path.join(import.meta.dirname, "wiki", "log.md");
+    const content = fs.existsSync(logPath)
+      ? fs.readFileSync(logPath, "utf-8")
+      : "# No log yet";
+    // Return last 50 lines
+    const lines = content.split("\n");
+    res.type("text/plain").send(lines.slice(-50).join("\n"));
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message ?? err) });
+  }
+});

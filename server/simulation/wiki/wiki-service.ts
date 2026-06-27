@@ -22,6 +22,7 @@
  */
 
 import * as fs from 'fs';
+import { askClaude } from '../../services/ai';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -375,7 +376,7 @@ _(To be populated as more events are ingested)_
     // 3. Synthesize answer from page content
     // In production this calls an LLM with the page context.
     // Here we return a structured summary of what was found.
-    const answer = this.synthesizeAnswer(pages, question);
+    const answer = await this.synthesizeAnswerAsync(pages, question);
     const confidence = this.lowestConfidence(pages.map(p => p.content));
 
     // 4. Append query to log
@@ -412,16 +413,39 @@ _(To be populated as more events are ingested)_
   }
 
   private synthesizeAnswer(pages: Array<{ path: string; content: string }>, question: string): string {
-    // In production: call LLM with pages as context.
-    // Here: return a structured summary noting what intelligence is available.
+    // Sync fallback — used when caller doesn't await. Real synthesis via synthesizeAnswerAsync().
     const summary = pages.map(p => {
-      const lines = p.content.split('\n').slice(0, 30).join('\n');
-      return `[${p.path}]:\n${lines}\n...`;
+      const lines = p.content.split('\n').slice(0, 20).join('\n');
+      return `[${p.path}]:\n${lines}`;
     }).join('\n\n---\n\n');
+    return `[Sync summary — ${pages.length} pages]: ${question}\n\n${summary}`;
+  }
 
-    return `Intelligence from ${pages.length} wiki page(s) on: "${question}"\n\n${summary}\n\n` +
-      `(In production, an LLM synthesizes this into a direct answer. ` +
-      `Connect an LLM call here via server/services/ai.ts: askClaude(question, { context: pages }))`;
+  /**
+   * Full LLM-powered synthesis. Agents should call this via query() which
+   * uses askClaude with ops_safe data class (wiki = no PHI).
+   */
+  async synthesizeAnswerAsync(
+    pages: Array<{ path: string; content: string }>,
+    question: string,
+  ): Promise<string> {
+    const context = pages
+      .map(p => `## ${p.path}\n${p.content.slice(0, 2000)}`)
+      .join('\n\n---\n\n');
+
+    try {
+      return await askClaude(
+        `You are the Full-Arch CRM knowledge base AI. Answer this question using ONLY the wiki context below.\n\n` +
+        `Question: ${question}\n\nWiki context:\n\n${context}\n\n` +
+        `Be specific. Cite page names in brackets like [patients/implant-consult.md]. ` +
+        `If the wiki doesn't have enough data to answer confidently, say so and suggest what additional data to ingest.`,
+        'You are a dental CRM knowledge synthesis AI. All data is anonymized clinical intelligence — no PHI. Respond concisely.',
+        600,
+        { dataClass: 'ops_safe', purpose: 'wiki_query' },
+      );
+    } catch {
+      return this.synthesizeAnswer(pages, question);
+    }
   }
 
   private lowestConfidence(pageContents: string[]): Confidence {

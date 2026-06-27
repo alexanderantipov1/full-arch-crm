@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karpathy Wiki Architecture — full-arch-crm</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #0f1628;
+    --bg3: #141c35;
+    --accent-blue: #3b82f6;
+    --accent-cyan: #06b6d4;
+    --accent-purple: #8b5cf6;
+    --accent-green: #10b981;
+    --accent-orange: #f59e0b;
+    --accent-red: #ef4444;
+    --accent-pink: #ec4899;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --border: rgba(59,130,246,0.2);
+    --glow-blue: 0 0 20px rgba(59,130,246,0.4);
+    --glow-cyan: 0 0 20px rgba(6,182,212,0.4);
+    --glow-purple: 0 0 20px rgba(139,92,246,0.4);
+    --glow-green: 0 0 20px rgba(16,185,129,0.4);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, #0f1628 0%, #1a103a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo { display:flex; align-items:center; gap:12px; }
+  .logo-icon {
+    width:40px; height:40px; border-radius:10px;
+    background: linear-gradient(135deg,#3b82f6,#8b5cf6);
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px; box-shadow: var(--glow-blue);
+  }
+  .logo-text h1 { font-size:16px; font-weight:700; letter-spacing:1px; color:#e2e8f0; }
+  .logo-text p { font-size:11px; color:var(--text-muted); margin-top:2px; }
+  .badge {
+    padding:4px 12px; border-radius:20px; font-size:10px; font-weight:700;
+    letter-spacing:1.5px; text-transform:uppercase;
+  }
+  .badge-live { background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); }
+
+  /* ── TABS ── */
+  .tabs {
+    display:flex; gap:4px; padding: 16px 40px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    padding:8px 20px; border-radius:8px; cursor:pointer; font-size:12px;
+    font-weight:600; letter-spacing:0.5px; transition:all 0.2s;
+    color:var(--text-muted); background:transparent; border:none;
+  }
+  .tab:hover { color:var(--text); background:rgba(255,255,255,0.05); }
+  .tab.active { background:rgba(59,130,246,0.15); color:#3b82f6; border:1px solid rgba(59,130,246,0.3); }
+
+  /* ── MAIN STAGE ── */
+  #main-stage {
+    padding:40px;
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap:24px;
+    min-height: calc(100vh - 200px);
+    position:relative;
+  }
+
+  /* SVG connector overlay */
+  #connector-svg {
+    position:absolute;
+    top:0; left:0; width:100%; height:100%;
+    pointer-events:none;
+    z-index:1;
+  }
+
+  /* ── LAYER COLUMNS ── */
+  .layer {
+    display:flex; flex-direction:column; gap:16px; z-index:2; position:relative;
+  }
+  .layer-header {
+    padding:12px 16px; border-radius:12px;
+    font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+    display:flex; align-items:center; gap:8px;
+  }
+  .layer-1 .layer-header { background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.25); }
+  .layer-2 .layer-header { background:rgba(139,92,246,0.1); color:#8b5cf6; border:1px solid rgba(139,92,246,0.25); }
+  .layer-3 .layer-header { background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.25); }
+
+  .layer-num {
+    width:22px; height:22px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:800;
+  }
+  .layer-1 .layer-num { background:#ef4444; color:#fff; }
+  .layer-2 .layer-num { background:#8b5cf6; color:#fff; }
+  .layer-3 .layer-num { background:#10b981; color:#fff; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    cursor:pointer;
+    transition: all 0.25s;
+    position:relative;
+    overflow:hidden;
+  }
+  .card::before {
+    content:'';
+    position:absolute; top:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, transparent, currentColor, transparent);
+    opacity:0;
+    transition: opacity 0.3s;
+  }
+  .card:hover::before, .card.active::before { opacity:1; }
+  .card:hover { transform:translateY(-2px); border-color:rgba(59,130,246,0.4); }
+  .card.active { border-color:rgba(59,130,246,0.6); box-shadow: var(--glow-blue); }
+  .card.pulsing { animation: pulse-card 1.5s ease-in-out; }
+
+  @keyframes pulse-card {
+    0%,100% { box-shadow:none; }
+    50% { box-shadow: 0 0 30px rgba(59,130,246,0.5); }
+  }
+
+  .card-icon { font-size:22px; margin-bottom:8px; }
+  .card-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
+  .card-sub { font-size:10px; color:var(--text-muted); line-height:1.5; }
+  .card-tag {
+    display:inline-block; margin-top:8px; padding:2px 8px;
+    border-radius:4px; font-size:9px; font-weight:700; letter-spacing:1px;
+  }
+  .tag-source { background:rgba(239,68,68,0.15); color:#ef4444; }
+  .tag-wiki { background:rgba(139,92,246,0.15); color:#8b5cf6; }
+  .tag-agent { background:rgba(16,185,129,0.15); color:#10b981; }
+  .tag-ops { background:rgba(245,158,11,0.15); color:#f59e0b; }
+
+  /* ── STATUS INDICATOR ── */
+  .status-dot {
+    width:8px; height:8px; border-radius:50%;
+    display:inline-block; margin-right:6px;
+  }
+  .dot-idle { background:#334155; }
+  .dot-active { background:#10b981; animation: blink 1s infinite; }
+  .dot-busy { background:#f59e0b; animation: blink 0.5s infinite; }
+
+  @keyframes blink {
+    0%,100% { opacity:1; } 50% { opacity:0.3; }
+  }
+
+  /* ── OPERATIONS PANEL ── */
+  #ops-panel {
+    grid-column: 1/-1;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius:16px;
+    padding:24px;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+    z-index:2;
+  }
+  .op-card {
+    padding:16px; border-radius:12px; cursor:pointer;
+    transition: all 0.2s; text-align:center;
+    border:1px solid transparent;
+  }
+  .op-card:hover { transform:scale(1.02); }
+  .op-ingest { background:rgba(59,130,246,0.08); border-color:rgba(59,130,246,0.25); }
+  .op-query  { background:rgba(139,92,246,0.08); border-color:rgba(139,92,246,0.25); }
+  .op-lint   { background:rgba(245,158,11,0.08); border-color:rgba(245,158,11,0.25); }
+  .op-ingest:hover, .op-ingest.running { border-color:rgba(59,130,246,0.6); box-shadow:0 0 20px rgba(59,130,246,0.2); }
+  .op-query:hover,  .op-query.running  { border-color:rgba(139,92,246,0.6); box-shadow:0 0 20px rgba(139,92,246,0.2); }
+  .op-lint:hover,   .op-lint.running   { border-color:rgba(245,158,11,0.6); box-shadow:0 0 20px rgba(245,158,11,0.2); }
+
+  .op-icon { font-size:28px; margin-bottom:8px; }
+  .op-name { font-size:14px; font-weight:800; letter-spacing:1px; margin-bottom:4px; }
+  .op-desc { font-size:10px; color:var(--text-muted); line-height:1.5; }
+  .op-trigger {
+    margin-top:10px; padding:6px 14px; border-radius:6px;
+    font-size:10px; font-weight:700; cursor:pointer;
+    border:none; letter-spacing:1px; transition: all 0.2s;
+  }
+  .op-ingest .op-trigger { background:#3b82f6; color:#fff; }
+  .op-query  .op-trigger { background:#8b5cf6; color:#fff; }
+  .op-lint   .op-trigger { background:#f59e0b; color:#000; }
+  .op-trigger:hover { filter:brightness(1.15); transform:scale(1.05); }
+
+  /* ── EVENT LOG ── */
+  #event-log {
+    grid-column: 1/-1;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius:16px;
+    overflow:hidden;
+    z-index:2;
+  }
+  .log-header {
+    padding:12px 20px; background:rgba(255,255,255,0.03);
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .log-title { font-size:11px; font-weight:700; letter-spacing:2px; color:var(--text-muted); }
+  .log-clear { font-size:10px; color:var(--text-muted); cursor:pointer; padding:4px 10px;
+    border-radius:4px; background:transparent; border:1px solid var(--border); transition:all 0.2s; }
+  .log-clear:hover { color:var(--text); border-color:rgba(255,255,255,0.3); }
+  #log-entries {
+    max-height:200px; overflow-y:auto; padding:12px 20px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  #log-entries::-webkit-scrollbar { width:4px; }
+  #log-entries::-webkit-scrollbar-track { background:transparent; }
+  #log-entries::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .log-entry {
+    font-size:11px; display:flex; gap:10px; align-items:flex-start;
+    animation: slide-in 0.3s ease;
+  }
+  @keyframes slide-in {
+    from { opacity:0; transform:translateX(-10px); }
+    to   { opacity:1; transform:translateX(0); }
+  }
+  .log-ts { color:var(--text-muted); font-size:10px; min-width:60px; }
+  .log-type {
+    font-size:9px; font-weight:700; padding:1px 6px; border-radius:3px;
+    min-width:50px; text-align:center; flex-shrink:0;
+  }
+  .type-ingest { background:rgba(59,130,246,0.2); color:#3b82f6; }
+  .type-query  { background:rgba(139,92,246,0.2); color:#8b5cf6; }
+  .type-lint   { background:rgba(245,158,11,0.2); color:#f59e0b; }
+  .type-flow   { background:rgba(16,185,129,0.2); color:#10b981; }
+  .type-warn   { background:rgba(239,68,68,0.2); color:#ef4444; }
+  .log-msg { color:var(--text-dim); flex:1; }
+
+  /* ── SCENARIO PICKER ── */
+  #scenario-panel {
+    grid-column: 1/-1;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius:16px;
+    padding:24px;
+    z-index:2;
+  }
+  .scenario-title { font-size:11px; font-weight:700; letter-spacing:2px; color:var(--text-muted); margin-bottom:16px; }
+  .scenarios { display:flex; flex-wrap:wrap; gap:10px; }
+  .scenario-btn {
+    padding:8px 16px; border-radius:8px; cursor:pointer;
+    font-size:11px; font-weight:600; border:1px solid var(--border);
+    background:var(--bg3); color:var(--text-dim); transition:all 0.2s;
+  }
+  .scenario-btn:hover { color:var(--text); border-color:rgba(59,130,246,0.5); background:rgba(59,130,246,0.08); }
+  .scenario-btn.active { color:#3b82f6; border-color:#3b82f6; background:rgba(59,130,246,0.12); }
+
+  /* ── FLOW ANIMATION ── */
+  .flow-particle {
+    position:absolute;
+    width:8px; height:8px; border-radius:50%;
+    pointer-events:none;
+    z-index:10;
+  }
+
+  /* ── WIKI PAGE PANEL ── */
+  #wiki-panel {
+    position:fixed; right:0; top:0; bottom:0; width:380px;
+    background:var(--bg2); border-left:1px solid var(--border);
+    transform:translateX(100%); transition:transform 0.3s ease;
+    z-index:100; display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  #wiki-panel.open { transform:translateX(0); }
+  .wiki-panel-header {
+    padding:20px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .wiki-panel-title { font-size:13px; font-weight:700; }
+  .wiki-close {
+    width:28px; height:28px; border-radius:6px; cursor:pointer;
+    background:rgba(255,255,255,0.05); border:none; color:var(--text-muted);
+    display:flex; align-items:center; justify-content:center; font-size:16px;
+    transition:all 0.2s;
+  }
+  .wiki-close:hover { background:rgba(255,255,255,0.1); color:var(--text); }
+  #wiki-content { flex:1; overflow-y:auto; padding:20px; font-size:12px; line-height:1.7; }
+  #wiki-content::-webkit-scrollbar { width:4px; }
+  #wiki-content::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .wiki-section { margin-bottom:16px; }
+  .wiki-section h4 { color:#8b5cf6; font-size:11px; font-weight:700; letter-spacing:1px; margin-bottom:6px; }
+  .wiki-section p { color:var(--text-dim); }
+  .wiki-update-badge {
+    display:inline-flex; align-items:center; gap:4px;
+    background:rgba(16,185,129,0.15); color:#10b981;
+    padding:2px 8px; border-radius:4px; font-size:9px; font-weight:700;
+    margin-bottom:12px;
+  }
+
+  /* ── ARCH VIEW ── */
+  #arch-view {
+    display:none;
+    padding:40px;
+    flex-direction:column;
+    gap:30px;
+  }
+  .arch-view-active { display:flex !important; }
+
+  .arch-row {
+    display:flex; align-items:center; gap:16px;
+    position:relative;
+  }
+  .arch-node {
+    padding:16px 24px; border-radius:12px;
+    border:1px solid var(--border);
+    background:var(--bg3);
+    text-align:center; cursor:pointer;
+    transition: all 0.25s; min-width:140px;
+  }
+  .arch-node:hover { transform:scale(1.05); }
+  .arch-node-title { font-size:12px; font-weight:700; margin-bottom:4px; }
+  .arch-node-sub { font-size:10px; color:var(--text-muted); }
+
+  .arch-arrow {
+    flex:1; height:2px; position:relative;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .arch-arrow-line {
+    width:100%; height:2px;
+    background: linear-gradient(90deg, transparent, currentColor, transparent);
+  }
+  .arch-arrow-label {
+    position:absolute; font-size:9px; font-weight:700;
+    padding:2px 8px; border-radius:10px; white-space:nowrap;
+    top:-14px;
+  }
+
+  /* ── DATSOURCE NODES ── */
+  .ds-node { border-color:rgba(239,68,68,0.3); }
+  .ds-node .arch-node-title { color:#ef4444; }
+  .wiki-node { border-color:rgba(139,92,246,0.3); }
+  .wiki-node .arch-node-title { color:#8b5cf6; }
+  .agent-node { border-color:rgba(16,185,129,0.3); }
+  .agent-node .arch-node-title { color:#10b981; }
+  .fullarch-node { border-color:rgba(59,130,246,0.3); }
+  .fullarch-node .arch-node-title { color:#3b82f6; }
+
+  /* ── PROGRESS METERS ── */
+  .progress-bar {
+    height:3px; border-radius:2px; background:rgba(255,255,255,0.08);
+    overflow:hidden; margin-top:6px;
+  }
+  .progress-fill {
+    height:100%; border-radius:2px;
+    transition: width 1s ease;
+  }
+
+  /* ── TOOLTIP ── */
+  .tooltip {
+    position:fixed; background:#1e293b; border:1px solid var(--border);
+    border-radius:8px; padding:10px 14px; font-size:11px; color:var(--text);
+    pointer-events:none; z-index:200; max-width:220px; line-height:1.6;
+    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    transition: opacity 0.15s;
+  }
+  .tooltip.hidden { opacity:0; }
+
+  /* ── LEGEND ── */
+  .legend {
+    grid-column:1/-1;
+    display:flex; gap:20px; flex-wrap:wrap;
+    padding:16px 20px; background:var(--bg2);
+    border:1px solid var(--border); border-radius:12px;
+    z-index:2;
+  }
+  .legend-item { display:flex; align-items:center; gap:8px; font-size:10px; color:var(--text-muted); }
+  .legend-dot { width:10px; height:10px; border-radius:50%; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width:900px) {
+    #main-stage { grid-template-columns:1fr; }
+    .layer { flex-direction:row; flex-wrap:wrap; }
+  }
+
+  /* ── FLOW PATHS ── */
+  .flow-path {
+    fill:none; stroke-width:2;
+    stroke-dasharray: 6,4;
+    animation: dash-flow 2s linear infinite;
+  }
+  .flow-path-solid { stroke-dasharray: none; animation: none; }
+  @keyframes dash-flow {
+    from { stroke-dashoffset: 20; }
+    to   { stroke-dashoffset: 0; }
+  }
+  .flow-path-ingest { stroke: #3b82f6; }
+  .flow-path-query  { stroke: #8b5cf6; }
+  .flow-path-lint   { stroke: #f59e0b; }
+  .flow-path-output { stroke: #10b981; }
+
+  /* ── KARPATHY QUOTE ── */
+  .karpathy-quote {
+    grid-column:1/-1; padding:20px 24px;
+    background: linear-gradient(135deg,rgba(139,92,246,0.08),rgba(59,130,246,0.08));
+    border:1px solid rgba(139,92,246,0.25); border-radius:12px;
+    z-index:2;
+  }
+  .karpathy-quote blockquote {
+    font-size:12px; font-style:italic; color:var(--text-dim); line-height:1.7;
+    border-left:3px solid #8b5cf6; padding-left:16px;
+  }
+  .karpathy-quote cite { display:block; margin-top:6px; font-size:10px; color:var(--text-muted); font-style:normal; }
+
+  /* ── COUNTER STATS ── */
+  .stats-row {
+    grid-column:1/-1;
+    display:grid; grid-template-columns:repeat(5,1fr); gap:16px;
+    z-index:2;
+  }
+  .stat-card {
+    background:var(--bg3); border:1px solid var(--border);
+    border-radius:12px; padding:16px; text-align:center;
+  }
+  .stat-value { font-size:28px; font-weight:800; line-height:1; }
+  .stat-label { font-size:10px; color:var(--text-muted); margin-top:4px; letter-spacing:0.5px; }
+  .stat-delta { font-size:10px; color:#10b981; margin-top:4px; }
+</style>
+</head>
+<body>
+
+<!-- TOOLTIP -->
+<div class="tooltip hidden" id="tooltip"></div>
+
+<!-- WIKI SIDE PANEL -->
+<div id="wiki-panel">
+  <div class="wiki-panel-header">
+    <span class="wiki-panel-title" id="wiki-panel-title">Wiki Page</span>
+    <button class="wiki-close" onclick="closeWikiPanel()">×</button>
+  </div>
+  <div id="wiki-content"></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🦷</div>
+    <div class="logo-text">
+      <h1>FULL-ARCH-CRM · KARPATHY WIKI</h1>
+      <p>Self-improving AI architecture for dental PMS / DSO intelligence</p>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span class="badge badge-live"><span class="status-dot dot-active"></span>LIVE</span>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="showView('flow')">Flow Diagram</button>
+  <button class="tab" onclick="showView('arch')">System Architecture</button>
+  <button class="tab" onclick="showView('ops')">Operations</button>
+</div>
+
+<!-- ══════════ FLOW VIEW ══════════ -->
+<div id="flow-view">
+
+  <!-- SVG CONNECTOR OVERLAY -->
+  <svg id="connector-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+
+  <div id="main-stage">
+
+    <!-- STATS ROW -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-ingests" style="color:#3b82f6">0</div>
+        <div class="stat-label">INGEST CALLS</div>
+        <div class="stat-delta" id="stat-ingests-d">+0 today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-queries" style="color:#8b5cf6">0</div>
+        <div class="stat-label">WIKI QUERIES</div>
+        <div class="stat-delta" id="stat-queries-d">+0 today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-pages" style="color:#f59e0b">18</div>
+        <div class="stat-label">WIKI PAGES</div>
+        <div class="stat-delta">+8 patient +6 agent +4 ins.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-clinics" style="color:#10b981">1</div>
+        <div class="stat-label">CONNECTED DSOs</div>
+        <div class="stat-delta">Fusion Dental Corp.</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-accuracy" style="color:#ec4899">74%</div>
+        <div class="stat-label">CLAIM ACCURACY</div>
+        <div class="stat-delta" id="stat-acc-d">↑ improving</div>
+      </div>
+    </div>
+
+    <!-- KARPATHY QUOTE -->
+    <div class="karpathy-quote">
+      <blockquote>
+        "Maintain a wiki — a persistent, constantly updated document about the state of the world,
+        synthesized from raw sources. Before each decision, agents query the wiki. After every event,
+        the wiki is updated. Weekly lint passes remove stale or contradictory entries."
+      </blockquote>
+      <cite>— Andrej Karpathy, 2025 · Applied to full-arch-crm dental AI</cite>
+    </div>
+
+    <!-- LAYER 1: RAW SOURCES -->
+    <div class="layer layer-1" id="layer-sources">
+      <div class="layer-header">
+        <div class="layer-num">1</div>
+        RAW SOURCES
+      </div>
+
+      <div class="card" id="card-eob" onclick="triggerScenario('eob-denied')" data-tooltip="EOB = Explanation of Benefits. When an insurance claim is processed (approved, denied, or partially paid), the raw EOB data flows into WikiService.ingest() automatically via eob-service.ts">
+        <div class="card-icon">📄</div>
+        <div class="card-title">EOB Claims</div>
+        <div class="card-sub">Explanation of Benefits — claim outcomes, denial reasons, payer responses</div>
+        <div class="card-tag tag-source">REAL-TIME</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:82%;background:#ef4444"></div></div>
+      </div>
+
+      <div class="card" id="card-simulation" onclick="triggerScenario('simulation-batch')" data-tooltip="SimulationEngine.runBatch() fires wikiService.ingest() after every simulation cycle — continuously learning from synthetic patient journeys">
+        <div class="card-icon">🔬</div>
+        <div class="card-title">Simulation Engine</div>
+        <div class="card-sub">Synthetic patient scenarios — all-on-4 implants, treatment declines, financial barriers</div>
+        <div class="card-tag tag-source">BATCH</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:65%;background:#f59e0b"></div></div>
+      </div>
+
+      <div class="card" id="card-adapter" onclick="triggerScenario('adapter-sync')" data-tooltip="DatabaseAdapter abstraction — any DSO (Western Dental, ClearChoice, Novidea) can connect via their own adapter. Data is canonicalized before wiki ingestion. No PHI ever enters the wiki.">
+        <div class="card-icon">🔌</div>
+        <div class="card-title">DatabaseAdapter</div>
+        <div class="card-sub">FusionCrmAdapter, MockAdapter, WesternDentalAdapter — canonical patient data</div>
+        <div class="card-tag tag-source">MULTI-DSO</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:45%;background:#3b82f6"></div></div>
+      </div>
+
+      <div class="card" id="card-appointments" onclick="triggerScenario('appointment-completed')" data-tooltip="Every completed appointment triggers a wiki ingest about clinical outcomes — procedure success rates, chair time patterns, no-show triggers">
+        <div class="card-icon">📅</div>
+        <div class="card-title">Appointments</div>
+        <div class="card-sub">Completed visits, no-shows, cancellations, treatment outcomes</div>
+        <div class="card-tag tag-source">EVENT</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:58%;background:#06b6d4"></div></div>
+      </div>
+    </div>
+
+    <!-- LAYER 2: WIKI -->
+    <div class="layer layer-2" id="layer-wiki">
+      <div class="layer-header">
+        <div class="layer-num">2</div>
+        KARPATHY WIKI
+        <span style="margin-left:auto;font-size:9px;color:#8b5cf6;font-weight:400">server/simulation/wiki/</span>
+      </div>
+
+      <div class="card" id="card-wikiservice" onclick="openWikiPage('wikiservice')" data-tooltip="WikiService is the core engine. Three operations: INGEST (append + synthesize after events), QUERY (semantic search before decisions), LINT (weekly stale-entry cleanup). Never stores PHI.">
+        <div class="card-icon">⚙️</div>
+        <div class="card-title">WikiService</div>
+        <div class="card-sub">TypeScript class — ingest(), query(), lint(), synthesizeAnswerAsync()</div>
+        <div class="card-tag tag-wiki">ENGINE</div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+          <span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,0.15);color:#3b82f6">INGEST</span>
+          <span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(139,92,246,0.15);color:#8b5cf6">QUERY</span>
+          <span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(245,158,11,0.15);color:#f59e0b">LINT</span>
+        </div>
+      </div>
+
+      <div class="card" id="card-patient-pages" onclick="openWikiPage('patient-scenarios')" data-tooltip="8 patient scenario pages: implant-consult, recall-overdue, treatment-decline, new-patient, financial-barrier, insurance-issue, dso-referral, emergency. Each page holds anonymized patterns — no PHI.">
+        <div class="card-icon">👤</div>
+        <div class="card-title">Patient Scenarios</div>
+        <div class="card-sub">8 pages · anonymized clinical patterns, treatment pathways, barrier analysis</div>
+        <div class="card-tag tag-wiki">SEEDED ✓</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:100%;background:#8b5cf6"></div></div>
+      </div>
+
+      <div class="card" id="card-agent-pages" onclick="openWikiPage('agent-pages')" data-tooltip="6 agent playbook pages: PatientAcquisition, RecallAgent, TreatmentPlanAgent, InsuranceAgent, SchedulingAgent, FinancialCounselorAgent — each with decision logic, escalation criteria, and KPIs.">
+        <div class="card-icon">🤖</div>
+        <div class="card-title">Agent Playbooks</div>
+        <div class="card-sub">6 pages · per-agent decision logic, escalation triggers, KPI thresholds</div>
+        <div class="card-tag tag-wiki">SEEDING...</div>
+        <div class="progress-bar"><div class="progress-fill" id="agent-pages-progress" style="width:60%;background:#8b5cf6;animation:fill-progress 3s ease forwards"></div></div>
+      </div>
+
+      <div class="card" id="card-insurance-pages" onclick="openWikiPage('insurance-pages')" data-tooltip="Insurance intelligence: PPO general rules, Delta Dental specifics, D6010 appeal scripts, prior auth requirements per CDT code, denial reason codes and rebuttal strategies.">
+        <div class="card-icon">🏥</div>
+        <div class="card-title">Insurance / Appeals</div>
+        <div class="card-sub">PPO rules, denial codes, D6010 appeal scripts, prior auth patterns</div>
+        <div class="card-tag tag-wiki">SEEDING...</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:50%;background:#ec4899;animation:fill-progress 4s ease forwards"></div></div>
+      </div>
+    </div>
+
+    <!-- LAYER 3: AGENTS -->
+    <div class="layer layer-3" id="layer-agents">
+      <div class="layer-header">
+        <div class="layer-num">3</div>
+        AI AGENTS
+      </div>
+
+      <div class="card" id="card-orchestrator" onclick="openWikiPage('orchestrator')" data-tooltip="OrchestrationAgent queries the wiki at the start of each runCycle() — gets current clinical context, then passes wikiContext into selfCheck(). This grounds every decision in accumulated institutional knowledge.">
+        <div class="card-icon">🎯</div>
+        <div class="card-title">OrchestrationAgent</div>
+        <div class="card-sub">Queries wiki before every runCycle() — wikiContext passed to selfCheck()</div>
+        <div class="card-tag tag-agent">MASTER</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:88%;background:#10b981"></div></div>
+      </div>
+
+      <div class="card" id="card-insurance-agent" onclick="openWikiPage('insurance-agent')" data-tooltip="InsuranceAgent queries the wiki for payer-specific denial patterns before filing claims. After every EOB, it ingests outcome data back — creating a continuous learning loop for claim accuracy.">
+        <div class="card-icon">💼</div>
+        <div class="card-title">InsuranceAgent</div>
+        <div class="card-sub">Pre-claim wiki query → claim submission → EOB ingest → accuracy improves</div>
+        <div class="card-tag tag-agent">CLAIMS</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:74%;background:#10b981"></div></div>
+      </div>
+
+      <div class="card" id="card-treatment-agent" onclick="openWikiPage('treatment-agent')" data-tooltip="TreatmentPlanAgent queries wiki for case-acceptance patterns before presenting treatment plans — adjusting approach based on patient financial profile, insurance coverage, and barrier history.">
+        <div class="card-icon">🦷</div>
+        <div class="card-title">TreatmentPlanAgent</div>
+        <div class="card-sub">Case acceptance optimization — queries treatment-decline patterns wiki page</div>
+        <div class="card-tag tag-agent">CLINICAL</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:61%;background:#10b981"></div></div>
+      </div>
+
+      <div class="card" id="card-scheduling-agent" onclick="openWikiPage('scheduling-agent')" data-tooltip="SchedulingAgent uses wiki no-show patterns to optimize appointment reminders, buffer scheduling, and waitlist prioritization — reducing chair-time waste across the DSO.">
+        <div class="card-icon">📆</div>
+        <div class="card-title">SchedulingAgent</div>
+        <div class="card-sub">No-show risk scoring — wiki patterns → reminder cadence optimization</div>
+        <div class="card-tag tag-agent">OPS</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:55%;background:#10b981"></div></div>
+      </div>
+    </div>
+
+    <!-- OPERATIONS PANEL -->
+    <div id="ops-panel">
+      <div class="op-card op-ingest" id="op-ingest">
+        <div class="op-icon">📥</div>
+        <div class="op-name" style="color:#3b82f6">INGEST</div>
+        <div class="op-desc">
+          Triggered after every clinical event (EOB, simulation batch, appointment completed).
+          LLM synthesizes new entry and appends to the relevant wiki page.
+          Never stores PHI — only anonymized patterns.
+        </div>
+        <div style="margin-top:8px;font-size:10px;color:var(--text-muted);font-family:monospace">
+          wikiService.ingest(event, dataClass: 'ops_safe')
+        </div>
+        <button class="op-trigger" onclick="triggerOp('ingest')">▶ TRIGGER INGEST</button>
+      </div>
+
+      <div class="op-card op-query" id="op-query">
+        <div class="op-icon">🔍</div>
+        <div class="op-name" style="color:#8b5cf6">QUERY</div>
+        <div class="op-desc">
+          Called by agents before every decision. Semantic search across all wiki pages.
+          synthesizeAnswerAsync() uses Claude to produce grounded, context-aware answers.
+          Grounds agent decisions in accumulated clinical intelligence.
+        </div>
+        <div style="margin-top:8px;font-size:10px;color:var(--text-muted);font-family:monospace">
+          wikiService.query(question, 'ops_safe')
+        </div>
+        <button class="op-trigger" onclick="triggerOp('query')">▶ TRIGGER QUERY</button>
+      </div>
+
+      <div class="op-card op-lint" id="op-lint">
+        <div class="op-icon">🧹</div>
+        <div class="op-name" style="color:#f59e0b">LINT</div>
+        <div class="op-desc">
+          Weekly automated pass. Removes stale entries, resolves contradictions,
+          merges duplicate patterns, updates KPIs from latest data.
+          Keeps the wiki accurate as dental billing rules evolve.
+        </div>
+        <div style="margin-top:8px;font-size:10px;color:var(--text-muted);font-family:monospace">
+          wikiService.lint() → scheduled weekly
+        </div>
+        <button class="op-trigger" onclick="triggerOp('lint')">▶ TRIGGER LINT</button>
+      </div>
+    </div>
+
+    <!-- SCENARIO PICKER -->
+    <div id="scenario-panel">
+      <div class="scenario-title">▶ INTERACTIVE SCENARIOS — Click to watch data flow through the system</div>
+      <div class="scenarios">
+        <button class="scenario-btn" onclick="triggerScenario('eob-denied')">🚫 D6010 Claim Denied</button>
+        <button class="scenario-btn" onclick="triggerScenario('eob-approved')">✅ Implant Claim Approved</button>
+        <button class="scenario-btn" onclick="triggerScenario('treatment-decline')">⚠️ Treatment Plan Declined</button>
+        <button class="scenario-btn" onclick="triggerScenario('new-patient')">👋 New Patient Intake</button>
+        <button class="scenario-btn" onclick="triggerScenario('simulation-batch')">🔬 Simulation Batch Run</button>
+        <button class="scenario-btn" onclick="triggerScenario('adapter-sync')">🔌 Fusion CRM Adapter Sync</button>
+        <button class="scenario-btn" onclick="triggerScenario('appointment-completed')">📅 Appointment Completed</button>
+        <button class="scenario-btn" onclick="triggerScenario('weekly-lint')">🧹 Weekly Lint Pass</button>
+        <button class="scenario-btn" onclick="triggerScenario('dso-query')">🏢 DSO Intelligence Query</button>
+        <button class="scenario-btn" onclick="triggerScenario('financial-barrier')">💳 Financial Barrier Detected</button>
+      </div>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> INGEST flow</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div> QUERY flow</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> LINT flow</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div> Agent output / improvement</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Raw source event</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ec4899"></div> No PHI in wiki — anonymized only</div>
+    </div>
+
+    <!-- EVENT LOG -->
+    <div id="event-log">
+      <div class="log-header">
+        <span class="log-title">📋 SYSTEM EVENT LOG</span>
+        <button class="log-clear" onclick="clearLog()">CLEAR</button>
+      </div>
+      <div id="log-entries">
+        <div class="log-entry">
+          <span class="log-ts">00:00:00</span>
+          <span class="log-type type-flow">SYSTEM</span>
+          <span class="log-msg">full-arch-crm Karpathy Wiki initialized · 18 wiki pages loaded · Claude LLM connected</span>
+        </div>
+        <div class="log-entry">
+          <span class="log-ts">00:00:01</span>
+          <span class="log-type type-flow">SYSTEM</span>
+          <span class="log-msg">DatabaseAdapter: FusionCrmAdapter registered · Tenant: Fusion Dental Corp. · HIPAA compliant ✓</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end main-stage -->
+</div><!-- end flow-view -->
+
+<!-- ══════════ ARCH VIEW ══════════ -->
+<div id="arch-view">
+  <div style="padding:0 0 20px;font-size:13px;color:var(--text-muted);line-height:1.7">
+    <strong style="color:var(--text)">System Architecture</strong> — How full-arch-crm, Karpathy Wiki, and multi-DSO adapters interconnect.
+    Every connected dental corporation contributes anonymized intelligence; the wiki gets smarter with each new client.
+  </div>
+
+  <!-- ROW 1: DSO DATABASES -->
+  <div style="margin-bottom:8px;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text-muted)">TIER 1 — DENTAL CORPORATION DATABASES</div>
+  <div class="arch-row" style="flex-wrap:wrap;gap:12px">
+    <div class="arch-node ds-node" onclick="archClick('fusion')">
+      <div style="font-size:20px;margin-bottom:4px">🏢</div>
+      <div class="arch-node-title">Fusion Dental Corp.</div>
+      <div class="arch-node-sub">fusion_crm repo<br>REST API exposed</div>
+    </div>
+    <div class="arch-node ds-node" onclick="archClick('western')" style="opacity:0.5">
+      <div style="font-size:20px;margin-bottom:4px">🏥</div>
+      <div class="arch-node-title">Western Dental</div>
+      <div class="arch-node-sub">WesternDentalAdapter<br>(future)</div>
+    </div>
+    <div class="arch-node ds-node" onclick="archClick('clearchoice')" style="opacity:0.5">
+      <div style="font-size:20px;margin-bottom:4px">🦷</div>
+      <div class="arch-node-title">ClearChoice</div>
+      <div class="arch-node-sub">ClearChoiceAdapter<br>(future)</div>
+    </div>
+    <div class="arch-node ds-node" onclick="archClick('novidea')" style="opacity:0.5">
+      <div style="font-size:20px;margin-bottom:4px">💊</div>
+      <div class="arch-node-title">Novidea / Any DSO</div>
+      <div class="arch-node-sub">GenericRestAdapter<br>+ GENERIC_REST_MAPPING</div>
+    </div>
+  </div>
+
+  <!-- ARROW DOWN -->
+  <div style="display:flex;justify-content:center;padding:8px 0;font-size:20px;color:var(--text-muted)">↓ DatabaseAdapter interface (HIPAA abstraction layer)</div>
+
+  <!-- ROW 2: FULL-ARCH-CRM -->
+  <div style="margin-bottom:8px;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text-muted)">TIER 2 — FULL-ARCH-CRM (Universal PMS SaaS)</div>
+  <div class="arch-row">
+    <div class="arch-node fullarch-node" onclick="archClick('fullarch')" style="flex:1;min-height:80px">
+      <div style="font-size:24px;margin-bottom:6px">⚡</div>
+      <div class="arch-node-title" style="font-size:14px">full-arch-crm</div>
+      <div class="arch-node-sub">
+        Clinical app · Simulation engine · DSO dashboard<br>
+        OrchestrationAgent · DatabaseAdapterRegistry<br>
+        All of Tier 1 is abstracted via canonical types
+      </div>
+    </div>
+  </div>
+
+  <!-- ARROW DOWN -->
+  <div style="display:flex;justify-content:center;padding:8px 0;font-size:20px;color:var(--text-muted)">↕ INGEST (after events) · QUERY (before decisions)</div>
+
+  <!-- ROW 3: WIKI -->
+  <div style="margin-bottom:8px;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text-muted)">TIER 3 — KARPATHY WIKI (Persistent AI Memory)</div>
+  <div class="arch-row" style="flex-wrap:wrap;gap:12px">
+    <div class="arch-node wiki-node" onclick="archClick('wiki-patients')">
+      <div style="font-size:20px;margin-bottom:4px">📋</div>
+      <div class="arch-node-title">Patient Scenarios</div>
+      <div class="arch-node-sub">8 pages · anonymized<br>clinical patterns</div>
+    </div>
+    <div class="arch-node wiki-node" onclick="archClick('wiki-agents')">
+      <div style="font-size:20px;margin-bottom:4px">🤖</div>
+      <div class="arch-node-title">Agent Playbooks</div>
+      <div class="arch-node-sub">6 pages · decision logic<br>per AI agent</div>
+    </div>
+    <div class="arch-node wiki-node" onclick="archClick('wiki-insurance')">
+      <div style="font-size:20px;margin-bottom:4px">🏥</div>
+      <div class="arch-node-title">Insurance Intel</div>
+      <div class="arch-node-sub">PPO rules · denial codes<br>D6010 appeal scripts</div>
+    </div>
+    <div class="arch-node wiki-node" onclick="archClick('wiki-clinical')">
+      <div style="font-size:20px;margin-bottom:4px">🦷</div>
+      <div class="arch-node-title">Clinical Protocols</div>
+      <div class="arch-node-sub">All-on-4 protocol<br>CDT code rules</div>
+    </div>
+  </div>
+
+  <!-- ARROW DOWN -->
+  <div style="display:flex;justify-content:center;padding:8px 0;font-size:20px;color:var(--text-muted)">↓ Agents query wiki before decisions → better outcomes</div>
+
+  <!-- ROW 4: AGENTS -->
+  <div style="margin-bottom:8px;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text-muted)">TIER 4 — AI AGENTS (Decision Layer)</div>
+  <div class="arch-row" style="flex-wrap:wrap;gap:12px">
+    <div class="arch-node agent-node" onclick="archClick('orch-agent')">
+      <div style="font-size:20px;margin-bottom:4px">🎯</div>
+      <div class="arch-node-title">OrchestrationAgent</div>
+      <div class="arch-node-sub">Master coordinator<br>runCycle() + selfCheck()</div>
+    </div>
+    <div class="arch-node agent-node" onclick="archClick('ins-agent')">
+      <div style="font-size:20px;margin-bottom:4px">💼</div>
+      <div class="arch-node-title">InsuranceAgent</div>
+      <div class="arch-node-sub">Claim optimization<br>denial prevention</div>
+    </div>
+    <div class="arch-node agent-node" onclick="archClick('tx-agent')">
+      <div style="font-size:20px;margin-bottom:4px">🦷</div>
+      <div class="arch-node-title">TreatmentPlanAgent</div>
+      <div class="arch-node-sub">Case acceptance<br>barrier detection</div>
+    </div>
+    <div class="arch-node agent-node" onclick="archClick('sched-agent')">
+      <div style="font-size:20px;margin-bottom:4px">📆</div>
+      <div class="arch-node-title">SchedulingAgent</div>
+      <div class="arch-node-sub">No-show prevention<br>waitlist optimization</div>
+    </div>
+    <div class="arch-node agent-node" onclick="archClick('fin-agent')">
+      <div style="font-size:20px;margin-bottom:4px">💳</div>
+      <div class="arch-node-title">FinancialCounselorAgent</div>
+      <div class="arch-node-sub">Financing options<br>barrier resolution</div>
+    </div>
+  </div>
+
+  <!-- FEEDBACK LOOP -->
+  <div style="margin-top:20px;padding:16px 20px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:12px">
+    <div style="font-size:11px;font-weight:700;color:#10b981;margin-bottom:8px;letter-spacing:1px">♻️ THE FLYWHEEL — Why the system gets smarter over time</div>
+    <div style="font-size:11px;color:var(--text-dim);line-height:1.8">
+      More clinics connect → more anonymized patterns flow into wiki → agents make better decisions →
+      higher claim acceptance rates → better treatment outcomes → more clinics join.
+      Each new DSO makes the system smarter for all existing DSOs. <strong style="color:#10b981">No PHI ever enters the wiki.</strong>
+    </div>
+  </div>
+
+  <!-- HIPAA NOTE -->
+  <div style="margin-top:16px;padding:16px 20px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:12px">
+    <div style="font-size:11px;font-weight:700;color:#ef4444;margin-bottom:8px;letter-spacing:1px">🔒 HIPAA COMPLIANCE LAYER</div>
+    <div style="font-size:11px;color:var(--text-dim);line-height:1.8">
+      DatabaseAdapter enforces PHI isolation at the boundary.
+      All wiki ingests use <code style="color:#8b5cf6">dataClass: 'ops_safe'</code> — never <code style="color:#ef4444">'phi'</code>.
+      Raw patient records (name, DOB, SSN, chart #) never leave the tenant's adapter scope.
+      Wiki pages contain only aggregated, anonymized statistics and pattern language.
+    </div>
+  </div>
+</div><!-- end arch-view -->
+
+<!-- ══════════ OPS VIEW ══════════ -->
+<div id="ops-view" style="display:none;padding:40px">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px">
+
+    <div style="background:var(--bg3);border:1px solid rgba(59,130,246,0.3);border-radius:16px;padding:24px">
+      <div style="font-size:32px;margin-bottom:12px">📥</div>
+      <div style="font-size:16px;font-weight:800;color:#3b82f6;margin-bottom:8px">INGEST</div>
+      <div style="font-size:11px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">
+        Called after every clinical event. The LLM reads the existing wiki page for that topic,
+        plus the new event data, and synthesizes an updated summary — appending new patterns,
+        updating statistics, noting the timestamp.
+      </div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);margin-bottom:8px">TRIGGER POINTS</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:10px;color:var(--text-dim);padding:6px 10px;background:rgba(59,130,246,0.08);border-radius:6px">
+          📄 eob-service.ts → after every EOB line
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);padding:6px 10px;background:rgba(59,130,246,0.08);border-radius:6px">
+          🔬 engine.ts → after every runBatch()
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);padding:6px 10px;background:rgba(59,130,246,0.08);border-radius:6px">
+          🔌 Any adapter event (appointment, treatment plan)
+        </div>
+      </div>
+      <div style="margin-top:16px;padding:12px;background:rgba(0,0,0,0.3);border-radius:8px;font-size:10px;font-family:monospace;color:#06b6d4">
+        await wikiService.ingest(<br>
+        &nbsp;&nbsp;{ type: 'EOB_DENIED',<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;cdtCode: 'D6010',<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;denialReason: 'missing_PA',<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;payer: 'delta_dental' },<br>
+        &nbsp;&nbsp;'ops_safe'<br>
+        );
+      </div>
+    </div>
+
+    <div style="background:var(--bg3);border:1px solid rgba(139,92,246,0.3);border-radius:16px;padding:24px">
+      <div style="font-size:32px;margin-bottom:12px">🔍</div>
+      <div style="font-size:16px;font-weight:800;color:#8b5cf6;margin-bottom:8px">QUERY</div>
+      <div style="font-size:11px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">
+        Agents call query() before every important decision. WikiService does a semantic search
+        across all relevant pages, then synthesizeAnswerAsync() uses Claude to produce a
+        grounded, context-aware answer from the wiki content.
+      </div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);margin-bottom:8px">CALLER POINTS</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:10px;color:var(--text-dim);padding:6px 10px;background:rgba(139,92,246,0.08);border-radius:6px">
+          🎯 orchestrator.ts → before runCycle()
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);padding:6px 10px;background:rgba(139,92,246,0.08);border-radius:6px">
+          💼 InsuranceAgent → before filing claim
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);padding:6px 10px;background:rgba(139,92,246,0.08);border-radius:6px">
+          🦷 TreatmentPlanAgent → before case presentation
+        </div>
+      </div>
+      <div style="margin-top:16px;padding:12px;background:rgba(0,0,0,0.3);border-radius:8px;font-size:10px;font-family:monospace;color:#8b5cf6">
+        const answer = await<br>
+        &nbsp;&nbsp;wikiService.query(<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;"What causes D6010 denials<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;at Delta Dental?",<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;'ops_safe'<br>
+        &nbsp;&nbsp;);<br>
+        // → "Missing prior auth is<br>
+        // &nbsp;&nbsp;&nbsp;the #1 cause (67% of denials)..."
+      </div>
+    </div>
+
+    <div style="background:var(--bg3);border:1px solid rgba(245,158,11,0.3);border-radius:16px;padding:24px">
+      <div style="font-size:32px;margin-bottom:12px">🧹</div>
+      <div style="font-size:16px;font-weight:800;color:#f59e0b;margin-bottom:8px">LINT</div>
+      <div style="font-size:11px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">
+        Weekly automated pass over all wiki pages. Removes entries older than 90 days that
+        haven't been re-confirmed, resolves contradictions (newer data wins), merges duplicates,
+        and refreshes KPIs from live database statistics.
+      </div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);margin-bottom:8px">LINT OPERATIONS</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:10px;color:var(--text-dim);padding:6px 10px;background:rgba(245,158,11,0.08);border-radius:6px">
+          🗑️ Remove stale entries (>90 days, unconfirmed)
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);padding:6px 10px;background:rgba(245,158,11,0.08);border-radius:6px">
+          ⚖️ Resolve contradictions (newer data wins)
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);padding:6px 10px;background:rgba(245,158,11,0.08);border-radius:6px">
+          🔀 Merge duplicate pattern entries
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);padding:6px 10px;background:rgba(245,158,11,0.08);border-radius:6px">
+          📊 Refresh KPIs from live DB stats
+        </div>
+      </div>
+      <div style="margin-top:16px;padding:12px;background:rgba(0,0,0,0.3);border-radius:8px;font-size:10px;font-family:monospace;color:#f59e0b">
+        // Scheduled weekly (cron)<br>
+        await wikiService.lint();<br>
+        // → Removed: 3 stale entries<br>
+        // → Merged: 2 duplicates<br>
+        // → Refreshed: 18 KPI values<br>
+        // → Wiki health: 97%
+      </div>
+    </div>
+
+  </div>
+</div><!-- end ops-view -->
+
+<script>
+// ─── STATE ─────────────────────────────────────────────────────────────────
+let stats = { ingests:0, queries:0, pages:18, clinics:1, accuracy:74 };
+let logCount = 2;
+let animRunning = false;
+
+// ─── VIEW SWITCHING ─────────────────────────────────────────────────────────
+function showView(view) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('flow-view').style.display  = view === 'flow'  ? 'block' : 'none';
+  document.getElementById('arch-view').style.display  = view === 'arch'  ? 'flex'  : 'none';
+  document.getElementById('ops-view').style.display   = view === 'ops'   ? 'block' : 'none';
+}
+
+// ─── TIMESTAMP ──────────────────────────────────────────────────────────────
+function getTs() {
+  const d = new Date();
+  return d.toTimeString().split(' ')[0];
+}
+
+// ─── EVENT LOG ──────────────────────────────────────────────────────────────
+function addLog(type, msg) {
+  const container = document.getElementById('log-entries');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `
+    <span class="log-ts">${getTs()}</span>
+    <span class="log-type type-${type}">${type.toUpperCase()}</span>
+    <span class="log-msg">${msg}</span>
+  `;
+  container.appendChild(entry);
+  container.scrollTop = container.scrollHeight;
+  logCount++;
+}
+
+function clearLog() {
+  document.getElementById('log-entries').innerHTML = '';
+  logCount = 0;
+}
+
+// ─── STATS UPDATE ────────────────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('stat-ingests').textContent = stats.ingests;
+  document.getElementById('stat-queries').textContent = stats.queries;
+  document.getElementById('stat-pages').textContent   = stats.pages;
+  document.getElementById('stat-clinics').textContent = stats.clinics;
+  document.getElementById('stat-accuracy').textContent = stats.accuracy + '%';
+  document.getElementById('stat-ingests-d').textContent = '+' + stats.ingests + ' today';
+  document.getElementById('stat-queries-d').textContent = '+' + stats.queries + ' today';
+}
+
+// ─── PULSE CARD ──────────────────────────────────────────────────────────────
+function pulseCard(cardId) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  card.classList.add('pulsing');
+  setTimeout(() => card.classList.remove('pulsing'), 1600);
+}
+
+// ─── ANIMATE PARTICLE ────────────────────────────────────────────────────────
+function animateParticle(fromEl, toEl, color, delay = 0) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      const fromRect = fromEl.getBoundingClientRect();
+      const toRect   = toEl.getBoundingClientRect();
+      const particle = document.createElement('div');
+      particle.className = 'flow-particle';
+      particle.style.background = color;
+      particle.style.boxShadow  = `0 0 8px ${color}`;
+      particle.style.left = (fromRect.left + fromRect.width/2 - 4) + 'px';
+      particle.style.top  = (fromRect.top + fromRect.height/2 - 4) + 'px';
+      particle.style.position = 'fixed';
+      particle.style.zIndex = '1000';
+      document.body.appendChild(particle);
+
+      const startX = fromRect.left + fromRect.width/2 - 4;
+      const startY = fromRect.top  + fromRect.height/2 - 4;
+      const endX   = toRect.left   + toRect.width/2   - 4;
+      const endY   = toRect.top    + toRect.height/2   - 4;
+
+      let start = null;
+      const duration = 700;
+
+      function step(ts) {
+        if (!start) start = ts;
+        const t = Math.min((ts - start) / duration, 1);
+        const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+        particle.style.left = (startX + (endX-startX)*ease) + 'px';
+        particle.style.top  = (startY + (endY-startY)*ease) + 'px';
+        if (t < 1) requestAnimationFrame(step);
+        else {
+          particle.remove();
+          resolve();
+        }
+      }
+      requestAnimationFrame(step);
+    }, delay);
+  });
+}
+
+// ─── SCENARIOS ───────────────────────────────────────────────────────────────
+const scenarios = {
+  'eob-denied': {
+    label: 'D6010 Claim Denied',
+    steps: async () => {
+      addLog('warn', 'EOB received: D6010 implant claim DENIED by Delta Dental — reason: missing prior authorization');
+      pulseCard('card-eob');
+      await sleep(400);
+
+      const eob  = document.getElementById('card-eob');
+      const wiki = document.getElementById('card-wikiservice');
+      await animateParticle(eob, wiki, '#ef4444');
+      addLog('ingest', 'wikiService.ingest({ type: "EOB_DENIED", cdtCode: "D6010", payer: "delta_dental", reason: "missing_PA" }, "ops_safe")');
+      pulseCard('card-wikiservice');
+      stats.ingests++;
+      updateStats();
+      await sleep(500);
+
+      await animateParticle(wiki, document.getElementById('card-insurance-pages'), '#3b82f6');
+      pulseCard('card-insurance-pages');
+      addLog('ingest', 'Wiki updated → insurance/appeals/ppo-d6010.md · Pattern added: "Delta Dental D6010 → prior auth required, 7-day lead time"');
+      await sleep(600);
+
+      await animateParticle(document.getElementById('card-insurance-pages'), document.getElementById('card-insurance-agent'), '#8b5cf6');
+      pulseCard('card-insurance-agent');
+      stats.queries++;
+      updateStats();
+      addLog('query', 'InsuranceAgent.query("What causes D6010 denials at Delta Dental?") → "Missing prior auth is #1 cause (67% of denials). Always file PA 7 days before procedure."');
+      await sleep(500);
+
+      pulseCard('card-orchestrator');
+      stats.accuracy = Math.min(99, stats.accuracy + 2);
+      updateStats();
+      addLog('flow', '✅ Next D6010 submission will include prior auth → projected denial rate drops from 34% → 12%');
+    }
+  },
+
+  'eob-approved': {
+    label: 'Implant Claim Approved',
+    steps: async () => {
+      addLog('flow', 'EOB received: D6010 All-on-4 claim APPROVED — $3,200 reimbursement · Delta Dental PPO');
+      pulseCard('card-eob');
+      await sleep(400);
+
+      await animateParticle(document.getElementById('card-eob'), document.getElementById('card-wikiservice'), '#10b981');
+      stats.ingests++;
+      updateStats();
+      addLog('ingest', 'wikiService.ingest({ type: "EOB_APPROVED", cdtCode: "D6010", amount: 3200, payer: "delta_dental" }, "ops_safe")');
+      pulseCard('card-wikiservice');
+      await sleep(500);
+
+      await animateParticle(document.getElementById('card-wikiservice'), document.getElementById('card-patient-pages'), '#3b82f6');
+      pulseCard('card-patient-pages');
+      addLog('ingest', 'Wiki updated → patients/insurance-issue.md · "D6010 with prior auth = 94% approval rate at Delta Dental PPO"');
+      await sleep(600);
+
+      stats.accuracy = Math.min(99, stats.accuracy + 1);
+      updateStats();
+      addLog('flow', '✅ Pattern reinforced in wiki · InsuranceAgent confidence on similar claims increased');
+    }
+  },
+
+  'treatment-decline': {
+    label: 'Treatment Plan Declined',
+    steps: async () => {
+      addLog('warn', 'Patient declined All-on-4 treatment plan — reason: "too expensive, need to think about it"');
+      pulseCard('card-simulation');
+      await sleep(400);
+
+      await animateParticle(document.getElementById('card-simulation'), document.getElementById('card-wikiservice'), '#f59e0b');
+      stats.ingests++;
+      updateStats();
+      addLog('ingest', 'wikiService.ingest({ type: "TREATMENT_DECLINED", plan: "all-on-4", barrier: "cost", amount: 28500 }, "ops_safe")');
+      pulseCard('card-wikiservice');
+      await sleep(500);
+
+      await animateParticle(document.getElementById('card-wikiservice'), document.getElementById('card-patient-pages'), '#8b5cf6');
+      pulseCard('card-patient-pages');
+      addLog('ingest', 'Wiki updated → patients/financial-barrier.md · "High-value plan ($28.5k+) with no financing offer → 78% decline rate"');
+      await sleep(600);
+
+      await animateParticle(document.getElementById('card-patient-pages'), document.getElementById('card-treatment-agent'), '#8b5cf6');
+      pulseCard('card-treatment-agent');
+      stats.queries++;
+      updateStats();
+      addLog('query', 'TreatmentPlanAgent learned: "Always present CareCredit / Sunbit financing options before quoting All-on-4 > $20k"');
+      await sleep(400);
+
+      addLog('flow', '✅ FinancialCounselorAgent now pre-screens high-value cases → offers financing in same appointment');
+    }
+  },
+
+  'new-patient': {
+    label: 'New Patient Intake',
+    steps: async () => {
+      addLog('flow', 'New patient intake: John Doe, age 52, referred by Google search, needs full-arch implants');
+      pulseCard('card-adapter');
+      await sleep(400);
+
+      await animateParticle(document.getElementById('card-adapter'), document.getElementById('card-wikiservice'), '#06b6d4');
+      stats.ingests++;
+      updateStats();
+      addLog('ingest', 'wikiService.ingest({ type: "NEW_PATIENT", source: "google_search", need: "full_arch", age_group: "50s" }, "ops_safe")');
+      await sleep(500);
+
+      await animateParticle(document.getElementById('card-wikiservice'), document.getElementById('card-patient-pages'), '#06b6d4');
+      pulseCard('card-patient-pages');
+      addLog('ingest', 'Wiki updated → patients/new-patient.md · "50s Google-referred patients → 61% implant conversion if financial consult same day"');
+      await sleep(600);
+
+      await animateParticle(document.getElementById('card-patient-pages'), document.getElementById('card-orchestrator'), '#10b981');
+      pulseCard('card-orchestrator');
+      stats.queries++;
+      updateStats();
+      addLog('query', 'OrchestrationAgent context: "Book new consult → route to TreatmentPlanAgent + FinancialCounselorAgent in same session"');
+    }
+  },
+
+  'simulation-batch': {
+    label: 'Simulation Batch Run',
+    steps: async () => {
+      addLog('flow', 'SimulationEngine.runBatch() started — 50 synthetic patient journeys');
+      pulseCard('card-simulation');
+      await sleep(400);
+
+      for (let i = 0; i < 3; i++) {
+        await animateParticle(document.getElementById('card-simulation'), document.getElementById('card-wikiservice'), '#3b82f6', i*200);
+        stats.ingests++;
+      }
+      updateStats();
+      await sleep(800);
+      addLog('ingest', 'wikiService.ingest() called 50x — batch summarized to 8 pattern updates across wiki pages');
+      pulseCard('card-wikiservice');
+      await sleep(500);
+
+      pulseCard('card-patient-pages');
+      pulseCard('card-agent-pages');
+      addLog('ingest', 'Wiki updated: 3 patient pages + 2 agent pages · New pattern: "Emergency patients → 89% convert to implant within 30 days if pain resolved"');
+      await sleep(400);
+
+      stats.accuracy = Math.min(99, stats.accuracy + 3);
+      updateStats();
+      addLog('flow', '✅ Batch complete · Wiki intelligence score improved by 3 points');
+    }
+  },
+
+  'adapter-sync': {
+    label: 'Fusion CRM Adapter Sync',
+    steps: async () => {
+      addLog('flow', 'FusionCrmAdapter.syncPatients() — pulling latest from Fusion Dental Corp REST API');
+      pulseCard('card-adapter');
+      await sleep(400);
+
+      addLog('flow', 'GET /api/patients → 847 records → toCanonicalPatient() applied · PHI stays in adapter scope');
+      await sleep(500);
+
+      await animateParticle(document.getElementById('card-adapter'), document.getElementById('card-wikiservice'), '#3b82f6');
+      stats.ingests++;
+      updateStats();
+      addLog('ingest', 'Anonymized aggregate stats ingested: "Fusion Dental · Q2 · 23% no-show rate · avg treatment value $12,400"');
+      pulseCard('card-wikiservice');
+      await sleep(500);
+
+      await animateParticle(document.getElementById('card-wikiservice'), document.getElementById('card-agent-pages'), '#8b5cf6');
+      pulseCard('card-agent-pages');
+      addLog('ingest', 'Wiki updated → agents/scheduling-agent.md · Updated no-show risk thresholds for Q2 data');
+      addLog('flow', '✅ HIPAA compliant — zero PHI in wiki · All data anonymized at adapter boundary');
+    }
+  },
+
+  'appointment-completed': {
+    label: 'Appointment Completed',
+    steps: async () => {
+      addLog('flow', 'Appointment completed: Stage 1 All-on-4 implant placement · Dr. Chen · 3.5 hours · successful');
+      pulseCard('card-appointments');
+      await sleep(400);
+
+      await animateParticle(document.getElementById('card-appointments'), document.getElementById('card-wikiservice'), '#06b6d4');
+      stats.ingests++;
+      updateStats();
+      addLog('ingest', 'wikiService.ingest({ type: "APPT_COMPLETED", cdt: "D6010,D6011", duration_min: 210, outcome: "success" }, "ops_safe")');
+      pulseCard('card-wikiservice');
+      await sleep(500);
+
+      await animateParticle(document.getElementById('card-wikiservice'), document.getElementById('card-patient-pages'), '#8b5cf6');
+      pulseCard('card-patient-pages');
+      addLog('ingest', 'Wiki updated → patients/implant-consult.md · "All-on-4 stage 1 avg chair time: 3.5h · 94% success rate with 4-month healing"');
+      await sleep(400);
+
+      addLog('flow', '✅ SchedulingAgent will now block 4h for All-on-4 stage 1 (updated from previous 3h estimate)');
+    }
+  },
+
+  'weekly-lint': {
+    label: 'Weekly Lint Pass',
+    steps: async () => {
+      addLog('lint', 'WikiService.lint() started — weekly maintenance pass across 18 wiki pages');
+      pulseCard('card-wikiservice');
+      await sleep(400);
+
+      addLog('lint', 'Scanning patients/recall-overdue.md — found 2 entries from 2023 Q4 (stale, unconfirmed) → REMOVED');
+      pulseCard('card-patient-pages');
+      await sleep(500);
+      addLog('lint', 'Scanning insurance/delta-dental.md — found contradiction: entry A says 30-day PA window, entry B says 45-day → MERGED (newer: 45 days)');
+      pulseCard('card-insurance-pages');
+      await sleep(500);
+      addLog('lint', 'Refreshing KPIs from live DB: claim_acceptance_rate=82%, avg_treatment_value=$11,200, no_show_rate=18%');
+      await sleep(400);
+      stats.pages = Math.max(18, stats.pages);
+      updateStats();
+      addLog('lint', '✅ Lint complete — Removed: 2 stale · Merged: 1 contradiction · Refreshed: 18 KPIs · Wiki health: 97%');
+    }
+  },
+
+  'dso-query': {
+    label: 'DSO Intelligence Query',
+    steps: async () => {
+      addLog('query', 'DSO dashboard: "What is the current denial rate for D6010 across all connected clinics?"');
+      pulseCard('card-orchestrator');
+      await sleep(400);
+
+      await animateParticle(document.getElementById('card-orchestrator'), document.getElementById('card-wikiservice'), '#8b5cf6');
+      stats.queries++;
+      updateStats();
+      addLog('query', 'wikiService.query("D6010 denial rate across DSO", "ops_safe") → searching 4 relevant pages...');
+      pulseCard('card-wikiservice');
+      await sleep(600);
+
+      await animateParticle(document.getElementById('card-wikiservice'), document.getElementById('card-insurance-pages'), '#8b5cf6');
+      pulseCard('card-insurance-pages');
+      await sleep(400);
+
+      addLog('query', 'Answer synthesized: "D6010 denial rate: 28% (Fusion Dental) · Primary causes: missing PA (67%), frequency limit (21%), medical necessity (12%)"');
+      addLog('flow', '✅ DSO dashboard displays real-time intelligence grounded in wiki knowledge');
+    }
+  },
+
+  'financial-barrier': {
+    label: 'Financial Barrier Detected',
+    steps: async () => {
+      addLog('warn', 'FinancialCounselorAgent: Patient income bracket suggests $28k treatment is 23x monthly income — HIGH BARRIER');
+      pulseCard('card-treatment-agent');
+      await sleep(400);
+
+      await animateParticle(document.getElementById('card-treatment-agent'), document.getElementById('card-wikiservice'), '#8b5cf6');
+      stats.queries++;
+      updateStats();
+      addLog('query', 'wikiService.query("financing strategies for high-barrier patients $20k+", "ops_safe")');
+      pulseCard('card-wikiservice');
+      await sleep(600);
+
+      await animateParticle(document.getElementById('card-wikiservice'), document.getElementById('card-patient-pages'), '#8b5cf6');
+      pulseCard('card-patient-pages');
+      addLog('query', 'Answer: "CareCredit 24-month no-interest + Sunbit backup = 71% close rate on $20k+ cases with high-barrier patients"');
+      await sleep(500);
+
+      await animateParticle(document.getElementById('card-wikiservice'), document.getElementById('card-treatment-agent'), '#10b981');
+      addLog('flow', '✅ Agent routes patient to FinancialCounselorAgent with specific financing script → projected close rate: 71%');
+    }
+  }
+};
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function triggerScenario(name) {
+  if (animRunning) return;
+  animRunning = true;
+
+  // Highlight selected button
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  const btns = document.querySelectorAll('.scenario-btn');
+  btns.forEach(b => { if (b.textContent.includes(scenarios[name].label)) b.classList.add('active'); });
+
+  const scenario = scenarios[name];
+  if (!scenario) { animRunning = false; return; }
+
+  addLog('flow', `▶ Scenario: "${scenario.label}" triggered`);
+
+  try {
+    await scenario.steps();
+  } finally {
+    animRunning = false;
+  }
+}
+
+// ─── OP TRIGGERS ─────────────────────────────────────────────────────────────
+async function triggerOp(op) {
+  if (op === 'ingest')  await triggerScenario('eob-denied');
+  if (op === 'query')   await triggerScenario('dso-query');
+  if (op === 'lint')    await triggerScenario('weekly-lint');
+}
+
+// ─── WIKI PANEL ──────────────────────────────────────────────────────────────
+const wikiPages = {
+  'wikiservice': {
+    title: 'WikiService Engine',
+    content: `
+      <div class="wiki-update-badge"><span>⚙️</span> CORE ENGINE</div>
+      <div class="wiki-section">
+        <h4>PURPOSE</h4>
+        <p>WikiService is the Karpathy wiki implementation for full-arch-crm. It provides persistent, LLM-synthesized institutional memory for all AI agents.</p>
+      </div>
+      <div class="wiki-section">
+        <h4>FILE LOCATION</h4>
+        <p style="font-family:monospace;color:#3b82f6">server/simulation/wiki/wiki-service.ts</p>
+      </div>
+      <div class="wiki-section">
+        <h4>THREE OPERATIONS</h4>
+        <p><strong style="color:#3b82f6">INGEST:</strong> Called after every clinical event. LLM reads existing wiki page + event data → synthesizes updated entry.</p>
+        <p><strong style="color:#8b5cf6">QUERY:</strong> Called before every agent decision. Semantic search → synthesizeAnswerAsync() uses Claude to produce grounded answer.</p>
+        <p><strong style="color:#f59e0b">LINT:</strong> Weekly automated pass. Removes stale, resolves contradictions, refreshes KPIs.</p>
+      </div>
+      <div class="wiki-section">
+        <h4>HIPAA COMPLIANCE</h4>
+        <p>All ingests use dataClass: 'ops_safe'. PHI never enters the wiki. Raw patient data stays in adapter scope only.</p>
+      </div>
+    `
+  },
+  'patient-scenarios': {
+    title: 'Patient Scenario Wiki Pages',
+    content: `
+      <div class="wiki-update-badge"><span>✅</span> FULLY SEEDED — 8 PAGES</div>
+      <div class="wiki-section">
+        <h4>SEEDED PAGES</h4>
+        <p>1. implant-consult.md — All-on-4 consultation patterns<br>
+           2. recall-overdue.md — Missed recall patient reactivation<br>
+           3. treatment-decline.md — Declined treatment plan analysis<br>
+           4. new-patient.md — New patient intake optimization<br>
+           5. financial-barrier.md — Financing strategy patterns<br>
+           6. insurance-issue.md — Coverage verification failures<br>
+           7. dso-referral.md — Inter-clinic referral patterns<br>
+           8. emergency.md — Emergency patient conversion</p>
+      </div>
+      <div class="wiki-section">
+        <h4>DATA FORMAT</h4>
+        <p>Each page: anonymized aggregate statistics, clinical patterns, agent decision guidance. No PHI — only pattern language (e.g., "patients aged 50-65 with PPO coverage have 74% implant acceptance rate").</p>
+      </div>
+    `
+  },
+  'agent-pages': {
+    title: 'Agent Playbook Wiki Pages',
+    content: `
+      <div class="wiki-update-badge"><span>🔄</span> SEEDING IN PROGRESS — 6 PAGES</div>
+      <div class="wiki-section">
+        <h4>PAGES BEING SEEDED</h4>
+        <p>1. PatientAcquisitionAgent.md<br>
+           2. RecallAgent.md<br>
+           3. TreatmentPlanAgent.md<br>
+           4. InsuranceAgent.md<br>
+           5. SchedulingAgent.md<br>
+           6. FinancialCounselorAgent.md</p>
+      </div>
+      <div class="wiki-section">
+        <h4>PAGE STRUCTURE</h4>
+        <p>Each agent page contains: decision logic rules, escalation criteria, KPI thresholds, common failure modes, and recommended prompting strategies for that agent's domain.</p>
+      </div>
+      <div class="wiki-section">
+        <h4>HOW AGENTS USE THESE</h4>
+        <p>Before each decision cycle, agents call wikiService.query() targeting their playbook page. The LLM synthesizes a contextual answer grounding the agent's next action.</p>
+      </div>
+    `
+  },
+  'insurance-pages': {
+    title: 'Insurance / Appeals Wiki Pages',
+    content: `
+      <div class="wiki-update-badge"><span>🔄</span> SEEDING IN PROGRESS</div>
+      <div class="wiki-section">
+        <h4>PAGES</h4>
+        <p>• insurance/ppo-general.md — PPO general rules, fee schedules, timely filing limits<br>
+           • insurance/delta-dental.md — Delta Dental specific rules (seeded ✓)<br>
+           • insurance/appeals/ppo-d6010.md — D6010 implant appeal scripts</p>
+      </div>
+      <div class="wiki-section">
+        <h4>D6010 APPEAL SCRIPT (PREVIEW)</h4>
+        <p>"Re: Claim denial — CDT D6010 (Endosteal Implant). This patient presents with [diagnosis]. Per Delta Dental PPO policy Section 4.2, implants are covered when conservative alternatives are contraindicated due to..."</p>
+      </div>
+      <div class="wiki-section">
+        <h4>TOP DENIAL REASONS (from wiki)</h4>
+        <p>1. Missing prior authorization (67%)<br>
+           2. Frequency limitation exceeded (21%)<br>
+           3. Medical necessity not documented (12%)</p>
+      </div>
+    `
+  },
+  'orchestrator': {
+    title: 'OrchestrationAgent',
+    content: `
+      <div class="wiki-update-badge"><span>🎯</span> MASTER COORDINATOR</div>
+      <div class="wiki-section">
+        <h4>KARPATHY INTEGRATION</h4>
+        <p>At the start of every runCycle(), OrchestrationAgent calls:<br>
+        <span style="font-family:monospace;color:#8b5cf6;font-size:11px">const wikiContext = await wikiService.query(cycleQuestion, 'ops_safe');</span><br>
+        This context is then passed into selfCheck() to ground all decisions.</p>
+      </div>
+      <div class="wiki-section">
+        <h4>FILE</h4>
+        <p style="font-family:monospace;color:#3b82f6">server/simulation/orchestrator.ts</p>
+      </div>
+      <div class="wiki-section">
+        <h4>SELF-IMPROVEMENT LOOP</h4>
+        <p>After every cycle: outcomes ingested back → wiki updated → next cycle is smarter. This is the core self-improvement flywheel.</p>
+      </div>
+    `
+  },
+  'insurance-agent': {
+    title: 'InsuranceAgent — Wiki Integration',
+    content: `
+      <div class="wiki-update-badge"><span>💼</span> CLAIMS OPTIMIZER</div>
+      <div class="wiki-section">
+        <h4>QUERY BEFORE CLAIM</h4>
+        <p>Before every claim submission, InsuranceAgent queries:<br>
+        <span style="font-family:monospace;color:#8b5cf6;font-size:11px">"What documentation is required for [CDT code] at [payer]?"</span><br>
+        Wiki returns payer-specific requirements learned from previous denials.</p>
+      </div>
+      <div class="wiki-section">
+        <h4>INGEST AFTER EOB</h4>
+        <p>Every EOB (approved or denied) is ingested back into the wiki via eob-service.ts, creating a closed learning loop for claim accuracy.</p>
+      </div>
+      <div class="wiki-section">
+        <h4>CURRENT ACCURACY</h4>
+        <p>Claim acceptance rate: 74% → improving with every EOB cycle. Target: 90%+</p>
+      </div>
+    `
+  },
+  'treatment-agent': {
+    title: 'TreatmentPlanAgent',
+    content: `
+      <div class="wiki-update-badge"><span>🦷</span> CASE ACCEPTANCE</div>
+      <div class="wiki-section">
+        <h4>WIKI QUERY PATTERN</h4>
+        <p>Before presenting treatment plans, agent queries:<br>
+        <span style="font-family:monospace;color:#8b5cf6;font-size:11px">"What barriers cause patients to decline [treatment type]?"</span><br>
+        Wiki returns financial, fear, and complexity barriers with mitigation strategies.</p>
+      </div>
+      <div class="wiki-section">
+        <h4>FINANCING INTEGRATION</h4>
+        <p>For plans > $15k, wiki now instructs agent to always involve FinancialCounselorAgent before presenting — learned from treatment-decline pattern analysis.</p>
+      </div>
+    `
+  },
+  'scheduling-agent': {
+    title: 'SchedulingAgent',
+    content: `
+      <div class="wiki-update-badge"><span>📆</span> SCHEDULE OPTIMIZER</div>
+      <div class="wiki-section">
+        <h4>NO-SHOW RISK SCORING</h4>
+        <p>SchedulingAgent queries wiki for no-show patterns before booking. Wiki now contains: "Patients with 2+ rescheduled appointments have 61% no-show rate — require same-day confirmation call."</p>
+      </div>
+      <div class="wiki-section">
+        <h4>LEARNED CHAIR TIMES</h4>
+        <p>Wiki stores actual vs. estimated chair times by procedure. D6010 All-on-4: estimated 3h → actual avg 3.5h. Scheduler now blocks 4h.</p>
+      </div>
+    `
+  }
+};
+
+function openWikiPage(page) {
+  const data = wikiPages[page];
+  if (!data) return;
+  document.getElementById('wiki-panel-title').textContent = data.title;
+  document.getElementById('wiki-content').innerHTML = data.content;
+  document.getElementById('wiki-panel').classList.add('open');
+}
+function closeWikiPanel() {
+  document.getElementById('wiki-panel').classList.remove('open');
+}
+
+// ─── ARCH CLICK ──────────────────────────────────────────────────────────────
+const archInfo = {
+  'fusion':       { title:'Fusion Dental Corp.', desc:'Customer #1 · fusion_crm repo · Exposes REST API → FusionCrmAdapter reads it → canonicalizes data → passes to full-arch-crm. PHI stays inside fusion_crm.' },
+  'western':      { title:'Western Dental', desc:'Future DSO connector · WesternDentalAdapter (not yet built) · Will use GENERIC_REST_MAPPING as template · Onboarding = copy template + new adapter file + register in registry.ts' },
+  'clearchoice':  { title:'ClearChoice', desc:'Future DSO · Same pattern as Western Dental · Each new DSO makes the wiki smarter for all existing DSOs' },
+  'novidea':      { title:'Novidea / Any DSO', desc:'GenericRestAdapter + GENERIC_REST_MAPPING · Template for rapid DSO onboarding · Copy mapping → configure endpoints → register · Takes ~2 hours to onboard a new DSO' },
+  'fullarch':     { title:'full-arch-crm', desc:'Universal dental PMS SaaS owned by Fusion Management · Any dental corporation can connect via DatabaseAdapter · Owns: AI agents, Karpathy wiki, simulation engine, DSO dashboard, adapter registry' },
+  'wiki-patients':{ title:'Patient Scenario Wiki', desc:'8 anonymized pages · Clinical patterns, treatment pathways, barrier analysis · Updated after every simulation batch and clinical event' },
+  'wiki-agents':  { title:'Agent Playbook Wiki', desc:'6 pages — one per AI agent · Decision logic, escalation criteria, KPI thresholds · Agents query their own page before every decision cycle' },
+  'wiki-insurance':{ title:'Insurance Intel Wiki', desc:'PPO rules, Delta Dental specifics, D6010 appeal scripts, denial reason codes · Updated after every EOB · Powers InsuranceAgent claim optimization' },
+  'wiki-clinical': { title:'Clinical Protocols Wiki', desc:'All-on-4 protocol, CDT code rules, procedure success rates, chair time benchmarks · Powers TreatmentPlanAgent and SchedulingAgent' },
+  'orch-agent':   { title:'OrchestrationAgent', desc:'Master coordinator · Queries wiki at start of runCycle() · Passes wikiContext into selfCheck() · Coordinates all sub-agents · server/simulation/orchestrator.ts' },
+  'ins-agent':    { title:'InsuranceAgent', desc:'Queries wiki before filing every claim · Ingests every EOB outcome · Closed learning loop → claim accuracy improving from 74% toward 90%+' },
+  'tx-agent':     { title:'TreatmentPlanAgent', desc:'Queries wiki for case-acceptance barriers before presenting plans · Adjusts approach based on patient financial profile and payer coverage' },
+  'sched-agent':  { title:'SchedulingAgent', desc:'Uses wiki no-show patterns for appointment risk scoring · Learned actual chair times for procedures · Optimizes reminder cadence' },
+  'fin-agent':    { title:'FinancialCounselorAgent', desc:'Queries wiki for financing strategies per case value and barrier type · CareCredit + Sunbit integration · Triggered by TreatmentPlanAgent on high-value cases' }
+};
+
+function archClick(key) {
+  const info = archInfo[key];
+  if (!info) return;
+  document.getElementById('wiki-panel-title').textContent = info.title;
+  document.getElementById('wiki-content').innerHTML = `
+    <div style="font-size:12px;line-height:1.8;color:var(--text-dim)">${info.desc}</div>
+  `;
+  document.getElementById('wiki-panel').classList.add('open');
+}
+
+// ─── TOOLTIP ─────────────────────────────────────────────────────────────────
+document.addEventListener('mouseover', e => {
+  const card = e.target.closest('[data-tooltip]');
+  if (!card) return;
+  const tt = document.getElementById('tooltip');
+  tt.textContent = card.dataset.tooltip;
+  tt.classList.remove('hidden');
+});
+document.addEventListener('mousemove', e => {
+  const tt = document.getElementById('tooltip');
+  if (!tt.classList.contains('hidden')) {
+    tt.style.left = (e.clientX + 14) + 'px';
+    tt.style.top  = (e.clientY + 14) + 'px';
+  }
+});
+document.addEventListener('mouseout', e => {
+  if (!e.target.closest('[data-tooltip]')) return;
+  document.getElementById('tooltip').classList.add('hidden');
+});
+
+// ─── AMBIENT ANIMATION ───────────────────────────────────────────────────────
+// Auto-run a random scenario every 15s if idle
+let idleTimer = null;
+function resetIdle() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    if (!animRunning) {
+      const keys = Object.keys(scenarios);
+      triggerScenario(keys[Math.floor(Math.random() * keys.length)]);
+    }
+    resetIdle();
+  }, 18000);
+}
+document.addEventListener('click', resetIdle);
+resetIdle();
+
+// ─── PROGRESS BAR ANIMATION ──────────────────────────────────────────────────
+setTimeout(() => {
+  const p = document.getElementById('agent-pages-progress');
+  if (p) p.style.width = '100%';
+}, 3000);
+</script>
+</body>
+</html>
