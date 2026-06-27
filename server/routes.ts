@@ -115,6 +115,7 @@ export async function registerRoutes(
   app.use("/api/coding/suggest", aiLimiter);
   app.use("/api/appeals/generate", aiLimiter);
   app.use("/api/perio/ai-assessment", aiLimiter);
+  app.use("/api/scribe/generate", aiLimiter);
   app.use("/api/workflows", aiLimiter);
   app.use("/api/payments/create-intent", paymentLimiter);
   app.use("/api/payments/confirm", paymentLimiter);

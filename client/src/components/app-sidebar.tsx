@@ -109,6 +109,7 @@ const clinicalItems = [
   { title: "Multi-Location", url: "/multi-location", icon: MapPin },
   { title: "Pediatric Module", url: "/pediatric", icon: Baby },
   { title: "Oral Surgery", url: "/oral-surgery", icon: Syringe },
+  { title: "AI Scribe", url: "/ai-scribe", icon: Mic },
   { title: "AI Diagnostics", url: "/ai-diagnostics", icon: Microscope },
   { title: "Patient Documents", url: "/documents", icon: FileText },
   { title: "E-Prescribing", url: "/e-prescribing", icon: Pill },

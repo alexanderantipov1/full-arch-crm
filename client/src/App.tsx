@@ -26,6 +26,7 @@ import CalculatorPage from "@/pages/calculator";
 import AnalyticsPage from "@/pages/analytics";
 import AIAssistantPage from "@/pages/ai-assistant";
 import AIDocumentationPage from "@/pages/ai-documentation";
+import AIScribePage from "@/pages/ai-scribe";
 import AppealsEnginePage from "@/pages/appeals-engine";
 import ERAProcessingPage from "@/pages/era-processing";
 import InsuranceVerificationPage from "@/pages/insurance-verification";
@@ -200,6 +201,7 @@ function Router() {
         <Route path="/analytics-old" component={AnalyticsPage} />
         <Route path="/ai-assistant" component={AIAssistantPage} />
         <Route path="/ai-documentation" component={AIDocumentationPage} />
+        <Route path="/ai-scribe" component={AIScribePage} />
         <Route path="/appeals" component={AppealsEnginePage} />
         <Route path="/era-processing" component={ERAProcessingPage} />
         <Route path="/eligibility" component={InsuranceVerificationPage} />
