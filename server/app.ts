@@ -7,6 +7,7 @@ import express, {
 import { createServer, type Server } from "http";
 import { registerRoutes } from "./routes";
 import { bootstrapAdapters } from "./adapters";
+import { checkAdapterHealth } from "./adapters/adapter-health";
 
 declare module "http" {
   interface IncomingMessage {
@@ -87,7 +88,7 @@ export interface CreateAppResult {
 }
 
 // Build the production Express pipeline:
-//   body parsers → /api/health → request logger → registerRoutes
+//   body parsers → /api/health → /api/health/adapter → request logger → registerRoutes
 //   (auth + rate limiters + all /api/* handlers) → error handler
 //
 // Does NOT call httpServer.listen() and does NOT mount Vite or the static
@@ -107,6 +108,25 @@ export async function createApp(): Promise<CreateAppResult> {
 
   app.get("/api/health", (_req, res) => {
     res.status(200).json({ status: "ok" });
+  });
+
+  // ── Adapter health endpoint ───────────────────────────────────────────────
+  // Returns real-time health of the configured database adapter.
+  // No auth required — safe to call from load balancers and monitoring tools.
+  // Example response:
+  //   { adapterType: "fusion_crm", status: "healthy", latencyMs: 42,
+  //     tenantId: "a1b2c3d4-...", testedAt: "2025-01-01T00:00:00.000Z" }
+  app.get("/api/health/adapter", async (_req, res) => {
+    const tenantId =
+      process.env.ADAPTER_TENANT_ID ??
+      process.env.DEFAULT_TENANT_ID ??
+      "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+
+    const health = await checkAdapterHealth(tenantId);
+
+    // Return HTTP 503 if offline so monitoring tools can alert
+    const httpStatus = health.status === "offline" ? 503 : 200;
+    res.status(httpStatus).json(health);
   });
 
   app.use(requestLogger);
