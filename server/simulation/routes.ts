@@ -5,6 +5,7 @@ import { Router } from "express";
 import { simulationEngine } from "./engine";
 import { orchestrationAgent } from "./orchestrator";
 import { selfCheckAgent } from "./self-check";
+import { abTestingEngine } from "./ab-testing";
 
 export const simulationRouter = Router();
 
@@ -113,4 +114,28 @@ simulationRouter.get("/api/simulation/self-check", async (_req, res) => {
   } catch (err: any) {
     res.status(500).json({ error: String(err?.message ?? err) });
   }
+});
+
+// --- A/B agent testing routes ---
+
+simulationRouter.post("/api/simulation/ab/create", async (req, res) => {
+  try {
+    const test = abTestingEngine.createTest(req.body);
+    res.json(test);
+  } catch (err: any) {
+    res.status(400).json({ error: String(err?.message ?? err) });
+  }
+});
+
+simulationRouter.post("/api/simulation/ab/run/:id", async (req, res) => {
+  try {
+    const result = await abTestingEngine.runTest(req.params.id);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message ?? err) });
+  }
+});
+
+simulationRouter.get("/api/simulation/ab/suite", (_req, res) => {
+  res.json(abTestingEngine.getSuite());
 });
