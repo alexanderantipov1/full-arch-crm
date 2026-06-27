@@ -20,6 +20,7 @@ import {
   Sparkles,
   Gavel,
   Receipt,
+  FileCheck,
   Shield,
   TrendingUp,
   GraduationCap,
@@ -143,6 +144,7 @@ const billingItems = [
   { title: "Revenue Cycle", url: "/rcm", icon: Activity },
   { title: "Financial Center", url: "/financial", icon: Wallet },
   { title: "Fee Optimizer", url: "/fee-optimizer", icon: DollarSign },
+  { title: "RCM Tools", url: "/rcm-tools", icon: FileCheck },
 ];
 
 const aiToolsItems = [
