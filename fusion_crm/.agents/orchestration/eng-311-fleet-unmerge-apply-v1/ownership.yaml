@@ -1,0 +1,26 @@
+mission: eng-311-fleet-unmerge-apply
+linear_issue: ENG-311
+owner_role: orchestrator
+owner_agent: claude
+target_db: local-docker-postgres-5434
+tenant_id: 11111111-1111-4111-8111-111111111111
+mutating: true
+mutation_gate: explicit-operator-go-before-apply
+allowed_paths:
+  run_only:
+    - infra/scripts/split_wrong_merged_persons.py
+    - infra/scripts/audit_identity_merges.py
+  write:
+    - .agents/orchestration/current/**
+    - ~/.fusion-agent-orchestrator/c2db50910d08/current/**
+forbidden_paths:
+  - apps/web/lib/msw/handlers.ts
+  - infra/scripts/**            # run, do not edit
+  - packages/**                 # no product code change
+  - "**/alembic/**"             # no migration
+db_write_targets:
+  - identity.person
+  - identity.source_link
+  - interaction.event (source_kind='patient')
+  - ops.consultation (carestack, raw_event_id not null)
+  - audit.access_log (INSERT only)

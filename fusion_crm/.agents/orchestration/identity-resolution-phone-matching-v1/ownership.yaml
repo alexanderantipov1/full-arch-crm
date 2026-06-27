@@ -1,0 +1,59 @@
+mission: identity-resolution-phone-matching-v1
+epic:
+  linear_id: ENG-541
+  linear_url: https://linear.app/fusion-dental-implants/issue/ENG-541
+  title: "Identity resolution: phone-strong matching, same-phone surfacing & dedup backfill"
+  task_class: contract_change
+  policy_touched: ENG-185
+
+tasks:
+  - task_id: ENG-542
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-542
+    title: "A — Same-phone surfacing in card + persist lead phone/email identifiers"
+    task_class: normal
+    priority: P0
+    owner_runtime: claude-code
+    reviewer_runtime: codex
+    owned_paths:
+      - packages/identity/
+      - packages/ingest/sf_lead_service.py
+      - apps/api/routers/persons.py
+      - apps/web/app/(staff)/persons/
+    shared_contracts:
+      - identity.person_identifier write path
+    verification: lint + typecheck + identity/ingest tests + manual card check on 73e7523b
+    depends_on: []
+
+  - task_id: ENG-543
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-543
+    title: "B — Matcher: reversed-name compat + phone-strong / empty-lead auto-accept"
+    task_class: contract_change
+    priority: P1
+    owner_runtime: claude-code
+    reviewer_runtime: codex
+    requires_proposal_first: true
+    owned_paths:
+      - packages/identity/service.py
+      - tests/identity/
+    shared_contracts:
+      - resolve_or_create_from_hint matching policy (ENG-185)
+    verification: new + existing identity unit tests; Patrick Newton lead auto-links, no dup
+    depends_on: []
+
+  - task_id: ENG-544
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-544
+    title: "C — Backfill/replay: reprocess candidates + dedup-merge duplicates"
+    task_class: normal
+    priority: P1
+    owner_runtime: claude-code
+    reviewer_runtime: codex
+    owned_paths:
+      - apps/worker/jobs/
+      - packages/identity/
+    verification: dry-run report reviewed by operator BEFORE live pass; reversible merges; audit traceable
+    depends_on: [ENG-543, ENG-542]
+
+gates:
+  - No merge to main / no deploy without explicit operator approval.
+  - ENG-543 + ENG-544 require Codex cross-runtime review before integration.
+  - ENG-544 live pass requires operator sign-off on the dry-run numbers.

@@ -1,0 +1,62 @@
+# Mattermost workspace manifest — declarative source of truth (ENG-458).
+#
+# Snapshotted READ-ONLY from PROD (`fusion-mm-pg` Cloud SQL, db `mattermost`)
+# on 2026-06-20. Drives an idempotent provisioning script so any instance
+# (local dev or prod) gets the same teams + channels.
+#
+# Channel names are the contract the notification pipeline routes on. Because
+# the bot belongs to MULTIPLE teams and every team owns a channel of the same
+# name (e.g. `scheduls`), routing MUST be keyed by (team, channel) — a bare
+# channel name is ambiguous. See `notify` block below.
+#
+# `town-square` and `off-topic` are created automatically by Mattermost with
+# every team; the provisioner does NOT create them and they are not listed.
+#
+# Prod channel IDs are recorded only as provenance comments — IDs are
+# environment-specific and are resolved at runtime, never hardcoded.
+
+bot:
+  # Bot account that posts notifications; must be a member of every team it
+  # needs to resolve channels in. ENV-SPECIFIC: prod uses `fusion-crm`, local
+  # uses `fusion`. Override at provision time with --bot-username / MM_BOT_USERNAME
+  # rather than editing this file per environment.
+  username: fusion-crm
+
+# Per-location routing (ENG-458): each team is a clinic. A consultation routes
+# to its clinic team's #scheduls / #consult-reminders. The link is the team's
+# CareStack location id(s); a seeding step writes
+# `tenant.location.external_ref["mattermost_team"] = <team name>` for each
+# location below so the emit engine can map location_id -> team. The mapping is
+# OPERATOR DATA (it is not derivable from location names) — fill the
+# `carestack_location_ids` lists per environment before enabling notifications.
+# `default_team` (in the Mattermost credential payload) catches events with no
+# location.
+teams:
+  - name: el-dorado
+    display_name: El Dorado
+    # Fusion Dental Implants (EDH = El Dorado Hills)
+    carestack_location_ids: [1]
+    channels: &clinic_channels
+      - { name: leads,              display_name: "Leads" }
+      - { name: leads-missing-info, display_name: "Leads — Missing Info" }
+      - { name: scheduls,           display_name: "Scheduled" }
+      - { name: today,              display_name: "Today" }
+      - { name: consult-reminders,  display_name: "Consult Reminders" }
+
+  - name: fusion
+    display_name: Fusion
+    # Fusion Dental Implants (ROS = Roseville)
+    carestack_location_ids: [8027]
+    channels: *clinic_channels
+
+  - name: galleria
+    display_name: Galleria
+    # Galleria Oral Surgery & Dental Implants
+    carestack_location_ids: [10029]
+    channels: *clinic_channels
+
+  - name: san-francisco
+    display_name: San Francisco
+    # Cosmo Dental
+    carestack_location_ids: [9028]
+    channels: *clinic_channels

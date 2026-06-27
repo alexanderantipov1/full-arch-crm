@@ -1,0 +1,33 @@
+mission_id: runtime-state-out-of-repo
+linear_issue_id: ENG-224
+linear_issue_url: https://linear.app/fusion-dental-implants/issue/ENG-224/move-orchestrator-session-runtime-state-out-of-the-repository-m-1
+
+owners:
+  orchestrator: claude-code
+  worker: pending
+  verifier: claude-code
+  integrator: pending-human
+
+scope_allow:
+  - .agents/skills/agent-orchestrator/scripts/
+  - .agents/skills/agent-orchestrator/tests/
+  - .agents/dashboard/server.py
+  - .agents/CLAUDE.md
+  - .agents/orchestration/CLAUDE.md
+  - .agents/orchestration/AGENTS.md
+  - .agents/skills/agent-orchestrator/SKILL.md
+  - .agents/skills/agent-orchestrator/tests/README.md
+  - .gitignore
+  - .agents/orchestration/runtime-state-out-of-repo/
+
+scope_deny:
+  - apps/
+  - packages/
+  - infra/
+  - .env*
+  - .claude/
+  - docs/
+  - .agents/orchestration/archived/
+
+risk: medium
+contains_phi: false

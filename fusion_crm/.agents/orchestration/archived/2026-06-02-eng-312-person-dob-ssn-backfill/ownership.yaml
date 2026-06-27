@@ -1,0 +1,20 @@
+mission: eng-312-person-dob-ssn-backfill
+linear_issue: ENG-312
+owner_role: worker
+owner_agent: claude-code
+parent_issue: ENG-309
+sibling_issue: ENG-311
+mutating: false   # worker writes code only; DB --apply is a later operator-gated run
+allowed_paths:
+  write:
+    - infra/scripts/backfill_person_dob_ssn.py
+    - tests/infra/test_backfill_person_dob_ssn.py
+    - .agents/orchestration/current/reports/ENG-312-worker-report.md
+  reuse_no_edit:
+    - packages/ingest/carestack_patient_service.py   # _parse_carestack_dob, _normalize_ssn
+    - infra/scripts/backfill_payment_summary.py        # pattern to mirror
+forbidden_paths:
+  - packages/identity/service.py     # ENG-309 frozen
+  - apps/web/lib/msw/handlers.ts
+  - "**/alembic/**"                  # no migration
+  - packages/**/models.py            # no schema change

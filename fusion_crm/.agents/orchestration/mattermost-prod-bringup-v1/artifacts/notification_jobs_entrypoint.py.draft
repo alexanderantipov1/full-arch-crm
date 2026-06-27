@@ -1,0 +1,112 @@
+"""DRAFT — NOT WIRED. Cloud Run Job entrypoints for the messenger engine.
+
+ENG-498 — Prod notification delivery without an always-on arq worker.
+
+Context
+-------
+Production has NO long-running arq worker: the `fusion-worker` Cloud Run
+Service was decommissioned in ENG-172 (arq has no HTTP surface, so Cloud Run
+health checks always failed). The messenger engine relies on arq crons:
+
+  * ``apps.worker.jobs.notification_dispatch.drain_notification_outbox`` —
+    drains ``integrations.notification_outbox`` and posts to Mattermost.
+  * ``apps.worker.jobs.consultation_reminders.scan_consultation_reminders`` —
+    T-15m confirmed-consultation reminder scan (ENG-486, NOT yet on main).
+
+Neither runs in prod today. This module gives each cron a thin one-shot
+``run()`` wrapper so it can be invoked by a scheduled Cloud Run Job
+(Cloud Scheduler -> Job ``:run``), exactly like
+``apps.worker.jobs.salesforce_pull`` / ``marketing_pull`` wrap their crons.
+
+THIS FILE IS A DRAFT for review under ENG-498. When approved, its two
+wrappers should be split into the canonical per-job module layout to mirror
+``salesforce_pull.py`` (one module per Cloud Run Job entrypoint):
+
+    apps/worker/jobs/notification_drain.py        -> def run() / main()
+    apps/worker/jobs/consultation_reminder_scan.py -> def run() / main()
+
+(The consult-reminder wrapper can only land once ENG-486 merges to main and
+``consultation_reminders.py`` exists there.)
+
+Each wrapper:
+  * calls ``configure_logging()`` first (Cloud Run Jobs do not boot the API
+    app, so structlog must be configured explicitly — same as
+    ``salesforce_pull.run``);
+  * delegates to the existing cron coroutine, passing an empty ``ctx`` ({});
+  * logs a single completion summary line (counts only, never card content);
+  * returns the summary dict (handy for ``--wait`` smoke runs).
+
+Both wrappers are SAFE no-ops until ``NOTIFICATIONS_ENABLED=true``:
+``NotificationEventService.emit`` short-circuits when notifications are
+disabled (packages/integrations/chat/event_service.py:159), so the reminder
+scan enqueues nothing; and the drain over an empty outbox returns immediately
+(apps/worker/jobs/notification_dispatch.py:104-105).
+"""
+
+from __future__ import annotations
+
+import asyncio
+
+from packages.core.logging import configure_logging, get_logger
+
+# Existing cron coroutines — reused verbatim, NOT reimplemented.
+from apps.worker.jobs.notification_dispatch import drain_notification_outbox
+
+# NOTE: this import only resolves once ENG-486 lands on main.
+# from apps.worker.jobs.consultation_reminders import scan_consultation_reminders
+
+log = get_logger("worker.notification_jobs")
+
+
+# ---------------------------------------------------------------------------
+# Job 1 — drain the notification outbox -> post to Mattermost.
+# Cloud Run Job: fusion-job-notification-drain (Cloud Scheduler ~every 1 min).
+# Idempotency: drain_notification_outbox locks rows with
+# `FOR UPDATE SKIP LOCKED` (notification_repository.py:168) and only processes
+# `status == 'locked'` rows (notification_dispatch.py:127-129); overlapping
+# ticks are safe.
+# ---------------------------------------------------------------------------
+async def run_drain() -> dict[str, int]:
+    """One-shot wrapper around ``drain_notification_outbox`` for a Cloud Run Job."""
+    configure_logging()
+    summary = await drain_notification_outbox({})
+    log.info("notification_drain.complete", summary=summary)
+    return summary
+
+
+def main_drain() -> None:
+    asyncio.run(run_drain())
+
+
+# ---------------------------------------------------------------------------
+# Job 2 — scan for due confirmed consultations -> enqueue T-15m reminders.
+# Cloud Run Job: fusion-job-consult-reminders (Cloud Scheduler ~every 1 min).
+# DEPENDS ON ENG-486 (not on main yet). Idempotency: the emit carries
+# `dedupe_key = consultation id`; NotificationEmittedRepository.claim does an
+# `INSERT ... ON CONFLICT DO NOTHING` against
+# `uq_notification_emitted_tenant_event_key`
+# (notification_repository.py:224-252), so a later tick is a no-op.
+# ---------------------------------------------------------------------------
+async def run_consult_reminders() -> dict[str, int]:
+    """One-shot wrapper around ``scan_consultation_reminders`` for a Cloud Run Job.
+
+    DRAFT: uncomment the import above + the call below once ENG-486 is on main.
+    """
+    configure_logging()
+    # from apps.worker.jobs.consultation_reminders import (
+    #     scan_consultation_reminders,
+    # )
+    # summary = await scan_consultation_reminders({})
+    # log.info("consult_reminders.complete", summary=summary)
+    # return summary
+    raise NotImplementedError(
+        "scan_consultation_reminders not on main yet (ENG-486)"
+    )
+
+
+def main_consult_reminders() -> None:
+    asyncio.run(run_consult_reminders())
+
+
+if __name__ == "__main__":  # pragma: no cover — DRAFT only
+    main_drain()

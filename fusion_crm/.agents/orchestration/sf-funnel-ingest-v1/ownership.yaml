@@ -1,0 +1,33 @@
+mission: sf-funnel-ingest-v1
+tasks:
+  ENG-381:
+    owner: claude-code
+    allowed_paths:
+      - packages/ingest/**
+      - apps/worker/jobs/**
+      - tests/ingest/**
+      - tests/worker/**
+      - scripts/**
+      - infra/scripts/**
+    forbidden_paths:
+      - packages/agent_runtime/**
+      - packages/integrations/openai/**
+      - apps/web/package.json
+      - apps/web/package-lock.json
+      - tests/agent_runtime/**
+      - packages/db/alembic/**
+  ENG-382:
+    owner: unassigned
+    allowed_paths:
+      - packages/ingest/**
+      - packages/ops/**
+      - packages/identity/**
+      - packages/interaction/**
+      - apps/worker/jobs/**
+      - apps/api/routers/**
+      - apps/web/**
+      - tests/**
+    forbidden_paths:
+      - packages/agent_runtime/**
+      - packages/integrations/openai/**
+      - tests/agent_runtime/**

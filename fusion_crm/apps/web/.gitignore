@@ -1,0 +1,17 @@
+node_modules/
+# Salesforce dev OAuth tokens — never commit
+.sf-tokens.json
+# CareStack dev access token — never commit
+.cs-tokens.json
+.next/
+.next-build-cache/
+out/
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+coverage/
+playwright-report/
+test-results/

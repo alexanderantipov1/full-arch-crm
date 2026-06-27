@@ -1,0 +1,19 @@
+S1 implementation complete. Summary:
+
+**Files changed (within S1 owned write scope):**
+- `packages/identity/models.py` — added `MATCH_RULES` taxonomy tuple
+- `packages/identity/schemas.py` — added `MatchHintIn` and `ResolveFromHintResult` DTOs
+- `packages/identity/repository.py` — added `list_candidate_persons_by_identifiers(...)` with double tenant scope
+- `packages/identity/service.py` — added `resolve_or_create_from_hint(...)` + tier 1/2 helpers + `_evaluate_match_policy` + `match_rule` validator
+- `packages/identity/CLAUDE.md` — documented the new entry point
+- `tests/identity/test_match_candidate_service.py` — amended two tests + added `match_rule` validation test
+- `tests/identity/test_resolve_or_create_from_hint.py` — new 21-test module
+- `reports/S1.md` — required worker report
+
+**Tier ladder:** Tier 0 source-link recapture (no candidate row) → Tier 1 auto-accept (`email_phone_name`@0.99 / `phone_name`@0.95 / `email_name`@0.92, source link written before candidate) → Tier 2 open ambiguous (new source-linked person + open candidate against primary existing match) → Fallback brand-new person. Idempotent via `find_active_hint_candidate` when `hint_id` is set.
+
+**Verification (passing):** `pytest tests/identity -q` → 66 passed; `pytest tests/identity tests/ingest tests/ops -q` → 116 passed; `ruff check packages tests apps` clean; `mypy packages apps` clean (154 files); deploy-critical pytest bundle → 24 passed; `git diff --check` clean.
+
+**Blocker (session policy, not code):** `alembic check` cannot run from this Claude session under `dontAsk` allow-list — same blocker as R1. Wave S is migration-free, so structurally the check should remain clean; Codex should re-confirm from a session with the broader allow-list.
+
+**Out of scope (per Wave S contract, deferred to S2 / next wave):** Salesforce/CareStack ingest cutover, `match_candidate.hint_id` FK promotion, operator-review service surface, match-policy tuning. All documented in `reports/S1.md` follow-ups.

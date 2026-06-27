@@ -1,0 +1,312 @@
+#!/usr/bin/env bash
+# DRAFT — review before running; not on PATH; not executed by the night session.
+#
+# Provision the production Mattermost HOST for Fusion CRM (ENG-494 / Block I).
+# Creates the GCE VM, firewall rules, GCS file-store bucket, reserved static IP,
+# and (if fusioncrm.app is in Cloud DNS) the chat.fusioncrm.app A-record.
+#
+# Per ADR-0006 (docs/decisions/ADR-0006-interactive-messenger-layer.md) and
+# docs/DEPLOYMENT_RULES.md. Mattermost is stateful (websockets) → a persistent
+# VM, explicitly NOT scale-to-zero Cloud Run (ADR-0002).
+#
+# ⛔ DO NOT RUN until ENG-501 (PHI/BAA posture go/no-go) = GO. Prod Mattermost
+#    cards carry real patient name + phone (ENG-460) → this stands up a PHI host.
+#
+# Idempotent: re-run after any failure. Each step is describe-or-create guarded.
+#
+# Prerequisites:
+#   * gcloud + gsutil installed and authenticated; Owner/Editor on the project.
+#   * ./infra/scripts/provision_cloudsql.sh already ran (reuses fusion-vpc; the
+#     dedicated Mattermost Cloud SQL instance `fusion-mm-pg` is created by the
+#     ordered checklist Step 1 in eng-494-host-provisioning-bundle.md, BEFORE this).
+#   * Secret `mattermost-db-password` exists with a `latest` version.
+#   * BAA accepted for the GCP account (confirmed per ADR-0001).
+#
+# Usage (after promotion to infra/scripts/):
+#   ./infra/scripts/provision_mattermost_host.sh
+#
+# What it does NOT do:
+#   * Create the Cloud SQL instance / DB (checklist Step 1 — managed, separate).
+#   * Install/start the compose stack on the VM (operator SSHes in — Step 5/6).
+#   * Store the bot token / webhook secret (ENG-495/496, credential service).
+#   * Enable notifications (ENG-500).
+#
+# Cost note: e2-small (~$13-15/mo) + a reserved static IP (free while attached) +
+#   GCS storage (pennies at this volume). The dedicated Cloud SQL instance is
+#   billed separately (~$9-15/mo, see the bundle §2 decision #4).
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+PROJECT_ID="${PROJECT_ID:-fusioncrm-494201}"
+REGION="${REGION:-us-west1}"
+ZONE="${ZONE:-us-west1-a}"
+
+VPC_NAME="${VPC_NAME:-fusion-vpc}"
+SUBNET_NAME="${SUBNET_NAME:-fusion-vpc-us-west1}"
+
+VM_NAME="${VM_NAME:-fusion-mm-vm}"
+VM_MACHINE_TYPE="${VM_MACHINE_TYPE:-e2-small}"
+VM_IMAGE_FAMILY="${VM_IMAGE_FAMILY:-debian-12}"
+VM_IMAGE_PROJECT="${VM_IMAGE_PROJECT:-debian-cloud}"
+VM_BOOT_DISK_SIZE="${VM_BOOT_DISK_SIZE:-20}"
+VM_TAGS="${VM_TAGS:-mattermost-host}"
+
+STATIC_IP_NAME="${STATIC_IP_NAME:-fusion-mm-ip}"
+
+FILESTORE_BUCKET="${FILESTORE_BUCKET:-fusion-crm-mattermost}"
+FILESTORE_NONCURRENT_DAYS="${FILESTORE_NONCURRENT_DAYS:-365}"
+
+# Dedicated VM service account (least privilege: SQL client + filestore + secrets).
+MM_VM_SA="${MM_VM_SA:-fusion-mm-vm-sa}"
+MM_VM_SA_DISPLAY="${MM_VM_SA_DISPLAY:-Fusion Mattermost host VM}"
+
+# DNS — only used when fusioncrm.app is hosted in Cloud DNS. Leave DNS_ZONE empty
+# to skip the A-record step and just print the IP for an external provider.
+DNS_ZONE="${DNS_ZONE:-}"                 # e.g. fusioncrm-app-zone
+CHAT_HOSTNAME="${CHAT_HOSTNAME:-chat.fusioncrm.app.}"   # trailing dot = FQDN
+DNS_TTL="${DNS_TTL:-300}"
+
+FW_HTTPS_RULE="${FW_HTTPS_RULE:-fusion-mm-allow-https}"
+FW_SSH_IAP_RULE="${FW_SSH_IAP_RULE:-fusion-mm-allow-ssh-iap}"
+# Caddy uses TLS-ALPN-01 on 443 by default (no port 80 needed). If ACME HTTP-01
+# is required instead, set OPEN_HTTP80=1 to add a 80/tcp ingress rule.
+OPEN_HTTP80="${OPEN_HTTP80:-0}"
+FW_HTTP_RULE="${FW_HTTP_RULE:-fusion-mm-allow-http-acme}"
+IAP_RANGE="35.235.240.0/20"   # Google IAP TCP-forwarding source range (fixed).
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+log()  { printf "\n\033[1;36m==> %s\033[0m\n" "$*"; }
+warn() { printf "\033[1;33m!! %s\033[0m\n" "$*" >&2; }
+ok()   { printf "   \033[0;32m✓ %s\033[0m\n" "$*"; }
+fail() { printf "\033[1;31mxx %s\033[0m\n" "$*" >&2; exit 1; }
+require() { command -v "$1" >/dev/null 2>&1 || fail "Required command not found: $1"; }
+
+# ---------------------------------------------------------------------------
+# Preflight
+# ---------------------------------------------------------------------------
+
+require gcloud
+require gsutil
+
+log "Setting active project to $PROJECT_ID"
+gcloud config set project "$PROJECT_ID" >/dev/null
+ok "active project: $(gcloud config get-value project)"
+
+log "Enabling required APIs"
+gcloud services enable compute.googleapis.com storage.googleapis.com \
+  secretmanager.googleapis.com dns.googleapis.com iap.googleapis.com --quiet
+ok "APIs enabled"
+
+# ---------------------------------------------------------------------------
+# 1. Dedicated VM service account + IAM
+# ---------------------------------------------------------------------------
+
+MM_VM_SA_EMAIL="${MM_VM_SA}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+log "Creating VM service account $MM_VM_SA"
+if gcloud iam service-accounts describe "$MM_VM_SA_EMAIL" >/dev/null 2>&1; then
+  ok "SA exists: $MM_VM_SA_EMAIL"
+else
+  gcloud iam service-accounts create "$MM_VM_SA" --display-name="$MM_VM_SA_DISPLAY" --quiet
+  ok "SA created: $MM_VM_SA_EMAIL"
+fi
+
+grant_role() {
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${MM_VM_SA_EMAIL}" --role="$1" --condition=None --quiet >/dev/null
+  ok "  granted $1"
+}
+log "Granting least-privilege roles to $MM_VM_SA_EMAIL"
+grant_role "roles/cloudsql.client"                 # cloud-sql-proxy → fusion-mm-pg
+grant_role "roles/secretmanager.secretAccessor"    # resolve mattermost-db-password etc.
+# Storage object access is scoped to the filestore bucket (bucket-level binding below),
+# not project-wide, for least privilege.
+
+# ---------------------------------------------------------------------------
+# 2. GCS file-store bucket (versioned; noncurrent lifecycle)
+# ---------------------------------------------------------------------------
+
+log "Creating GCS file-store bucket gs://${FILESTORE_BUCKET}"
+if gsutil ls -b "gs://${FILESTORE_BUCKET}" >/dev/null 2>&1; then
+  ok "bucket exists: gs://${FILESTORE_BUCKET}"
+else
+  gsutil mb -p "$PROJECT_ID" -l "$REGION" -b on "gs://${FILESTORE_BUCKET}"
+  ok "bucket created: gs://${FILESTORE_BUCKET} (uniform bucket-level access ON)"
+fi
+
+log "Enabling object versioning on gs://${FILESTORE_BUCKET}"
+gsutil versioning set on "gs://${FILESTORE_BUCKET}"
+ok "versioning ON"
+
+log "Lifecycle: delete NONCURRENT versions older than ${FILESTORE_NONCURRENT_DAYS} days"
+LIFECYCLE_TMP="$(mktemp)"; trap 'rm -f "$LIFECYCLE_TMP"' EXIT
+cat >"$LIFECYCLE_TMP" <<EOF
+{ "rule": [ { "action": {"type": "Delete"},
+             "condition": {"daysSinceNoncurrentTime": ${FILESTORE_NONCURRENT_DAYS}} } ] }
+EOF
+gsutil lifecycle set "$LIFECYCLE_TMP" "gs://${FILESTORE_BUCKET}"
+ok "lifecycle set (attachments are PHI-adjacent; keep noncurrent for a year)"
+
+log "Granting the VM SA objectAdmin ONLY on gs://${FILESTORE_BUCKET}"
+gsutil iam ch "serviceAccount:${MM_VM_SA_EMAIL}:roles/storage.objectAdmin" \
+  "gs://${FILESTORE_BUCKET}"
+ok "bucket-scoped objectAdmin granted"
+
+# ---------------------------------------------------------------------------
+# 3. Reserved external static IP
+# ---------------------------------------------------------------------------
+
+log "Reserving regional static IP $STATIC_IP_NAME"
+if gcloud compute addresses describe "$STATIC_IP_NAME" --region="$REGION" >/dev/null 2>&1; then
+  ok "static IP exists: $STATIC_IP_NAME"
+else
+  gcloud compute addresses create "$STATIC_IP_NAME" --region="$REGION" --quiet
+  ok "static IP reserved: $STATIC_IP_NAME"
+fi
+STATIC_IP="$(gcloud compute addresses describe "$STATIC_IP_NAME" --region="$REGION" \
+  --format='value(address)')"
+ok "static IP address: $STATIC_IP"
+
+# ---------------------------------------------------------------------------
+# 4. Firewall — 443 public, SSH via IAP only, (optional) 80 for ACME HTTP-01
+# ---------------------------------------------------------------------------
+
+log "Firewall: allow 443/tcp from 0.0.0.0/0 to tag $VM_TAGS"
+if gcloud compute firewall-rules describe "$FW_HTTPS_RULE" >/dev/null 2>&1; then
+  ok "rule exists: $FW_HTTPS_RULE"
+else
+  gcloud compute firewall-rules create "$FW_HTTPS_RULE" \
+    --network="$VPC_NAME" --direction=INGRESS --action=ALLOW \
+    --rules=tcp:443 --source-ranges=0.0.0.0/0 --target-tags="$VM_TAGS" --quiet
+  ok "rule created: $FW_HTTPS_RULE"
+fi
+
+log "Firewall: allow SSH (22/tcp) from IAP range $IAP_RANGE only"
+if gcloud compute firewall-rules describe "$FW_SSH_IAP_RULE" >/dev/null 2>&1; then
+  ok "rule exists: $FW_SSH_IAP_RULE"
+else
+  gcloud compute firewall-rules create "$FW_SSH_IAP_RULE" \
+    --network="$VPC_NAME" --direction=INGRESS --action=ALLOW \
+    --rules=tcp:22 --source-ranges="$IAP_RANGE" --target-tags="$VM_TAGS" --quiet
+  ok "rule created: $FW_SSH_IAP_RULE (SSH is IAP-only; never 0.0.0.0/0)"
+fi
+
+if [[ "$OPEN_HTTP80" == "1" ]]; then
+  log "Firewall: allow 80/tcp (ACME HTTP-01 fallback) from 0.0.0.0/0"
+  if gcloud compute firewall-rules describe "$FW_HTTP_RULE" >/dev/null 2>&1; then
+    ok "rule exists: $FW_HTTP_RULE"
+  else
+    gcloud compute firewall-rules create "$FW_HTTP_RULE" \
+      --network="$VPC_NAME" --direction=INGRESS --action=ALLOW \
+      --rules=tcp:80 --source-ranges=0.0.0.0/0 --target-tags="$VM_TAGS" --quiet
+    ok "rule created: $FW_HTTP_RULE"
+  fi
+else
+  ok "port 80 kept CLOSED (Caddy uses TLS-ALPN-01 on 443). Set OPEN_HTTP80=1 if HTTP-01 needed."
+fi
+
+# ---------------------------------------------------------------------------
+# 5. GCE VM (amd64 native — no Rosetta in prod)
+# ---------------------------------------------------------------------------
+# Startup script installs Docker + the compose plugin so the operator can drop in
+# the compose file and `docker compose up`. It does NOT pull secrets or start MM.
+
+STARTUP_TMP="$(mktemp)"; trap 'rm -f "$LIFECYCLE_TMP" "$STARTUP_TMP"' EXIT
+cat >"$STARTUP_TMP" <<'STARTUP'
+#!/usr/bin/env bash
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+apt-get install -y ca-certificates curl gnupg
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
+  > /etc/apt/sources.list.d/docker.list
+apt-get update -y
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+systemctl enable --now docker
+mkdir -p /opt/mattermost
+# Operator copies mattermost-host-compose.yml + Caddyfile + env file into /opt/mattermost,
+# then runs: docker compose -f /opt/mattermost/mattermost-host-compose.yml up -d
+STARTUP
+
+log "Creating GCE VM $VM_NAME ($VM_MACHINE_TYPE, $ZONE, amd64)"
+if gcloud compute instances describe "$VM_NAME" --zone="$ZONE" >/dev/null 2>&1; then
+  ok "VM exists: $VM_NAME (skipping create — patch by hand if config drifted)"
+else
+  gcloud compute instances create "$VM_NAME" \
+    --zone="$ZONE" \
+    --machine-type="$VM_MACHINE_TYPE" \
+    --image-family="$VM_IMAGE_FAMILY" --image-project="$VM_IMAGE_PROJECT" \
+    --boot-disk-size="${VM_BOOT_DISK_SIZE}GB" --boot-disk-type=pd-ssd \
+    --network="$VPC_NAME" --subnet="$SUBNET_NAME" \
+    --address="$STATIC_IP" \
+    --tags="$VM_TAGS" \
+    --service-account="$MM_VM_SA_EMAIL" \
+    --scopes=cloud-platform \
+    --shielded-secure-boot --shielded-vtpm --shielded-integrity-monitoring \
+    --metadata-from-file=startup-script="$STARTUP_TMP" \
+    --quiet
+  ok "VM created: $VM_NAME (static IP $STATIC_IP attached)"
+fi
+
+# ---------------------------------------------------------------------------
+# 6. DNS A-record (Cloud DNS only; otherwise print the IP for external provider)
+# ---------------------------------------------------------------------------
+
+if [[ -n "$DNS_ZONE" ]]; then
+  log "Adding/Updating A record $CHAT_HOSTNAME → $STATIC_IP in Cloud DNS zone $DNS_ZONE"
+  EXISTING="$(gcloud dns record-sets list --zone="$DNS_ZONE" \
+    --name="$CHAT_HOSTNAME" --type=A --format='value(rrdatas[0])' 2>/dev/null || true)"
+  if [[ "$EXISTING" == "$STATIC_IP" ]]; then
+    ok "A record already correct: $CHAT_HOSTNAME → $STATIC_IP"
+  else
+    gcloud dns record-sets transaction start --zone="$DNS_ZONE" --quiet
+    if [[ -n "$EXISTING" ]]; then
+      gcloud dns record-sets transaction remove --zone="$DNS_ZONE" \
+        --name="$CHAT_HOSTNAME" --type=A --ttl="$DNS_TTL" "$EXISTING" --quiet
+    fi
+    gcloud dns record-sets transaction add --zone="$DNS_ZONE" \
+      --name="$CHAT_HOSTNAME" --type=A --ttl="$DNS_TTL" "$STATIC_IP" --quiet
+    gcloud dns record-sets transaction execute --zone="$DNS_ZONE" --quiet
+    ok "A record set: $CHAT_HOSTNAME → $STATIC_IP"
+  fi
+else
+  warn "DNS_ZONE not set — skipping Cloud DNS. Add this A record at your DNS provider:"
+  warn "    chat.fusioncrm.app   A   $STATIC_IP   (TTL ${DNS_TTL})"
+fi
+
+# ---------------------------------------------------------------------------
+# 7. Output
+# ---------------------------------------------------------------------------
+
+cat <<EOF
+
+====================================================
+Mattermost host provisioning complete (VM-level).
+
+Project ........... $PROJECT_ID
+Region / Zone ..... $REGION / $ZONE
+VM ................ $VM_NAME ($VM_MACHINE_TYPE, tag $VM_TAGS)
+VM SA ............. $MM_VM_SA_EMAIL
+Static IP ......... $STATIC_IP ($STATIC_IP_NAME)
+Filestore bucket .. gs://$FILESTORE_BUCKET (versioned; noncurrent ${FILESTORE_NONCURRENT_DAYS}d)
+Firewall .......... 443 public; SSH IAP-only ($IAP_RANGE); port80=$OPEN_HTTP80
+DNS ............... ${DNS_ZONE:+set in zone $DNS_ZONE}${DNS_ZONE:-MANUAL — point chat.fusioncrm.app A → $STATIC_IP}
+
+Next (operator, see eng-494-host-provisioning-bundle.md §3):
+  1. Confirm dig +short chat.fusioncrm.app == $STATIC_IP
+  2. gcloud compute ssh $VM_NAME --zone=$ZONE --tunnel-through-iap
+  3. Copy mattermost-host-compose.yml + Caddyfile + env (chmod 600) to /opt/mattermost
+  4. docker compose -f /opt/mattermost/mattermost-host-compose.yml up -d
+  5. Smoke checklist (bundle §5) → then ENG-495/496/497/498/500.
+====================================================
+EOF

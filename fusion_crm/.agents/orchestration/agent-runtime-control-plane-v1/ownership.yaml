@@ -1,0 +1,64 @@
+mission:
+  id: agent-runtime-control-plane-v1
+  linear_parent: ENG-343
+  project: Agent Runtime Control Plane V1
+  owner: codex
+tasks:
+  ENG-344:
+    title: AR-01 Mission Setup And Linear Sync
+    owner: codex
+    status: completed
+    workstream: orchestration
+  ENG-345:
+    title: AR-02 Tools Registry Projection V1
+    owner: codex
+    status: completed
+    workstream: backend_frontend
+  ENG-346:
+    title: AR-03 Agent Run History V1
+    owner: codex
+    status: completed
+    workstream: backend_frontend
+  ENG-347:
+    title: AR-04 Human Approval Requests V1
+    owner: codex
+    status: completed
+    workstream: backend_frontend
+  ENG-348:
+    title: AR-05 Agent Audit Summaries V1
+    owner: codex
+    status: completed
+    workstream: backend_frontend
+  ENG-349:
+    title: AR-06 DIA And Semantic Catalog Linkage V1
+    owner: codex
+    status: completed
+    workstream: backend_frontend
+  ENG-350:
+    title: AR-07 Workbench Documentation And Verification
+    owner: codex
+    status: completed
+    workstream: frontend_verification
+  AR-PR115-REVIEW-FOLLOWUPS:
+    title: PR #115 Production Review Follow-Ups
+    owner: codex
+    status: completed
+    workstream: backend_frontend_orchestration
+    linear_issue: Missing Linear
+    execution_note: Human-approved Orchestrator self-execute because the current Linear toolset cannot create issues. Landed in commit b155dfd.
+  AR-PR115-ROUND-2-FOLLOWUPS:
+    title: PR #115 Round-2 Production Review Follow-Ups
+    owner: codex/orchestrator-b
+    status: completed
+    workstream: orchestration_decisions
+    linear_issue: ENG-353
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-353/pr-115-production-review-follow-ups-round-1-round-2
+    execution_note: Reviewer (claude-code) executed all mechanical items in-turn after user-approved orchestrator scope. FIX-005 (current/ symlink), FIX-007 (ENG-312 closed without action, already merged via 898b1e0), FIX-008 (ENG-353 umbrella created under ENG-343 parent), FIX-009 (untracked dirs archived + skill committed). FIX-006 (PR ready flip) at end of round.
+  AR-PR115-MERGEABILITY-DISPOSITION:
+    title: PR #115 Mergeability Disposition
+    owner: codex/orchestrator-b
+    status: completed
+    workstream: orchestration_decisions
+    linear_issue: ENG-353
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-353/pr-115-production-review-follow-ups-round-1-round-2
+    execution_note: Orchestrator re-checked PR #115 at head ebaacef947193a4f7d6114a32a7f81b49c89c9e3. PR is ready, MERGEABLE, CLEAN, and all required checks pass. No additional worker assignment needed for mergeability.

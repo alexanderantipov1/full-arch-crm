@@ -1,0 +1,26 @@
+mission: current
+mission_alias: eng-307-backfill-has-payments-filter-v1
+linear_anchor: ENG-307
+owner_role: orchestrator
+owner_agent: claude-code
+tasks:
+  - task_id: ENG-307
+    title: "Add --only-with-payments filter to backfill_payment_summary.py"
+    linear_id: ENG-307
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-307/add-only-with-payments-filter-to-backfill-payment-summarypy
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - infra/scripts/backfill_payment_summary.py
+      - tests/infra/test_backfill_payment_summary.py
+      - packages/ingest/repository.py    # only if a new repository method is the chosen home for the filtered resolver
+      - packages/ingest/service.py       # only if a new service method is the chosen home
+      - tests/ingest/                     # if repo/service method tests added
+notes:
+  - "Backend-only, tiny scope. Reuse the payment-event source-of-truth the
+    pre-flight identified — do NOT invent a new SQL shape."
+  - "CareStack stays MOCKED in all tests. No real API call."
+  - "Real backfill against prod is gated until AFTER this lands AND the
+    operator approves the window separately."
+  - "Do NOT touch apps/web/lib/msw/handlers.ts."

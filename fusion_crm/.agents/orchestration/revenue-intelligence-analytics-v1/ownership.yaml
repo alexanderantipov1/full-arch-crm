@@ -1,0 +1,46 @@
+mission: revenue-intelligence-analytics-v1
+epic: ENG-504
+task_class: contract_change
+execution_model: sequential_single_branch_pipeline
+worker_runtime: claude-code
+reviewer_runtime: codex
+branch: eng-504-revenue-intelligence-analytics-v1
+branch_base: main
+workspace: shared_epic_branch_in_session_agents
+integration_mode: bundled_pr_per_block
+requires_integrator_review: true
+requires_cross_runtime_review: true
+commit_policy: commit_local_yes_push_pr_per_block
+verification_policy: ruff_mypy_pytest_realpg_alembic_check_plus_real_data_render
+
+owned_paths:
+  - packages/analytics/**
+  - apps/web/app/(staff)/analytics/**
+  - apps/web/lib/api/schemas/**
+  - apps/web/lib/api/hooks/**
+  - docs/analytics/**
+  - apps/worker/jobs/fact_patient_journey_*.py
+
+shared_paths:
+  - apps/api/routers/dashboard.py
+  - apps/web/components/layout/AppShell.tsx
+  - packages/db/alembic/versions/**
+  - packages/db/__init__.py
+  - docs/data-model/CATALOG.md
+  - packages/actor/**
+  - packages/attribution/**
+  - packages/marketing/**
+
+forbidden_paths:
+  - .env*
+  - infra/**
+  - .github/workflows/**
+
+if_shared_path_needed: additive_only_sequential
+if_main_advances: sync_before_pr
+
+notes: >
+  New `analytics` schema is an operator-approved addition to invariant #1
+  (see decision-log). actor/attribution/marketing are shared because B1 enablement
+  resolves owners/providers/spend into the fact table; coordinate edits, do not
+  refactor those domains. fact-builder arq job ships gated off for prod.

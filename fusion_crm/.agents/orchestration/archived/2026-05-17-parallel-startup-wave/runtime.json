@@ -1,0 +1,325 @@
+{
+  "runs": [
+    {
+      "agent": "claude",
+      "dry_run": false,
+      "mode": "background",
+      "started_at": "2026-05-19T03:06:00.457215+00:00",
+      "tasks": [
+        {
+          "agent": "claude",
+          "command": "claude --permission-mode dontAsk --disallowedTools 'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm 'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/Q1.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/Q1.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'",
+          "dry_run": false,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/Q1.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "pid": 10413,
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/Q1.md",
+          "started_at": "2026-05-19T03:06:00.440281+00:00",
+          "task_id": "Q1",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        }
+      ],
+      "wave_id": "wave-20260519-030600"
+    },
+    {
+      "agent": "claude",
+      "dry_run": false,
+      "mode": "background",
+      "started_at": "2026-05-19T03:06:57.752111+00:00",
+      "tasks": [
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/Q1.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/Q1.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": false,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/Q1.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "pid": 12657,
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/Q1.md",
+          "started_at": "2026-05-19T03:06:57.727908+00:00",
+          "task_id": "Q1",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        }
+      ],
+      "wave_id": "wave-20260519-030657"
+    },
+    {
+      "agent": "claude",
+      "dry_run": false,
+      "mode": "background",
+      "started_at": "2026-05-19T03:32:35.340698+00:00",
+      "tasks": [
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/R1.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/R1.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": false,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/R1.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "pid": 73488,
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/R1.md",
+          "started_at": "2026-05-19T03:32:35.312216+00:00",
+          "task_id": "R1",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        },
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/R2.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/R2.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": false,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/R2.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "pid": 73489,
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/R2.md",
+          "started_at": "2026-05-19T03:32:35.321010+00:00",
+          "task_id": "R2",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        },
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/R3.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/R3.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": false,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/R3.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "pid": 73490,
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/R3.md",
+          "started_at": "2026-05-19T03:32:35.328796+00:00",
+          "task_id": "R3",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        }
+      ],
+      "wave_id": "wave-20260519-033235"
+    },
+    {
+      "agent": "claude",
+      "dry_run": true,
+      "mode": "background",
+      "started_at": "2026-05-19T04:08:03.858722+00:00",
+      "tasks": [
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/S1.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S1.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": true,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/S1.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S1.md",
+          "started_at": "2026-05-19T04:08:03.858288+00:00",
+          "task_id": "S1",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        },
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/S2.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S2.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": true,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/S2.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S2.md",
+          "started_at": "2026-05-19T04:08:03.858623+00:00",
+          "task_id": "S2",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        },
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/S3.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S3.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": true,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/S3.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S3.md",
+          "started_at": "2026-05-19T04:08:03.858715+00:00",
+          "task_id": "S3",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        }
+      ],
+      "wave_id": "wave-20260519-040803"
+    },
+    {
+      "agent": "claude",
+      "dry_run": false,
+      "mode": "background",
+      "started_at": "2026-05-19T04:10:24.251253+00:00",
+      "tasks": [
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/S1.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S1.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": false,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/S1.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "pid": 60195,
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S1.md",
+          "started_at": "2026-05-19T04:10:24.229681+00:00",
+          "task_id": "S1",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        },
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/S2.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S2.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": false,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/S2.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "pid": 60196,
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S2.md",
+          "started_at": "2026-05-19T04:10:24.237666+00:00",
+          "task_id": "S2",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        },
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/S3.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S3.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": false,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/S3.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "pid": 60197,
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S3.md",
+          "started_at": "2026-05-19T04:10:24.244491+00:00",
+          "task_id": "S3",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        }
+      ],
+      "wave_id": "wave-20260519-041024"
+    },
+    {
+      "agent": "claude",
+      "dry_run": true,
+      "mode": "background",
+      "started_at": "2026-05-19T05:13:24.153457+00:00",
+      "tasks": [
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/T1.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T1.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": true,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/T1.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T1.md",
+          "started_at": "2026-05-19T05:13:24.153255+00:00",
+          "task_id": "T1",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        },
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/T2.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T2.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": true,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/T2.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T2.md",
+          "started_at": "2026-05-19T05:13:24.153449+00:00",
+          "task_id": "T2",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        }
+      ],
+      "wave_id": "wave-20260519-051324"
+    },
+    {
+      "agent": "claude",
+      "dry_run": false,
+      "mode": "background",
+      "started_at": "2026-05-19T05:14:02.699613+00:00",
+      "tasks": [
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/T1.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T1.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": false,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/T1.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "pid": 72008,
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T1.md",
+          "started_at": "2026-05-19T05:14:02.685662+00:00",
+          "task_id": "T1",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        },
+        {
+          "agent": "claude",
+          "command": "bash -lc 'printf %s '\"'\"'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/T2.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T2.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'\"'\"' | claude --print --permission-mode dontAsk --disallowedTools '\"'\"'Bash(git push*) Bash(git reset*) Bash(git clean*) Bash(git merge*) Bash(git rebase*) Bash(*deploy*) Bash(*gcloud*) Bash(*firebase*) Bash(*terraform*) Bash(*rm -rf*)'\"'\"' --add-dir /Users/eduardkarionov/Desktop/Fusion_crm'",
+          "dry_run": false,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/T2.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "pid": 72009,
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T2.md",
+          "started_at": "2026-05-19T05:14:02.693349+00:00",
+          "task_id": "T2",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        }
+      ],
+      "wave_id": "wave-20260519-051402"
+    },
+    {
+      "agent": "codex",
+      "dry_run": true,
+      "mode": "background",
+      "started_at": "2026-05-19T05:16:24.038219+00:00",
+      "tasks": [
+        {
+          "agent": "codex",
+          "command": "codex --sandbox workspace-write --ask-for-approval never exec --cd /Users/eduardkarionov/Desktop/Fusion_crm 'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/T1.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T1.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'",
+          "dry_run": true,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/T1.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T1.md",
+          "started_at": "2026-05-19T05:16:24.038074+00:00",
+          "task_id": "T1",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        },
+        {
+          "agent": "codex",
+          "command": "codex --sandbox workspace-write --ask-for-approval never exec --cd /Users/eduardkarionov/Desktop/Fusion_crm 'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/T2.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T2.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'",
+          "dry_run": true,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/T2.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T2.md",
+          "started_at": "2026-05-19T05:16:24.038213+00:00",
+          "task_id": "T2",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        }
+      ],
+      "wave_id": "wave-20260519-051624"
+    },
+    {
+      "agent": "codex",
+      "dry_run": false,
+      "mode": "background",
+      "started_at": "2026-05-19T05:16:24.820216+00:00",
+      "tasks": [
+        {
+          "agent": "codex",
+          "command": "codex --sandbox workspace-write --ask-for-approval never exec --cd /Users/eduardkarionov/Desktop/Fusion_crm 'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/T1.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T1.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'",
+          "dry_run": false,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/T1.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "pid": 79408,
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T1.md",
+          "started_at": "2026-05-19T05:16:24.806063+00:00",
+          "task_id": "T1",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        },
+        {
+          "agent": "codex",
+          "command": "codex --sandbox workspace-write --ask-for-approval never exec --cd /Users/eduardkarionov/Desktop/Fusion_crm 'Follow the shared orchestrator protocol in .agents/orchestrator/PROTOCOL.md. Use the mission goal at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/goal.md as the stop condition and evidence contract. Use acceptance criteria at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/acceptance.md and verification plan at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/verification.md. Follow the task brief at /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/tasks/T2.md. Work only inside the assigned write scope. If you hit a question, blocker, conflict, or approval need, do not ask the user directly; write it to /Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T2.md and stop. Do not commit, push, merge, rebase, deploy, edit env/secrets, or run destructive git commands unless the brief explicitly allows it.'",
+          "dry_run": false,
+          "log_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/logs/T2.log",
+          "mission_folder": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave",
+          "mode": "background",
+          "pid": 79409,
+          "report_path": "/Users/eduardkarionov/Desktop/Fusion_crm/.agents/orchestration/20260517-113000-parallel-startup-wave/reports/T2.md",
+          "started_at": "2026-05-19T05:16:24.814242+00:00",
+          "task_id": "T2",
+          "worktree": "/Users/eduardkarionov/Desktop/Fusion_crm"
+        }
+      ],
+      "wave_id": "wave-20260519-051624"
+    }
+  ]
+}

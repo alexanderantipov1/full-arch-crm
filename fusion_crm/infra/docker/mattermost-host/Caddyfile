@@ -1,0 +1,30 @@
+# Caddyfile for the production Mattermost host (ENG-494 / Block I).
+# Lives at /opt/mattermost/Caddyfile on the VM, mounted read-only into the caddy
+# container. Caddy fetches + auto-renews a Let's Encrypt cert for the site domain
+# once DNS (chat.fusioncrm.app A → static IP) resolves.
+#
+# Websockets: Caddy's reverse_proxy upgrades Connection/Upgrade headers
+# automatically — no extra config needed for Mattermost's WS traffic.
+
+{
+	# ACME account email for Let's Encrypt expiry notices.
+	email {$ACME_EMAIL}
+	# By default Caddy tries TLS-ALPN-01 (port 443) and HTTP-01 (port 80).
+	# Port 80 is firewalled CLOSED unless provision_mattermost_host.sh ran with
+	# OPEN_HTTP80=1; TLS-ALPN-01 on 443 alone is sufficient for a public host.
+}
+
+{$MM_SITE_DOMAIN} {
+	encode gzip
+
+	# Mattermost accepts large attachment uploads; raise the proxy body limit so
+	# big files are not truncated before they reach the S3/GCS filestore path.
+	request_body {
+		max_size 100MB
+	}
+
+	reverse_proxy mattermost:8065 {
+		# Long-lived websocket connections (live message delivery).
+		flush_interval -1
+	}
+}

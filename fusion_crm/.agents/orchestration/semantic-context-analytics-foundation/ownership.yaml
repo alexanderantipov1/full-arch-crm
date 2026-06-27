@@ -1,0 +1,153 @@
+mission: semantic-context-analytics-foundation
+linear_project:
+  title: Semantic Context And Analytics Foundation
+  url: https://linear.app/fusion-dental-implants/project/semantic-context-and-analytics-foundation-b545bfd55250
+readiness: ready_for_first_wave_approval
+workers_ready: false
+first_recommended_slice:
+  title: Manager Analytics Questions, Semantic Catalog, and Data Intelligence Tooling V1
+  milestone: Slice 1 — Manager Questions + Semantic Catalog
+  issues:
+    - ENG-272
+    - ENG-273
+    - ENG-279
+    - ENG-282
+owners:
+  orchestrator:
+    role: codex
+    responsibilities:
+      - mission planning
+      - Linear synchronization
+      - worker gating
+      - dependency management
+      - verification planning
+  human:
+    role: founder/operator
+    responsibilities:
+      - first question owner and review cadence
+      - billing-sensitive and PHI-adjacent access policy
+      - export policy
+  codex:
+    responsibilities:
+      - architecture review
+      - semantic catalog design
+      - query spec design
+      - policy preflight design
+      - registry safety review
+  claude_code:
+    responsibilities:
+      - backend implementation after approval
+      - frontend implementation after approval
+      - tests after approval
+tasks:
+  A:
+    linear_id: ENG-272
+    title: Manager Analytics Questions V1
+    owner: Human + Codex
+    agent: human/codex
+    status: backlog
+    workers_ready: false
+  B:
+    linear_id: ENG-273
+    title: Semantic Analytics Catalog V1
+    owner: Codex
+    agent: codex
+    status: backlog
+    blocked_by:
+      - ENG-272
+    workers_ready: false
+  C:
+    linear_id: ENG-274
+    title: Structured Analytics Query Spec
+    owner: Codex
+    agent: codex
+    status: backlog
+    blocked_by:
+      - ENG-273
+    workers_ready: false
+  D:
+    linear_id: ENG-275
+    title: Analytics Policy Preflight
+    owner: Codex
+    agent: codex
+    status: backlog
+    blocked_by:
+      - ENG-273
+      - ENG-274
+    workers_ready: false
+  E:
+    linear_id: ENG-276
+    title: Analytics Query Registry V1
+    owner: Codex
+    agent: codex
+    status: backlog
+    blocked_by:
+      - ENG-274
+      - ENG-275
+    workers_ready: false
+  F:
+    linear_id: ENG-277
+    title: Analytics Services V1
+    owner: Backend
+    agent: claude-code
+    status: backlog
+    blocked_by:
+      - ENG-275
+      - ENG-276
+    workers_ready: false
+  G:
+    linear_id: ENG-278
+    title: Manager Analytics Read Models V1
+    owner: Backend
+    agent: claude-code
+    status: backlog
+    blocked_by:
+      - ENG-273
+      - ENG-277
+    workers_ready: false
+  H:
+    linear_id: ENG-279
+    title: Data Intelligence Agent V1
+    owner: Architecture + Backend
+    agent: codex
+    status: backlog
+    blocked_by:
+      - ENG-276
+    workers_ready: false
+    first_wave_parallel: true
+  I:
+    linear_id: ENG-280
+    title: Manager AI Chat V1
+    owner: Backend + Frontend
+    agent: claude-code
+    status: backlog
+    blocked_by:
+      - ENG-273
+      - ENG-274
+      - ENG-275
+      - ENG-276
+      - ENG-277
+    workers_ready: false
+  J:
+    linear_id: ENG-281
+    title: Exports And Saved Reports
+    owner: Backend + Frontend
+    agent: claude-code
+    status: backlog
+    blocked_by:
+      - ENG-275
+      - ENG-276
+      - ENG-277
+      - human-export-policy
+    workers_ready: false
+  K:
+    linear_id: ENG-282
+    title: Semantic Analytics Workbench V1
+    owner: Frontend + Backend
+    agent: claude-code
+    status: backlog
+    blocked_by:
+      - ENG-272
+      - ENG-273
+    workers_ready: false
+    early_ui_shell: true

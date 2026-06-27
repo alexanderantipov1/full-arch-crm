@@ -1,0 +1,161 @@
+# DRAFT — review before running; not on PATH; not executed by the night session.
+#
+# Production Mattermost compose for the dedicated GCE host (ENG-494 / Block I).
+# Runs ON the VM at /opt/mattermost/. Ports this stack to prod from the LOCAL
+# `chat`-profile services in infra/docker/docker-compose.yml, with three prod
+# differences:
+#   1. Postgres is a SEPARATE managed Cloud SQL instance (fusion-mm-pg), reached
+#      via the cloud-sql-proxy sidecar — NOT a co-located container (bundle §2 #4).
+#   2. File store is GCS (S3-compatible endpoint), NOT a local volume.
+#   3. Caddy terminates TLS for chat.fusioncrm.app (automatic Let's Encrypt).
+#
+# ⛔ DO NOT deploy until ENG-501 (PHI/BAA go/no-go) = GO. This host carries real
+#    patient name + phone (ENG-460) → it is a PHI system.
+#
+# Secrets: this file references ${VARS} ONLY. Values come from an env file on the
+# VM (/opt/mattermost/.env.mattermost, chmod 600, NEVER committed) populated from
+# Secret Manager at boot. The MM bot token / webhook secret are NOT here — they
+# live in tenant.integration_credential (ENG-496), resolved by the platform, not
+# by Mattermost.
+#
+# Run on the VM:
+#   docker compose -f mattermost-host-compose.yml --env-file .env.mattermost up -d
+
+name: fusion-mm-prod
+
+services:
+  # --- Cloud SQL Auth Proxy → dedicated Mattermost instance fusion-mm-pg --------
+  # Network alias `mattermost-db` so the MM datasource hostname matches the local
+  # compose (mattermost-db:5432), keeping the DSN shape identical dev↔prod.
+  cloudsql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
+    restart: unless-stopped
+    command:
+      - "--address=0.0.0.0"
+      - "--port=5432"
+      # The VM's attached service account (fusion-mm-vm-sa) authenticates the
+      # proxy via the metadata server — no SA key file on disk.
+      - "${MM_CLOUDSQL_INSTANCE_CONNECTION_NAME}"   # e.g. fusioncrm-494201:us-west1:fusion-mm-pg
+    networks:
+      default:
+        aliases:
+          - mattermost-db
+    healthcheck:
+      test: ["CMD-SHELL", "/cloud-sql-proxy --version >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # --- Mattermost server (official image, pinned 10.5 — same tag as local) ------
+  mattermost:
+    image: mattermost/mattermost-team-edition:10.5
+    # NOTE: no `platform: linux/amd64` and no Rosetta — the GCE VM is amd64 native.
+    restart: unless-stopped
+    depends_on:
+      cloudsql-proxy:
+        condition: service_started
+    environment:
+      # --- Database (separate managed Cloud SQL via the proxy alias) -------------
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: >-
+        postgres://${MM_DB_USER:-mmuser}:${MM_DB_PASSWORD}@mattermost-db:5432/${MM_DB_NAME:-mattermost}?sslmode=disable&connect_timeout=10
+      # sslmode=disable is safe here: traffic to the proxy never leaves the VM
+      # loopback/compose network; the proxy itself uses TLS to Cloud SQL.
+
+      # --- Public site URL (https, real host — DEPLOYMENT_RULES §4: no localhost) -
+      MM_SERVICESETTINGS_SITEURL: ${MM_SITE_URL:-https://chat.fusioncrm.app}
+
+      # --- Capabilities our integration relies on --------------------------------
+      MM_SERVICESETTINGS_ENABLEBOTACCOUNTCREATION: "true"
+      MM_SERVICESETTINGS_ENABLEINCOMINGWEBHOOKS: "true"
+      MM_SERVICESETTINGS_ENABLEOUTGOINGWEBHOOKS: "true"
+      MM_SERVICESETTINGS_ENABLECOMMANDS: "true"
+      MM_SERVICESETTINGS_ENABLEPOSTUSERNAMEOVERRIDE: "true"
+      MM_SERVICESETTINGS_ENABLEPOSTICONOVERRIDE: "true"
+
+      # --- Outgoing-webhook target allowlist -------------------------------------
+      # PROD uses the PUBLIC API host (not host.docker.internal). The outgoing
+      # webhook + action_callback_base point at the Fusion API public host so
+      # Mattermost can call /integrations/chat/mattermost/webhook back.
+      MM_SERVICESETTINGS_ALLOWEDUNTRUSTEDINTERNALCONNECTIONS: ${MM_ALLOWED_INTERNAL:-fusioncrm.app}
+
+      # --- File store: GCS via S3-compatible endpoint ----------------------------
+      MM_FILESETTINGS_DRIVERNAME: amazons3
+      MM_FILESETTINGS_AMAZONS3BUCKET: ${MM_GCS_BUCKET:-fusion-crm-mattermost}
+      MM_FILESETTINGS_AMAZONS3ENDPOINT: storage.googleapis.com
+      MM_FILESETTINGS_AMAZONS3SSL: "true"
+      MM_FILESETTINGS_AMAZONS3REGION: ${MM_GCS_REGION:-us-west1}
+      # GCS HMAC interoperability keys (Secret Manager → env file on the VM).
+      # If using workload-identity object access instead, leave these empty and
+      # confirm the S3 driver path at smoke time (bundle §8 item 3).
+      MM_FILESETTINGS_AMAZONS3ACCESSKEYID: ${MM_GCS_HMAC_ACCESS_KEY}
+      MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY: ${MM_GCS_HMAC_SECRET_KEY}
+
+      # --- Locale: keep ENGLISH (non-English locale disables MM's own indexes) ---
+      MM_LOCALIZATIONSETTINGS_DEFAULTSERVERLOCALE: en
+      MM_LOCALIZATIONSETTINGS_DEFAULTCLIENTLOCALE: en
+    expose:
+      - "8065"   # internal only — Caddy fronts it; no host port published
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8065/api/v4/system/ping >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # --- Caddy reverse proxy: TLS termination for chat.fusioncrm.app --------------
+  # Automatic Let's Encrypt cert + auto-renew. Proxies websockets transparently.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      mattermost:
+        condition: service_started
+    ports:
+      - "443:443"          # public HTTPS (the only published port)
+      - "443:443/udp"      # HTTP/3 (QUIC) — optional but free with Caddy
+      # - "80:80"          # uncomment ONLY if ACME HTTP-01 is needed instead of
+      #                    # TLS-ALPN-01 (and open the matching firewall rule).
+    environment:
+      MM_SITE_DOMAIN: ${MM_SITE_DOMAIN:-chat.fusioncrm.app}
+      ACME_EMAIL: ${ACME_EMAIL:-eduard@drantipov.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data        # persisted certs (survive restarts → no re-issue storms)
+      - caddyconfig:/config
+
+volumes:
+  caddydata:
+  caddyconfig:
+
+networks:
+  default:
+    name: fusion-mm-prod
+
+# ------------------------------------------------------------------------------
+# Companion Caddyfile (place next to this compose at /opt/mattermost/Caddyfile):
+#
+#   {
+#       email {$ACME_EMAIL}
+#   }
+#   {$MM_SITE_DOMAIN} {
+#       encode gzip
+#       # Mattermost needs large upload bodies + websocket upgrade pass-through;
+#       # reverse_proxy handles Upgrade/Connection headers automatically.
+#       reverse_proxy mattermost:8065
+#   }
+#
+# Companion env file (/opt/mattermost/.env.mattermost, chmod 600, NEVER committed):
+#   MM_CLOUDSQL_INSTANCE_CONNECTION_NAME=fusioncrm-494201:us-west1:fusion-mm-pg
+#   MM_DB_USER=mmuser
+#   MM_DB_NAME=mattermost
+#   MM_DB_PASSWORD=...                 # from: gcloud secrets versions access latest --secret=mattermost-db-password
+#   MM_SITE_URL=https://chat.fusioncrm.app
+#   MM_SITE_DOMAIN=chat.fusioncrm.app
+#   MM_ALLOWED_INTERNAL=fusioncrm.app
+#   MM_GCS_BUCKET=fusion-crm-mattermost
+#   MM_GCS_REGION=us-west1
+#   MM_GCS_HMAC_ACCESS_KEY=...         # from Secret Manager (or empty if using WI)
+#   MM_GCS_HMAC_SECRET_KEY=...         # from Secret Manager (or empty if using WI)
+#   ACME_EMAIL=eduard@drantipov.com
+# ------------------------------------------------------------------------------

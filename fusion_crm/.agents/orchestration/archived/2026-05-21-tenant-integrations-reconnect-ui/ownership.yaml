@@ -1,0 +1,42 @@
+tasks:
+  TASK-A:
+    title: "Wire Salesforce Reconnect button to OAuth start flow"
+    owner_role: worker
+    files:
+      - apps/web/app/(staff)/settings/tenant/page.tsx
+  TASK-B:
+    title: "useTenantCredentialUpdate + useTenantCredentialDelete hooks"
+    owner_role: worker
+    blockers: []
+  TASK-C:
+    title: "CredentialEditModal component"
+    owner_role: worker
+    blockers: [TASK-B]
+  TASK-D:
+    title: "DisconnectConfirmModal component"
+    owner_role: worker
+    blockers: [TASK-B]
+  TASK-E:
+    title: "refreshed_at / expires_at relative-time display"
+    owner_role: worker
+    blockers: []
+  TASK-F:
+    title: "Salesforce callback URL hint + copy"
+    owner_role: worker
+    blockers: []
+  TASK-G:
+    title: "Vitest coverage for hooks + modals"
+    owner_role: worker
+    blockers: [TASK-B, TASK-C, TASK-D]
+  TASK-H:
+    title: "Manual smoke pass (reports/TASK-H-smoke.md)"
+    owner_role: worker
+    blockers: [TASK-A, TASK-C, TASK-D, TASK-E, TASK-F]
+  VERIFY:
+    title: "Verifier sweep"
+    owner_role: verifier
+    blockers: [TASK-A, TASK-B, TASK-C, TASK-D, TASK-E, TASK-F, TASK-G, TASK-H]
+  INTEGRATE:
+    title: "Integrator commit + PR"
+    owner_role: integrator
+    blockers: [VERIFY]

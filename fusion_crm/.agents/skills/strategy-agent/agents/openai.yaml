@@ -1,0 +1,8 @@
+interface:
+  display_name: "Strategy Agent"
+  short_description: "Plan roadmap, architecture, and candidate missions"
+  default_prompt: "Use $strategy-agent to discuss Fusion CRM strategy and prepare candidate missions for the Orchestrator."
+
+policy:
+  allow_implicit_invocation: true
+

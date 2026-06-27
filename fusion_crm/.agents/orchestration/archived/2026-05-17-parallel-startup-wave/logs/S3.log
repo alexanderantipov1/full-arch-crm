@@ -1,0 +1,15 @@
+S3 verification scout report filed at `.agents/orchestration/20260517-113000-parallel-startup-wave/reports/S3.md`.
+
+Summary of what the report covers:
+
+- **S1 report availability** — `reports/S1.md` and `reports/S2.md` are not yet present; S1 verification block is marked pending for Codex to re-run post-S1.
+- **Ownership/contract observations** — S1's write scope is disjoint from R1's and from the future Salesforce cutover scope at the path level. Identity ↔ ingest import boundary confirmed clean by grep today.
+- **Migration-free posture** — `can_create_migration: false` for S1; safe / unsafe edits to `packages/identity/models.py` enumerated (Python constants OK; column / index / CHECK / FK edits not OK because they would require a migration).
+- **Import boundary risk** — concrete forbidden patterns: importing `NormalizedPersonHintIn`, `NormalizedPersonHint`, or `IngestRepository` from identity.
+- **PHI / raw-payload guard** — `_reject_phi_keys` must be funneled over `MatchHintIn.meta`, `quality_flags`, and any constructed evidence/conflicts payload.
+- **Tenant isolation + idempotency risks** — correct `for_tenant(...)` join pattern for candidate lookup, mandatory tier-0 "no candidate write" rule, write order in tier-1 (source link first, then `MatchCandidate`), and `find_active_hint_candidate(...)` short-circuit on replay.
+- **Codex review/verification checklist** (sections A–J) — file-diff boundary, migration-free posture, import grep, ORM parity, service layer, repository, DTOs, tests, focused commands, and mission-goal evidence capture.
+- **Blockers** — none for S3; soft blocker for Wave S evaluation pending S1/S2 reports.
+- **Process / lesson notes** — diff hygiene against the Q1+R1+Q0 baseline, dual `_FORBIDDEN_*_KEYS` deny-list, and the threshold-as-constants requirement.
+
+No product files, migrations, env, or git mutations were performed. Only the assigned report path was written.

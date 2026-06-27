@@ -1,0 +1,21 @@
+mission: carestack-billing-ingest-v1
+linear_anchor: ENG-257
+owner_role: orchestrator
+owner_agent: claude-code
+tasks:
+  - task_id: ENG-257
+    title: "CareStack billing ingest — accounting-transactions + payment-summary"
+    linear_id: ENG-257
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-257/task-g-implement-minimum-carestack-treatmentpayment-dashboard-slice
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - packages/integrations/carestack/client.py
+      - packages/ingest/carestack_accounting_transaction_service.py
+      - packages/ingest/carestack_payment_summary_service.py
+      - packages/ingest/schemas.py
+      - apps/worker/jobs/ingest_scheduled.py
+      - tests/ingest/
+deferred_structural:
+  - "Canonical billing schema/domain + projection + dashboard aggregates — needs ADR + human approval. NOT assigned."

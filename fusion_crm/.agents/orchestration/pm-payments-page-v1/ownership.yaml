@@ -1,0 +1,24 @@
+mission: pm-payments-page-v1
+linear_anchor: ENG-271
+owner_role: orchestrator
+owner_agent: claude-code
+depends_on: ENG-257/267/270 (payment events carry amount + location); inspector raw-events endpoint
+tasks:
+  - task_id: ENG-271
+    title: "PM Payments page — transaction list + raw drilldown"
+    linear_id: ENG-271
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-271/pm-payments-page-transaction-list-with-personstage-raw-payload
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - apps/api/routers/dashboard.py
+      - apps/api/routers/ingest.py
+      - packages/interaction/*   # payments read model (service/repository)
+      - packages/identity/*      # person + stage lookup if needed
+      - packages/ops/*           # lead/consultation status (stage)
+      - apps/web (project-manager/payments page + sidebar + Zod + hook + MSW)
+      - tests/
+notes:
+  - "List = safe fields; raw drilldown = verbatim payload (inspector carve-out, already ungated)."
+  - "Read-only, no new schema. Mirror the PM Leads page."

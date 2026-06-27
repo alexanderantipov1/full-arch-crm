@@ -1,0 +1,65 @@
+{
+  "mission_id": "dashboard-auto-track",
+  "updated_at": "2026-05-22T02:34:00Z",
+  "handoffs": [
+    {
+      "id": "handoff-eng223-001",
+      "created_at": "2026-05-22T02:18:00Z",
+      "task_id": "MISSION-OPEN",
+      "linear_issue_id": "ENG-223",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-223/dashboard-auto-track-active-mission-resolve-mission-per-snapshot",
+      "from_role": "strategy",
+      "from_agent": "none",
+      "to_role": "orchestrator",
+      "to_agent": "claude-code",
+      "reason": "Doctor selected ENG-223 via /orchestrator. Existing in-progress Linear issue adopted; orchestrator opens mission folder dashboard-auto-track and prepares worker assignment.",
+      "status": "accepted"
+    },
+    {
+      "id": "handoff-eng223-002",
+      "created_at": "2026-05-22T02:24:00Z",
+      "task_id": "TASK-A",
+      "linear_issue_id": "ENG-223",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-223/dashboard-auto-track-active-mission-resolve-mission-per-snapshot",
+      "from_role": "orchestrator",
+      "from_agent": "claude-code",
+      "to_role": "worker",
+      "to_agent": "claude-code",
+      "reason": "Doctor approved self-execute via /orchestrator. Worker takes over implementation, tests, verification.",
+      "status": "completed"
+    },
+    {
+      "id": "handoff-eng223-003",
+      "created_at": "2026-05-22T02:34:00Z",
+      "task_id": "VERIFY",
+      "linear_issue_id": "ENG-223",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-223/dashboard-auto-track-active-mission-resolve-mission-per-snapshot",
+      "from_role": "worker",
+      "from_agent": "claude-code",
+      "to_role": "verifier",
+      "to_agent": "claude-code",
+      "reason": "Adoption of pre-existing branch 0d346fd + 16924e8 verified locally: 19/19 dashboard tests green, 34 passed / 4 skipped orchestrator suite green, live /api/snapshot smoke confirmed branch-id match. Worker report written. Awaiting verifier acceptance + integrator (human) for PR open + merge.",
+      "status": "accepted"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "orch-eng223-001",
+      "role": "worker",
+      "agent": "claude-code",
+      "task_id": "TASK-A",
+      "linear_issue_id": "ENG-223",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-223/dashboard-auto-track-active-mission-resolve-mission-per-snapshot",
+      "linear_status": "In Progress",
+      "linear_title": "Dashboard: auto-track active mission (resolve mission per snapshot)",
+      "status": "ready-for-integration",
+      "phase": "verifier-and-integrator-pending",
+      "worktree": ".",
+      "branch": "eduardk/eng-223-dashboard-auto-track-active-mission",
+      "last_activity": "2026-05-22T02:34:00Z",
+      "needs_human": true,
+      "risk": "low",
+      "current_note": "Branch rebased on main, verifications green, worker report written. Mission folder ready to commit. Awaiting doctor approval to commit + push + open PR."
+    }
+  ]
+}

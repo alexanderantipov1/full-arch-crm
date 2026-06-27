@@ -1,0 +1,43 @@
+mission_id: workflow-ready-ingest-foundation
+parent_issue:
+  id: ENG-235
+  url: https://linear.app/fusion-dental-implants/issue/ENG-235/workflow-ready-ingest-foundation-timeline-sync-run-journaling
+  title: "Workflow-ready ingest foundation: timeline, sync-run journaling, Salesforce Tasks, and call references"
+tasks:
+  - task_id: ENG-236
+    linear_id: ENG-236
+    owner_scope: "packages/interaction, migrations, DTOs, summary builder"
+    title: "Task A: Define workflow-ready interaction.event schema contract"
+  - task_id: ENG-237
+    linear_id: ENG-237
+    owner_scope: "Salesforce Lead ingest"
+    title: "Task B: Emit timeline events from Salesforce Lead pull"
+  - task_id: ENG-238
+    linear_id: ENG-238
+    owner_scope: "Salesforce Event ingest and CareStack Appointment ingest"
+    title: "Task C: Emit consultation timeline events from Salesforce Events and CareStack Appointments"
+  - task_id: ENG-239
+    linear_id: ENG-239
+    owner_scope: "provider sync-run journaling"
+    title: "Task D: Add real provider sync-run journaling for scheduled and manual pulls"
+  - task_id: ENG-240
+    linear_id: ENG-240
+    owner_scope: "Salesforce Task ingest"
+    title: "Task E: Add bounded Salesforce Task ingest and deterministic classification"
+  - task_id: ENG-241
+    linear_id: ENG-241
+    owner_scope: "call reference extraction"
+    title: "Task F: Extract Salesforce call references without transcription or audio download"
+  - task_id: ENG-242
+    linear_id: ENG-242
+    owner_scope: "person operational timeline service/API/tool read surface"
+    title: "Task G: Add person operational timeline read surface"
+  - task_id: ENG-243
+    linear_id: ENG-243
+    owner_scope: "fixtures and verification"
+    title: "Task H: Add workflow-ready ingest fixtures and verification coverage"
+  - task_id: ENG-244
+    linear_id: ENG-244
+    owner_scope: "docs and data catalog"
+    title: "Task I: Sync docs and data catalog for workflow-ready ingest foundation"
+

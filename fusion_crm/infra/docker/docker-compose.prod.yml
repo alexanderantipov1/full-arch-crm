@@ -1,0 +1,127 @@
+name: fusion-crm-prod
+
+# Production compose for Fusion CRM.
+# Per ADR-0001 (docs/decisions/ADR-0001-cloud-sql-prod-postgres.md).
+#
+# Differences from infra/docker/docker-compose.yml (dev):
+#   * No local postgres container — Cloud SQL replaces it. The
+#     `cloudsql-proxy` service exposes the managed instance under the
+#     network alias `postgres`, so app DATABASE_URL strings stay identical
+#     between dev and prod.
+#   * Redis is kept as a local container for now. Migration to Memorystore
+#     is a separate decision (future ADR).
+#   * The provided .env.production file MUST set:
+#       - CLOUDSQL_INSTANCE_CONNECTION_NAME
+#       - GCP_SA_KEY_HOST_PATH (host path to the runtime SA-key JSON)
+#       - DATABASE_URL / DATABASE_URL_SYNC pointing at host `postgres:5432`
+#       - DB_PASSWORD (or use a gcp-secret:// URL — see ADR §"Configuration loader")
+#
+# Run:
+#   docker compose -f infra/docker/docker-compose.prod.yml \
+#                  --env-file .env.production up -d
+
+x-app-env: &app-env
+  APP_ENV: production
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  SECRET_KEY: ${SECRET_KEY}
+  DATABASE_URL: ${DATABASE_URL}
+  DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
+  REDIS_URL: ${REDIS_URL}
+  GCS_BUCKET: ${GCS_BUCKET:-fusion-crm-backups}
+  GOOGLE_APPLICATION_CREDENTIALS: /secrets/gcp-sa.json
+  BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-90}
+  BACKUP_LOCAL_DIR: ${BACKUP_LOCAL_DIR:-/var/backups/fusion}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+  SALESFORCE_CLIENT_ID: ${SALESFORCE_CLIENT_ID}
+  SALESFORCE_CLIENT_SECRET: ${SALESFORCE_CLIENT_SECRET}
+  SALESFORCE_CALLBACK_URL: ${SALESFORCE_CALLBACK_URL}
+  SALESFORCE_DOMAIN: ${SALESFORCE_DOMAIN:-}
+  CARESTACK_IDP_BASE_URL: ${CARESTACK_IDP_BASE_URL}
+  CARESTACK_API_BASE_URL: ${CARESTACK_API_BASE_URL}
+  CARESTACK_API_VERSION: ${CARESTACK_API_VERSION}
+  CARESTACK_CLIENT_ID: ${CARESTACK_CLIENT_ID}
+  CARESTACK_CLIENT_SECRET: ${CARESTACK_CLIENT_SECRET}
+  CARESTACK_VENDOR_KEY: ${CARESTACK_VENDOR_KEY}
+  CARESTACK_ACCOUNT_KEY: ${CARESTACK_ACCOUNT_KEY}
+  CARESTACK_ACCOUNT_ID: ${CARESTACK_ACCOUNT_ID}
+  WEB_CORS_ORIGINS: ${WEB_CORS_ORIGINS}
+
+services:
+  cloudsql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2
+    restart: unless-stopped
+    command:
+      - "--address=0.0.0.0"
+      - "--port=5432"
+      - "--credentials-file=/secrets/gcp-sa.json"
+      - "${CLOUDSQL_INSTANCE_CONNECTION_NAME}"
+    volumes:
+      - ${GCP_SA_KEY_HOST_PATH}:/secrets/gcp-sa.json:ro
+    networks:
+      default:
+        aliases:
+          - postgres
+    # Inside the compose network the proxy listens on `postgres:5432`,
+    # matching the dev hostname so DATABASE_URL strings need not change.
+    healthcheck:
+      test: ["CMD-SHELL", "/cloud-sql-proxy --version >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      API_HOST: 0.0.0.0
+      API_PORT: ${API_PORT:-8000}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS}
+    depends_on:
+      cloudsql-proxy:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    volumes:
+      - ${GCP_SA_KEY_HOST_PATH}:/secrets/gcp-sa.json:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+    depends_on:
+      cloudsql-proxy:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    volumes:
+      - backups:/var/backups/fusion
+      - ${GCP_SA_KEY_HOST_PATH}:/secrets/gcp-sa.json:ro
+
+volumes:
+  redisdata:
+  backups:
+
+networks:
+  default:
+    name: fusion-crm-prod

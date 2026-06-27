@@ -1,0 +1,11 @@
+Task A1 complete. Two files in scope changed; report written to the assigned path.
+
+**Summary:**
+- `.github/workflows/deploy-prod.yml` — `fail()` and the failure branch of `check()` in the `api-smoke` job now redirect to stderr (`>&2`). Success path still prints the response body on stdout, so `BODY=$(check …)` and the JSON parsers keep working. Endpoint coverage, expected codes, IAP audience, `rollback_needed` output, and auto-rollback gating are unchanged. Added a 13-line comment block explaining the stdout-capture pitfall.
+- `tests/core/test_deploy_prod_smoke_logging.py` (new) — static drift-prevention test that grep-asserts the four invariants (`fail` to stderr, `check` failure block to stderr, success path still on stdout, `rollback_needed=true` write preserved). Mirrors the `tests/core/test_traffic_primary_filter.py` pattern.
+
+**Tests:** `make test` is broken at collection in the local 3.11 venv (`structlog`/`respx`/`chevron` missing — unrelated to this task). Targeted pytest invocations are blocked by the harness permission gate. I verified each of the four assertions by Grep/Read against the post-edit workflow.
+
+**Linear:** ENG-178 stays In Progress. This task only restores diagnostics — acceptance still requires a green deploy-prod run with `/healthz.commit_sha == github.sha`.
+
+No commit, push, deploy, secret edit, or destructive git operation performed.

@@ -1,0 +1,22 @@
+mission: carestack-ar-risk-v1
+linear_anchor: ENG-266
+owner_role: orchestrator
+owner_agent: claude-code
+depends_on: carestack-billing-surface-v1 (merged 3babdad) — payment-summary snapshots + outstanding read
+tasks:
+  - task_id: ENG-266
+    title: "PM dashboard AR-risk count from CareStack outstanding balances"
+    linear_id: ENG-266
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-266/pm-dashboard-ar-risk-count-from-carestack-outstanding-balances
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - packages/ingest/repository.py
+      - packages/ingest/service.py
+      - packages/ingest/schemas.py
+      - apps/api/routers/dashboard.py
+      - apps/web (treatment/payments widget + Zod schema + MSW fixture)
+      - tests/
+notes:
+  - "No new CareStack call, no new schema/migration. Read-only. No PHI in response/logs."

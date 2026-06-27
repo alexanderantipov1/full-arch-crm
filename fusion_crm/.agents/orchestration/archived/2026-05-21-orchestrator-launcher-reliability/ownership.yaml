@@ -1,0 +1,55 @@
+tasks:
+  TASK-A:
+    title: "Fix launcher detachment and codex flag drift"
+    owner_role: worker
+    owner_runtime: undecided
+    blockers: []
+    blocks:
+      - TASK-B
+      - TASK-C
+      - TASK-D
+      - TASK-E
+      - TASK-F
+      - TASK-G
+      - TASK-H
+    files:
+      - .agents/skills/agent-orchestrator/scripts/launch_worker.py
+      - .agents/skills/agent-orchestrator/SKILL.md
+      - .claude/commands/orchestrator.md
+      - .agents/orchestration/orchestrator-launcher-reliability/incidents.md
+  TASK-B:
+    title: "Unit tests for launch_worker internals"
+    owner_role: worker
+    blockers: [TASK-A]
+  TASK-C:
+    title: "Integration test for background-launch survival"
+    owner_role: worker
+    blockers: [TASK-A, TASK-B]
+  TASK-D:
+    title: "SIGHUP-resilience test"
+    owner_role: worker
+    blockers: [TASK-A, TASK-C]
+  TASK-E:
+    title: "Contract drift tests against installed binaries"
+    owner_role: worker
+    blockers: [TASK-A]
+  TASK-F:
+    title: "runtime.json schema test"
+    owner_role: worker
+    blockers: [TASK-A]
+  TASK-G:
+    title: "run_wave.py and status_wave.py smoke tests"
+    owner_role: worker
+    blockers: [TASK-A]
+  TASK-H:
+    title: "Documentation pass"
+    owner_role: worker
+    blockers: [TASK-A]
+  VERIFY:
+    title: "Verifier sweep"
+    owner_role: verifier
+    blockers: [TASK-A, TASK-B, TASK-C, TASK-D, TASK-E, TASK-F, TASK-G, TASK-H]
+  INTEGRATE:
+    title: "Integrator merge"
+    owner_role: integrator
+    blockers: [VERIFY]

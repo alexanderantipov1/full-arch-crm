@@ -1,0 +1,29 @@
+mission_id: agent-runtime-manager-answer-layer-v1
+linear_parent: ENG-371
+owner: orchestrator
+status: active
+tasks:
+  ENG-372:
+    title: MANS-01 Mission Setup And Runtime Sync
+    owner: orchestrator
+    status: completed
+  ENG-373:
+    title: MANS-02 Manager Answer Contract V1
+    owner: worker
+    status: completed
+  ENG-374:
+    title: MANS-03 LLM Answer Generation From Approved Aggregates
+    owner: worker
+    status: completed
+  ENG-375:
+    title: MANS-04 Answer Audit, Run History, And Safety Metadata
+    owner: worker
+    status: completed
+  ENG-376:
+    title: MANS-05 Agent Runtime Workbench Final Answer UI
+    owner: worker
+    status: completed
+  ENG-377:
+    title: MANS-06 Evals, Documentation, Smoke, And Closure
+    owner: worker
+    status: completed

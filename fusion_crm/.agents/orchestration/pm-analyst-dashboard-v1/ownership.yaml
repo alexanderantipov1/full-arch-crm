@@ -1,0 +1,58 @@
+mission_id: pm-analyst-dashboard-v1
+title: PM/Analyst Dashboard V1
+status: ready_for_closeout
+blocker: null
+orchestrator:
+  agent: claude-code/codex
+  role: orchestrator
+tasks:
+  - id: DASH-CONTRACT
+    title: Dashboard contract, filters, search, drilldowns, and DTOs
+    owner: Orchestrator
+    linear_issue_id: ENG-251
+    status: merged
+  - id: DASH-API
+    title: Existing-data dashboard API/read model
+    owner: Orchestrator
+    linear_issue_id: ENG-252
+    status: merged
+  - id: DASH-UI
+    title: Staff dashboard UI with filters, search, KPIs, funnel, risk list, and sync health
+    owner: Orchestrator
+    linear_issue_id: ENG-253
+    status: merged
+  - id: PERSON-TIMELINE
+    title: Wire person detail to operational timeline
+    owner: Orchestrator
+    linear_issue_id: ENG-254
+    status: merged
+  - id: SF-ENRICHMENT
+    title: Salesforce lead enrichment for dashboard dimensions
+    owner: Orchestrator
+    linear_issue_id: ENG-255
+    status: merged
+  - id: CS-TREATMENT-PAYMENT-CLASSIFY
+    title: CareStack treatment/payment classification
+    owner: Orchestrator
+    linear_issue_id: ENG-256
+    status: merged
+  - id: CS-TREATMENT-PAYMENT-IMPLEMENT
+    title: Minimum CareStack treatment/payment dashboard slice
+    owner: Orchestrator
+    linear_issue_id: ENG-257
+    status: merged
+  - id: VERIFY-DOCS
+    title: Verification coverage and docs sync
+    owner: Orchestrator
+    linear_issue_id: ENG-258
+    status: merged
+  - id: PM-LEADS-LIST
+    title: Project Manager leads list with filters and search
+    owner: Orchestrator
+    linear_issue_id: ENG-259
+    status: merged
+  - id: VERIFY-GATE
+    title: Integration verify gate
+    owner: Orchestrator
+    linear_issue_id: ENG-265
+    status: merged

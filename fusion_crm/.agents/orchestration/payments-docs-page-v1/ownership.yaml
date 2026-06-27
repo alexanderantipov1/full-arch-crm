@@ -1,0 +1,22 @@
+mission: payments-docs-page-v1
+linear_anchor: ENG-300
+owner_role: orchestrator
+owner_agent: claude-code
+tasks:
+  - task_id: ENG-300
+    title: "Payments docs page (EN/RU) + Docs button + doc-sync rule"
+    linear_id: ENG-300
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-300/payments-docs-page-enru-docs-button-doc-sync-rule
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - apps/web/app/(staff)/project-manager/payments/   # page + docs subpage
+      - apps/web/lib/docs/paymentsDoc.ts
+      - apps/web/CLAUDE.md
+      - packages/ingest/CLAUDE.md
+      - packages/ingest/carestack_accounting_transaction_service.py   # pointer comment only
+      - apps/api/routers/dashboard.py                                  # pointer comment only (aggregate)
+      - apps/web/tests/
+notes:
+  - "Frontend doc page + EN/RU toggle + Docs button + doc-sync rule. No PHI. No backend logic change (pointer comments only)."

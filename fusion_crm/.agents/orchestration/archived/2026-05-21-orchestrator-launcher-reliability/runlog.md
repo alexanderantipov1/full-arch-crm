@@ -1,0 +1,26 @@
+# Runlog
+
+- 2026-05-20T17:28:19Z | orchestrator | MISSION-OPEN | handoff | Handoff: strategy/claude-code -> orchestrator/claude-code for ENG-213. Candidate mission accepted; mission folder opened at .agents/orchestration/orchestrator-launcher-reliability/.
+- 2026-05-20T17:28:19Z | orchestrator | MISSION-OPEN | running | Mission opened. Linear ENG-213 created (Backlog, priority High). Mission spec files written: goal, acceptance, verification, contract, ownership, incidents (with carryover), decision-log.
+- 2026-05-20T17:28:19Z | orchestrator | MISSION-OPEN | running | Prior wave archived to .agents/orchestration/archived/2026-05-19-integration-foundation/.
+- 2026-05-20T17:28:19Z | orchestrator | TASK-A | planned | TASK-A prompt drafted at prompts/TASK-A.md. Needs human decision: dispatch mode (in-session role transition / Task-tool subagent / external Codex). Needs decision: dispatch mode.
+- 2026-05-20T17:37:19Z | orchestrator | TASK-A | handoff | Handoff: orchestrator/claude-code -> worker/claude-code for ENG-213 TASK-A. Dispatch mode: in-session role transition (human decision A). codex CLI flags pre-verified.
+- 2026-05-20T17:37:19Z | worker | TASK-A | running | Worker session e1b6cc02ab89 started. Patching launch_worker.py.
+- 2026-05-20T17:45:00Z | worker | TASK-A | report-ready | Three code edits applied (argparse, build_command codex, background Popen detach). SKILL.md + .claude/commands/orchestrator.md updated. Print-mode smoke green for codex/codex+bypass/claude-code. Background smoke with PATH-shim fake binaries: workers pid 77200 (codex) and 77438 (claude-code) survived launcher exit and wrote full log content. Resolution entry recorded in mission incidents.md. Report at reports/TASK-A-worker-report.md.
+- 2026-05-20T17:45:00Z | worker | TASK-A | handoff | Handoff: worker/claude-code -> verifier/claude-code for ENG-213. TASK-A implementation complete pending verifier sweep. Needs decision: acceptance criterion #4 phrasing — see worker report "Notes for Verifier".
+- 2026-05-20T17:48:26Z | verifier | TASK-A | running | Verifier session 690cfbe66fec started. Independent V1-V11 sweep in progress.
+- 2026-05-20T17:48:26Z | verifier | TASK-A | ready-for-integration | V1 py_compile OK. V2 codex CLI flags consistent. V3 active code grep clean. V4-V6 print-mode commands correct for codex/codex+bypass/claude-code. V7 background smoke: codex pid 88552 + claude-code pid 88581 both ppid=1 (setsid detach proven); logs 41 bytes with V_START+V_END markers. V8-V11 doc and report checks green.
+- 2026-05-20T17:48:26Z | verifier | TASK-A | handoff | Handoff: verifier/claude-code -> orchestrator/claude-code for ENG-213. TASK-A ACCEPTED. Do-not-merge until TASK-B-H complete (acceptance #3). Needs decision: orchestrator should tighten acceptance #4 grep scope to active-code paths only.
+- 2026-05-20T17:55:51Z | orchestrator | TASK-B-H | handoff | Handoff: orchestrator/claude-code -> worker/claude-code for ENG-213. In-session sequential wave per human decision Y. Acceptance #4 phrasing tightened to active-code paths.
+- 2026-05-20T17:55:51Z | worker | TASK-B-H | running | Worker session fded8732ee93 started.
+- 2026-05-20T18:00:00Z | worker | TASK-B | completed | 16 unit tests passing.
+- 2026-05-20T18:01:00Z | worker | TASK-C | completed | 5 background-survival integration tests passing (codex + claude-code parametrized).
+- 2026-05-20T18:02:00Z | worker | TASK-D | completed | 2 SIGHUP regression tests passing (subshell-exit pattern).
+- 2026-05-20T18:03:00Z | worker | TASK-E | completed | 4 contract-drift tests passing when env-gated (CODEX_CONTRACT_TESTS / CLAUDE_CONTRACT_TESTS).
+- 2026-05-20T18:03:30Z | worker | TASK-F | completed | 8 runtime.json schema tests passing.
+- 2026-05-20T18:04:00Z | worker | TASK-G | completed | 3 wave-wrapper smoke tests passing (run_wave.py + status_wave.py).
+- 2026-05-20T18:04:30Z | worker | TASK-H | completed | tests/README.md added; .agents/CLAUDE.md updated with launcher test entry point.
+- 2026-05-20T18:05:00Z | worker | TASK-B-H | report-ready | Full suite: 34 passed, 4 skipped by default; 38 passed when env-gated. Worker report at reports/TASK-B-H-worker-report.md.
+- 2026-05-20T18:05:00Z | worker | TASK-B-H | handoff | Handoff: worker/claude-code -> verifier/claude-code for ENG-213. TASK-B-H implementation complete.
+- 2026-05-20T18:05:00Z | verifier | TASK-B-H | ready-for-integration | Final sweep PASSED: full pytest suite green, scoped grep empty, all 7 acceptance criteria satisfied.
+- 2026-05-20T18:05:00Z | verifier | MISSION-COMPLETE | handoff | Handoff: verifier/claude-code -> orchestrator/claude-code for ENG-213. Mission ready for human review and integration.

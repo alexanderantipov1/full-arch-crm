@@ -1,0 +1,23 @@
+# Keep the build context small (and the image clean).
+node_modules
+.next
+.next/cache
+.git
+.env
+.env.local
+.env.*.local
+npm-debug.log
+yarn-error.log
+.vscode
+.idea
+README.md
+*.md
+!CLAUDE.md
+!content/
+!content/semantic-analytics/
+!content/semantic-analytics/*.md
+tests
+playwright-report
+test-results
+coverage
+.DS_Store

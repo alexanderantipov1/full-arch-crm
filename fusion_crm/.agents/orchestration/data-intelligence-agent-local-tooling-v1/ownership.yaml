@@ -1,0 +1,94 @@
+mission:
+  id: data-intelligence-agent-local-tooling-v1
+  title: Data Intelligence Agent Local Tooling V1
+  parent_project: Semantic Context And Analytics Foundation
+  parent_project_url: https://linear.app/fusion-dental-implants/project/semantic-context-and-analytics-foundation-b545bfd55250
+  parent_issue: ENG-286
+  parent_issue_url: https://linear.app/fusion-dental-implants/issue/ENG-286/data-intelligence-agent-local-tooling-v1
+  status: linear_structure_created
+  worker_gate: blocked_until_human_execution_approval
+
+owners:
+  orchestrator:
+    role: Orchestrator
+    responsibilities:
+      - linear_sync
+      - mission_runtime
+      - worker_assignment_after_approval
+      - integration
+  backend_architecture:
+    role: Backend architecture
+    responsibilities:
+      - policy_allowlist
+      - service_contract
+      - invariant_review
+  tools_worker:
+    role: Tools worker
+    responsibilities:
+      - packages_tools_surface
+      - registry_entries
+      - tool_tests
+  frontend_worker:
+    role: Frontend worker
+    responsibilities:
+      - local_workbench_visibility
+      - local_dev_gating
+  reviewer:
+    role: Production reviewer
+    responsibilities:
+      - verification_review
+      - architecture_invariant_audit
+
+tasks:
+  DIA-01:
+    linear_id: ENG-287
+    title: Mission Setup And Linear Sync
+    owner: orchestrator
+  DIA-02:
+    linear_id: ENG-288
+    title: Tool Policy And Allowlist
+    owner: backend_architecture
+  DIA-03:
+    linear_id: ENG-289
+    title: Data Intelligence Service Contract
+    owner: backend_architecture
+  DIA-04:
+    linear_id: ENG-290
+    title: Query Registry And Dataset Discovery Tool
+    owner: tools_worker
+  DIA-05:
+    linear_id: ENG-291
+    title: Field Profile Tool
+    owner: tools_worker
+  DIA-06:
+    linear_id: ENG-292
+    title: Linkage And Source Coverage Tool
+    owner: tools_worker
+  DIA-07:
+    linear_id: ENG-293
+    title: Evidence Coverage Tool
+    owner: tools_worker
+  DIA-08:
+    linear_id: ENG-294
+    title: Bounded Masked Sample Tool
+    owner: tools_worker
+  DIA-09:
+    linear_id: ENG-295
+    title: Semantic Mapping Proposal Generator
+    owner: tools_worker
+  DIA-10:
+    linear_id: ENG-296
+    title: Gap Brief Writer
+    owner: tools_worker
+  DIA-11:
+    linear_id: ENG-297
+    title: Audit And Tool Call Logging
+    owner: backend_architecture
+  DIA-12:
+    linear_id: ENG-298
+    title: Local Workbench Visibility
+    owner: frontend_worker
+  DIA-13:
+    linear_id: ENG-299
+    title: Verification And Production Review
+    owner: reviewer

@@ -1,0 +1,32 @@
+mission_id: worktree-as-default
+linear_issue_id: ENG-225
+linear_issue_url: https://linear.app/fusion-dental-implants/issue/ENG-225/worktree-as-default-for-workers-self-execute-guardrail-m-2
+
+owners:
+  orchestrator: claude-code
+  worker: pending
+  verifier: claude-code
+  integrator: pending-human
+
+scope_allow:
+  - .agents/skills/agent-orchestrator/scripts/launch_worker.py
+  - .agents/skills/agent-orchestrator/scripts/cleanup_worktrees.py
+  - .agents/skills/agent-orchestrator/scripts/run_wave.py
+  - .agents/skills/agent-orchestrator/tests/
+  - .agents/orchestration/CLAUDE.md
+  - .agents/skills/agent-orchestrator/SKILL.md
+  - .agents/skills/agent-orchestrator/tests/README.md
+  - .agents/orchestration/worktree-as-default/
+
+scope_deny:
+  - apps/
+  - packages/
+  - infra/
+  - .env*
+  - .claude/
+  - docs/
+  - .agents/orchestration/archived/
+  - .agents/dashboard/   # M-2 should not need dashboard changes
+
+risk: medium
+contains_phi: false

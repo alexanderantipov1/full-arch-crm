@@ -1,0 +1,28 @@
+mission: current
+mission_alias: eng-305-payment-summary-backfill-v1
+linear_anchor: ENG-305
+owner_role: orchestrator
+owner_agent: claude-code
+tasks:
+  - task_id: ENG-305
+    title: "Throttled payment-summary backfill → authoritative patient balance"
+    linear_id: ENG-305
+    linear_url: https://linear.app/fusion-dental-implants/issue/ENG-305/throttled-payment-summary-backfill-authoritative-patient-balance
+    worker_role: worker
+    worker_agent: claude-code
+    workspace: worktree
+    owns:
+      - packages/ingest/carestack_payment_summary_service.py
+      - packages/ingest/carestack_accounting_transaction_service.py
+      - packages/ingest/schemas.py
+      - apps/worker/jobs/ingest_scheduled.py
+      - infra/scripts/backfill_payment_summary.py            # NEW
+      - tests/ingest/test_carestack_payment_summary_service.py
+      - tests/ingest/test_carestack_accounting_transaction_service.py
+      - tests/infra/test_backfill_payment_summary.py         # NEW
+notes:
+  - "Data-only ticket. Person-card UI (Billed/Adjustments/Paid/Balance) is a
+    SEPARATE follow-up after this lands."
+  - "CareStack must be MOCKED in all tests. Real API call only via the new
+    background script, and only after explicit user go post-merge."
+  - "MSW handlers.ts is unrelated WIP from another stream — do NOT touch."

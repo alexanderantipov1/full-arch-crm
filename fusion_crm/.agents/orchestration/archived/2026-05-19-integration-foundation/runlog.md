@@ -1,0 +1,76 @@
+# Runlog
+
+- 2026-05-20T03:39:35Z | orchestrator | ENG-206 | started | Linear issue created and moved to In Progress for people-search source-data fallback bugfix.
+- 2026-05-20T03:39:35Z | orchestrator | ENG-206 | handoff | Handoff: orchestrator/codex -> worker/codex for ENG-206. Small scoped bugfix accepted for self-execution.
+- 2026-05-20T03:40:00Z | worker | ENG-206 | running | Inspecting `apps/web/app/api/people/search/route.ts`, source-data schemas, and imported source-data API path.
+- 2026-05-20T03:41:00Z | worker | ENG-206 | running | Implemented local-dev source-data fallback, provider warning suppression for local matches, and linked person UID aggregation.
+- 2026-05-20T03:41:45Z | worker | ENG-206 | verified | Verification passed: `npm run typecheck`, `npm run lint`, `npm run test -- --run`, and local curl for phone `15103810303`.
+- 2026-05-20T03:42:02Z | worker | ENG-206 | handoff | Handoff: worker/codex -> integrator/codex for ENG-206. Linear moved to In Review with verification notes.
+- 2026-05-20T03:49:02Z | orchestrator | ENG-204 | started | Linear moved to In Progress for source-data WIP reconciliation.
+- 2026-05-20T03:49:44Z | orchestrator | ENG-204 | handoff | Handoff: orchestrator/codex -> worker/codex/Gauss for ENG-204. Existing source-data WIP accepted for verification, cleanup, and report.
+- 2026-05-20T03:49:44Z | orchestrator | ENG-205 | handoff | Handoff: orchestrator/codex -> worker/codex/Halley for ENG-205. Completed integrations cleanup needs independent verification and worker report.
+- 2026-05-20T03:49:44Z | orchestrator | ENG-183 | exploring | Read-only explorer codex/Hypatia started to assess readiness and sequencing after current WIP integration.
+- 2026-05-20T03:51:03Z | worker | ENG-205 | handoff | Handoff: worker/codex/Halley -> integrator/codex for ENG-205. Worker verification complete and report written.
+- 2026-05-20T03:53:21Z | worker | ENG-204 | verified | Worker verification complete: `uv run pytest tests/api/test_dev_source_data.py tests/ingest/test_dev_source_data_service.py -q`, `cd apps/web && npm run lint`, and `cd apps/web && npm run typecheck` passed.
+- 2026-05-20T03:53:21Z | worker | ENG-204 | handoff | Handoff: worker/codex/Gauss -> integrator/codex for ENG-204. Worker verification complete and report written.
+- 2026-05-20T03:53:21Z | explorer | ENG-183 | blocked | Readiness review complete. ENG-183 should not start until ENG-190 adds source instance scoping for identity/source links.
+- 2026-05-20T03:54:57Z | orchestrator | ENG-207 | started | Linear issue created and moved to In Progress for integration verification of ENG-204/205/206.
+- 2026-05-20T03:55:04Z | orchestrator | ENG-190 | started | Linear moved to In Progress for source-instance scoping preflight.
+- 2026-05-20T03:55:40Z | orchestrator | ENG-207 | handoff | Handoff: orchestrator/codex -> worker/codex/Nietzsche for ENG-207. Current source-data wave needs integration verification before the next backend schema work starts.
+- 2026-05-20T03:55:40Z | orchestrator | ENG-190 | handoff | Handoff: orchestrator/codex -> explorer/codex/Noether for ENG-190. ENG-190 is the next blocker for ENG-183 and needs scoped implementation preflight.
+- 2026-05-20T03:58:44Z | explorer | ENG-190 | blocked | Preflight complete. Smallest safe plan is first-class `source_instance`, but implementation should wait for ENG-207 because identity/ingest WIP overlaps.
+- 2026-05-20T03:59:17Z | worker | ENG-207 | verified | Integration verification complete. Focused ENG-204/205/206 checks passed, but repo-wide gate is blocked by `.agents` lint, test mypy debt, `make test` Python env, and Alembic env requirements.
+- 2026-05-20T04:00:03Z | orchestrator | ENG-207 | synced | Linear moved to In Review with verification summary and blocker links.
+- 2026-05-20T04:00:05Z | orchestrator | ENG-186 | started | Linear moved to In Progress for repository-wide test typing cleanup.
+- 2026-05-20T04:00:07Z | orchestrator | ENG-187 | started | Linear moved to In Progress for repository-wide `make test` cleanup.
+- 2026-05-20T04:00:22Z | orchestrator | ENG-208 | started | Linear issue created and moved to In Progress for `.agents/dashboard/server.py` ruff blockers.
+- 2026-05-20T04:00:25Z | orchestrator | ENG-209 | started | Linear issue created and moved to In Progress for local Alembic check env/tooling blocker.
+- 2026-05-20T04:01:31Z | orchestrator | ENG-208 | handoff | Handoff: orchestrator/codex -> worker/codex/Euclid for `.agents/dashboard/server.py` lint fix.
+- 2026-05-20T04:01:31Z | orchestrator | ENG-186 | handoff | Handoff: orchestrator/codex -> worker/codex/Erdos for repository-wide test typing cleanup.
+- 2026-05-20T04:01:31Z | orchestrator | ENG-187 | handoff | Handoff: orchestrator/codex -> worker/codex/Ptolemy for `make test` env/tooling cleanup.
+- 2026-05-20T04:01:31Z | orchestrator | ENG-209 | handoff | Handoff: orchestrator/codex -> explorer/codex/Boyle for Alembic local env preflight.
+- 2026-05-20T04:03:19Z | worker | ENG-208 | verified | Worker fixed `.agents/dashboard/server.py`; `uv run ruff check .agents/dashboard/server.py`, `python3 -m py_compile .agents/dashboard/server.py`, and `make lint` passed.
+- 2026-05-20T04:03:28Z | orchestrator | ENG-208 | synced | Linear moved to In Review with verification notes.
+- 2026-05-20T04:04:46Z | explorer | ENG-209 | ready | Preflight found the Alembic blocker: `env.py` calls full runtime `get_settings()`, requiring `SECRET_KEY` and `REDIS_URL` before metadata comparison.
+- 2026-05-20T04:04:46Z | explorer | ENG-209 | handoff | Handoff: explorer/codex/Boyle -> worker/codex/Popper. Implement a DB-only Alembic settings helper without weakening full runtime settings.
+- 2026-05-20T04:05:22Z | worker | ENG-187 | partial | Worker updated `Makefile` so `make test` uses `.venv/bin/python`; dependency collection blocker is fixed, but repo-wide suite still reports 10 failures and 55 errors.
+- 2026-05-20T04:05:32Z | orchestrator | ENG-187 | synced | Linear updated with partial result and remaining tenant/outreach/worker test blockers.
+- 2026-05-20T04:06:12Z | worker | ENG-186 | verified | Worker fixed repository-wide mypy failures in tests only; `uv run mypy .` passed with no issues in 221 source files.
+- 2026-05-20T04:06:25Z | orchestrator | ENG-186 | synced | Linear moved to In Review with verification notes.
+- 2026-05-20T04:07:09Z | orchestrator | ENG-210 | started | Linear issue created and moved to In Progress for `two_tenant_db` Phase B setup errors.
+- 2026-05-20T04:07:12Z | orchestrator | ENG-211 | started | Linear issue created and moved to In Progress for remaining focused outreach and worker test failures.
+- 2026-05-20T04:07:39Z | orchestrator | ENG-210 | handoff | Handoff: orchestrator/codex -> worker/codex/Dirac for tenant isolation fixture cleanup.
+- 2026-05-20T04:07:39Z | orchestrator | ENG-211 | handoff | Handoff: orchestrator/codex -> worker/codex/Banach for focused outreach/worker test cleanup.
+- 2026-05-20T04:09:01Z | worker | ENG-209 | verified | Worker implemented DB-only Alembic settings helper. Prior missing `SECRET_KEY`/`REDIS_URL` blocker is gone; full check now needs local database `fusion_crm`.
+- 2026-05-20T04:09:12Z | orchestrator | ENG-209 | synced | Linear moved to In Review with verification notes and remaining local DB availability blocker.
+- 2026-05-20T04:10:17Z | worker | ENG-211 | verified | Worker fixed focused outreach/worker stale test expectations; focused 5 tests, touched modules, `uv run mypy .`, and `make lint` passed.
+- 2026-05-20T04:10:23Z | orchestrator | ENG-211 | synced | Linear moved to In Review with verification notes.
+- 2026-05-20T04:21:03Z | worker | ENG-210 | verified | Worker implemented Phase B `two_tenant_db`; tenant isolation passed with 105 passed, 10 skipped; `make test` passed with 566 passed, 10 skipped; `make lint` and `mypy .` passed.
+- 2026-05-20T04:21:18Z | orchestrator | ENG-210 | synced | Linear moved to In Review with verification notes.
+- 2026-05-20T04:21:18Z | orchestrator | ENG-187 | synced | Linear moved to In Review; repository-wide `make test` is green after ENG-210 and ENG-211.
+- 2026-05-20T04:22:18Z | orchestrator | ENG-212 | started | Linear issue created and moved to In Progress for agent-orchestrator script ruff blockers found by final `make lint`.
+- 2026-05-20T04:23:33Z | worker | ENG-212 | verified | Worker fixed agent-orchestrator script lint blockers; `uv run ruff check .agents/skills/agent-orchestrator/scripts` and `make lint` passed.
+- 2026-05-20T04:23:41Z | orchestrator | ENG-212 | synced | Linear moved to In Review with verification notes.
+- 2026-05-20T04:31:47Z | orchestrator | ENG-207 | merged | Full repository verification passed; ENG-204/205/206 plus cleanup ENG-186/187/208/209/210/211/212 moved to Done.
+- 2026-05-20T04:31:47Z | orchestrator | ENG-209 | completed | Local DB Alembic check passed using DATABASE_URL_SYNC on 127.0.0.1:5434 without .env* edits.
+- 2026-05-20T04:31:47Z | orchestrator | ENG-190 | assigned | ENG-190 unblocked for implementation; ENG-183 remains blocked.
+- 2026-05-20T04:32:17Z | orchestrator | ENG-190 | handoff | Handoff: orchestrator/codex -> worker/codex for ENG-190. ENG-207 and repository-wide cleanup verified green; ENG-190 now unblocks ENG-183.
+- 2026-05-20T04:32:17Z | codex | ENG-190 | background | Launch command prepared for worker.
+- 2026-05-20T04:33:18Z | orchestrator | ENG-190 | blocked | Blocked: codex background launch exited immediately with empty log; retrying with claude-code runtime.
+- 2026-05-20T04:33:19Z | orchestrator | ENG-190 | handoff | Handoff: orchestrator/codex -> worker/claude-code for ENG-190. Retry after codex CLI background launch exited immediately; ENG-190 remains unblocked after full verification.
+- 2026-05-20T04:33:19Z | claude-code | ENG-190 | background | Launch command prepared for worker.
+- 2026-05-20T04:34:44Z | orchestrator | ENG-190 | blocked | Blocked: claude-code background launch exited immediately with empty log; manual codex recovery started.
+- 2026-05-20T04:34:44Z | orchestrator | ENG-190 | handoff | Handoff: orchestrator/codex -> worker/codex/Curie-manual for ENG-190. Manual recovery after launcher contract drift.
+- 2026-05-20T04:34:44Z | codex | ENG-190 | running | Manual background worker pid=86139 log=.agents/orchestration/current/logs/ENG-190-manual-codex.log.
+- 2026-05-20T04:35:25Z | orchestrator | ENG-190 | handoff | Handoff: orchestrator/codex -> worker/codex/Curie-foreground for ENG-190. Foreground recovery after background launch drift.
+- 2026-05-20T04:35:25Z | codex | ENG-190 | running | Foreground codex exec session=019e43aa-78be-7991-ba28-5d1b5e63e1e1, terminal session 12920.
+- 2026-05-20T04:36:42Z | orchestrator | ENG-190 | running | Heartbeat: foreground worker running; Orchestrator maintaining runtime because child sandbox cannot write .agents files.
+- 2026-05-20T04:37:26Z | orchestrator | ENG-190 | running | Heartbeat: worker inspecting source_link model/repository/service/tests; .agents writes are maintained by Orchestrator.
+- 2026-05-20T04:38:09Z | orchestrator | ENG-190 | running | Heartbeat: worker planning source_instance changes against existing source-data WIP.
+- 2026-05-20T04:38:52Z | orchestrator | ENG-190 | running | Heartbeat: worker editing identity source_instance model/repository/schema paths.
+- 2026-05-20T04:40:09Z | orchestrator | ENG-190 | running | Heartbeat: worker editing ingest normalized hint/source-data instance-aware paths.
+- 2026-05-20T04:40:52Z | orchestrator | ENG-190 | running | Heartbeat: worker updating tests and SF/CareStack ingest adapters for source_instance.
+- 2026-05-20T04:41:35Z | orchestrator | ENG-190 | running | Heartbeat: worker updating model metadata and source-data tests.
+- 2026-05-20T04:42:53Z | orchestrator | ENG-190 | running | Heartbeat: new Alembic revision added; worker continuing docs/tests updates.
+- 2026-05-20T04:49:08Z | orchestrator | ENG-190 | verified | Implemented source-instance scoped source links and normalized hints. Focused tests, `make lint`, `uv run mypy .`, `make test`, Alembic upgrade/check, and `git diff --check` passed.
+- 2026-05-20T04:49:08Z | orchestrator | ENG-183 | blocked | ENG-183 remains blocked by sequencing policy; do not launch it in this wave.

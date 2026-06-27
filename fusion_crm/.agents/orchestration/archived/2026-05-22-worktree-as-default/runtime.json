@@ -1,0 +1,52 @@
+{
+  "mission_id": "worktree-as-default",
+  "updated_at": "2026-05-22T04:30:00Z",
+  "handoffs": [
+    {
+      "id": "handoff-eng225-001",
+      "created_at": "2026-05-22T04:26:00Z",
+      "task_id": "MISSION-OPEN",
+      "linear_issue_id": "ENG-225",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-225/worktree-as-default-for-workers-self-execute-guardrail-m-2",
+      "from_role": "strategy",
+      "from_agent": "codex",
+      "to_role": "orchestrator",
+      "to_agent": "claude-code",
+      "reason": "Strategy candidate 'Worktree-As-Default For Workers' accepted by orchestrator. M-1 (ENG-224) landed paths.worktree_dir() placeholder; M-2 wires it in. M-3 remains blocked-by this mission.",
+      "status": "completed"
+    },
+    {
+      "id": "handoff-eng225-002",
+      "created_at": "2026-05-22T04:30:00Z",
+      "task_id": "TASK-A",
+      "linear_issue_id": "ENG-225",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-225/worktree-as-default-for-workers-self-execute-guardrail-m-2",
+      "from_role": "orchestrator",
+      "from_agent": "claude-code",
+      "to_role": "worker",
+      "to_agent": "claude-code",
+      "reason": "Doctor approved self-execute via /orchestrator. Worker takes Tasks A-F sequentially. Pre-flight clean: branch eduardk/eng-225-worktree-as-default did not exist.",
+      "status": "accepted"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "worker-eng225-001",
+      "role": "worker",
+      "agent": "claude-code",
+      "task_id": "TASK-A",
+      "linear_issue_id": "ENG-225",
+      "linear_issue_url": "https://linear.app/fusion-dental-implants/issue/ENG-225/worktree-as-default-for-workers-self-execute-guardrail-m-2",
+      "linear_status": "In Progress",
+      "linear_title": "Worktree-as-default for workers + self-execute guardrail (M-2)",
+      "status": "ready-for-integration",
+      "phase": "verifier-and-integrator-pending",
+      "worktree": ".",
+      "branch": "eduardk/eng-225-worktree-as-default",
+      "last_activity": "2026-05-22T05:10:00Z",
+      "needs_human": true,
+      "risk": "medium",
+      "current_note": "All 6 tasks done. 70/4-skip skill suite + 19 dashboard + make verify all green. Worker report written. Awaiting commit/push/PR approval."
+    }
+  ]
+}

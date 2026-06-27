@@ -1,0 +1,75 @@
+# Machine-readable ownership rules for orchestration checks.
+# Keep this in sync with ownership.md.
+
+tasks:
+  S1:
+    allowed_paths:
+      - "packages/identity/models.py"
+      - "packages/identity/schemas.py"
+      - "packages/identity/repository.py"
+      - "packages/identity/service.py"
+      - "packages/identity/CLAUDE.md"
+      - "tests/identity/**"
+      - ".agents/orchestration/20260517-113000-parallel-startup-wave/reports/S1.md"
+    forbidden_paths:
+      - "packages/ingest/**"
+      - "packages/ops/**"
+      - "packages/phi/**"
+      - "apps/**"
+      - "apps/worker/**"
+      - "packages/integrations/**"
+      - "packages/db/alembic/versions/**"
+      - ".github/workflows/**"
+      - "infra/scripts/**"
+    can_create_migration: false
+  S2:
+    allowed_paths:
+      - ".agents/orchestration/20260517-113000-parallel-startup-wave/reports/S2.md"
+    forbidden_paths:
+      - "packages/**"
+      - "apps/**"
+      - "infra/**"
+      - ".github/**"
+    can_create_migration: false
+  S3:
+    allowed_paths:
+      - ".agents/orchestration/20260517-113000-parallel-startup-wave/reports/S3.md"
+    forbidden_paths:
+      - "packages/**"
+      - "apps/**"
+      - "infra/**"
+      - ".github/**"
+    can_create_migration: false
+  T1:
+    allowed_paths:
+      - "packages/ingest/sf_lead_service.py"
+      - "tests/ingest/test_sf_lead_service.py"
+      - "packages/ingest/CLAUDE.md"
+      - ".agents/orchestration/20260517-113000-parallel-startup-wave/reports/T1.md"
+    forbidden_paths:
+      - "packages/identity/**"
+      - "packages/ops/**"
+      - "packages/phi/**"
+      - "apps/**"
+      - "apps/worker/**"
+      - "packages/integrations/**"
+      - "packages/db/alembic/versions/**"
+      - ".github/workflows/**"
+      - "infra/scripts/**"
+    can_create_migration: false
+  T2:
+    allowed_paths:
+      - ".agents/orchestration/20260517-113000-parallel-startup-wave/reports/T2.md"
+    forbidden_paths:
+      - "packages/**"
+      - "apps/**"
+      - "infra/**"
+      - ".github/**"
+    can_create_migration: false
+
+global_forbidden_paths:
+  - ".env*"
+  - "packages/db/alembic/versions/**"
+  - ".github/workflows/*deploy*"
+  - "infra/scripts/deploy*"
+  - "infra/scripts/*prod*"
