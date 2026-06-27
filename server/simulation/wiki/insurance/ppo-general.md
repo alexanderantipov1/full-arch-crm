@@ -22,7 +22,7 @@ This page consolidates intelligence on PPO dental plan behavior across major pay
 
 ## D6010 Implant Body — Approval Intelligence
 
-**D6010** (endosseous implant body, each) is the highest-value single CDT code in the implant workflow. PPO plans vary widely in their coverage of D6010, but the documentation submitted has a measurable and consistent impact on approval rates.
+**D6010** (endosseous implant body, each) is the highest-value single CDT code in the implant workflow. PPO plans vary widely in their coverage of D6010, but the documentation submitted has a measurable and consistent impact on approval rates. [[agents/InsuranceAgent]] applies this intelligence for prior auth submission. For Delta Dental-specific D6010 patterns, see [[insurance/delta-dental]]. Denial appeals follow the [[insurance/appeals/ppo-d6010]] template.
 
 ### Approval Rate by Documentation Completeness
 
@@ -157,5 +157,7 @@ When presenting treatment plans to PPO patients:
 
 ## Related Pages
 
-- [InsuranceAgent](../agents/InsuranceAgent.md) — agent logic for prior auth submission and denial management
-- [PPO D6010 Appeal Script](appeals/ppo-d6010.md) — appeal letter template for D6010 implant body denials
+- [[agents/InsuranceAgent]] — Agent logic for prior auth submission, payer-specific timing, and denial management
+- [[insurance/delta-dental]] — Delta Dental-specific denial patterns and billing intelligence
+- [[insurance/appeals/ppo-d6010]] — Appeal letter template and documentation checklist for D6010 denials
+- [[patients/insurance-issue]] — Patient profile for active insurance disputes; resolution and retention intelligence

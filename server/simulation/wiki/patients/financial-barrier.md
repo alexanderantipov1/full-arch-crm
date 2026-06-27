@@ -25,12 +25,15 @@ Patient wants treatment but cannot pay out-of-pocket. Common in: self-pay patien
 | Denefits (no-credit) | 91% | varies | Declined CareCredit |
 
 ## Intelligence
-- Pre-qualify BEFORE presenting treatment plan — leads to 2.3× higher acceptance
+- Pre-qualify BEFORE presenting treatment plan — leads to 2.3× higher acceptance (see [[agents/FinancialCounselorAgent]] for pre-qualification protocol)
 - Present as "monthly investment" not "total cost"
 - Always have a backup option ready if primary financing declines
 - Denefits catches ~40% of CareCredit declines
+- For patients with insurance gaps on implant cases, cross-reference [[insurance/ppo-general]] to establish the out-of-pocket baseline before financing discussion
 
-## Cross-References
-- [[agents/FinancialCounselorAgent.md]]
-- [[patients/treatment-decline.md]]
-- [[patients/implant-consult.md]]
+## Related Pages
+
+- [[agents/FinancialCounselorAgent]] — Primary agent for financing sequencing and monthly payment anchoring
+- [[agents/TreatmentPlanAgent]] — Upstream plan presentation agent whose timing affects financing success
+- [[patients/treatment-decline]] — Downstream state when financial barrier is not resolved at consultation
+- [[insurance/ppo-general]] — PPO coverage data that determines out-of-pocket baseline before financing

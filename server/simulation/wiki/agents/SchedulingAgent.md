@@ -32,6 +32,8 @@ SchedulingAgent manages appointment scheduling optimization, no-show prediction 
 
 ## No-Show Prediction Patterns
 
+SchedulingAgent coordinates closely with [[agents/RecallAgent]] for overdue hygiene scheduling and handles the booking pipeline for [[patients/recall-overdue]], [[patients/new-patient]], and [[patients/emergency]] scenarios.
+
 The following patient and appointment attributes are weighted to produce a no-show risk score (0–100). Scores ≥65 trigger enhanced confirmation protocol.
 
 ### No-Show Risk Factors
@@ -180,3 +182,11 @@ For surgical implant procedures, strategic double-booking can protect revenue ag
 
 - Agent initialized with low confidence; no confirmed outcome data yet
 - Priority learning targets: (1) validate no-show risk score weights against actual no-show events, (2) measure conversion rate lift from same-day emergency follow-up booking vs. post-departure booking, (3) determine whether deposit requirement reduces no-show rate or increases cancellation rate
+
+## Related Pages
+
+- [[patients/recall-overdue]] — Overdue hygiene patients whose re-scheduling SchedulingAgent manages
+- [[patients/new-patient]] — New patient booking workflows and first-visit confirmation sequencing
+- [[patients/emergency]] — Emergency visit handling and same-day comprehensive conversion booking
+- [[agents/RecallAgent]] — Partner agent that generates recall outreach and hands off to SchedulingAgent for booking
+- [[AGENTS]] — Index of all agents in this simulation

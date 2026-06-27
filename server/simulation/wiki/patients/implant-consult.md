@@ -32,11 +32,11 @@ Patient presenting for initial consultation regarding dental implants, most comm
 - **Best scenario fit score:** 78/100
 
 ## Insurance Patterns
-PPO: 60% of implant consults. Approve D0330 readily. D6010 requires prior auth ~72% of time.
+PPO: 60% of implant consults. Approve D0330 readily. D6010 requires prior auth ~72% of time. See [[insurance/ppo-general]] for documentation requirements and [[insurance/delta-dental]] for Delta-specific approval patterns.
 Self-pay: 28%. Financing penetration is key — CareCredit approval in office closes 68% of self-pay.
 Medicaid: 6%. Implants virtually never covered. Focus on denture alternative conversation.
 
-See: [[insurance/ppo-general.md]] | [[insurance/delta-dental.md]]
+Prior auth denials should be escalated via [[insurance/appeals/ppo-d6010]]. Patients who cannot pay out-of-pocket are routed to the [[patients/financial-barrier]] workflow.
 
 ## Communication Intelligence
 - Lead with quality-of-life outcomes, not procedure names
@@ -44,9 +44,10 @@ See: [[insurance/ppo-general.md]] | [[insurance/delta-dental.md]]
 - Anchor at full arch value ($28,000) then present phased or single arch option
 - Always provide written estimate before patient leaves — oral-only quotes convert at 18% vs 51%
 
-## Cross-References
-- [[clinical/all-on-4-protocol.md]]
-- [[insurance/ppo-general.md]]
-- [[insurance/delta-dental.md]]
-- [[agents/TreatmentPlanAgent.md]]
-- [[agents/FinancialCounselorAgent.md]]
+## Related Pages
+
+- [[agents/TreatmentPlanAgent]] — Primary agent for structuring and presenting implant treatment plans
+- [[agents/InsuranceAgent]] — Handles prior auth submission and denial management for D6010
+- [[clinical/all-on-4-protocol]] — Full-arch surgical protocol details for All-on-4 candidates
+- [[insurance/ppo-general]] — PPO documentation requirements and approval rates for implant cases
+- [[patients/financial-barrier]] — Patients who cannot accept due to cost; financing pathway details

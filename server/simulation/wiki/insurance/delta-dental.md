@@ -21,7 +21,7 @@ tags: [ppo, delta-dental, california, implant, d6010]
 Delta Dental of California is one of the largest dental PPO networks in California.
 Commonly carried by tech sector employees, state/county government workers, and union members.
 Strong in-network reimbursement for preventive and basic restorative; more conservative on
-major procedures (implants, full-arch).
+major procedures (implants, full-arch). For general PPO denial patterns and turnaround benchmarks across all payers, see [[insurance/ppo-general]]. D6010 denial appeals use the [[insurance/appeals/ppo-d6010]] template. Active patient disputes are managed via [[patients/insurance-issue]] with [[agents/InsuranceAgent]] handling the payer communication.
 
 **Plan types:** PPO (primary), some HMO variants
 **Network:** Extensive California in-network; some out-of-network coverage at reduced rates
@@ -110,6 +110,9 @@ A PPO patient presenting for All-on-4 implant consultation (D6010 × 4, D6114 ×
 - Insurance covered: ~$5,760 of $16,200 total (35.6% — typical for full-arch major case)
 - **Learning:** Always submit prior auth with full X-ray series. D6010 approval jumps from ~72% → 88% with complete periapical documentation.
 
-## Cross-References
-- [[clinical/all-on-4-protocol.md]]
-- [[agents/InsuranceAgent.md]] (once created)
+## Related Pages
+
+- [[agents/InsuranceAgent]] — Agent for prior auth submission, payer timing, and denial management specific to Delta Dental cases
+- [[insurance/ppo-general]] — Cross-payer PPO intelligence; denial patterns and documentation standards
+- [[insurance/appeals/ppo-d6010]] — Appeal template for D6010 denials applicable to Delta Dental cases
+- [[patients/insurance-issue]] — Patient profile for active insurance disputes including Delta Dental eligibility confusion

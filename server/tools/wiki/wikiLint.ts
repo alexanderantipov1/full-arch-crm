@@ -39,14 +39,14 @@ export interface WikiLintOutput {
 
 export const wikiLintTool = defineTool<WikiLintInput, WikiLintOutput>({
   name: "wiki_lint",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  inputSchema: inputSchema as any,
   description:
     "Run a maintenance lint pass on the full-arch-crm Karpathy wiki vault. " +
     "Removes stale entries (default >90 days unconfirmed), resolves contradictions " +
     "(newer data wins), merges duplicate pattern entries, and refreshes KPIs. " +
     "Run weekly to keep the wiki accurate as dental billing rules and clinical " +
     "patterns evolve. Use dryRun=true to preview changes without writing.",
-
-  inputSchema,
 
   async handler(_ctx, input) {
     try {

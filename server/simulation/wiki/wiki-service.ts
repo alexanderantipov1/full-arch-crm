@@ -25,6 +25,7 @@ import * as fs from 'fs';
 import { askClaude } from '../../services/ai';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { rawSourceWriter } from './raw-source-writer';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_WIKI_ROOT = path.join(__dirname);   // wiki/ lives alongside this file
@@ -130,6 +131,15 @@ export class WikiService {
    * Never writes PHI — all patterns are anonymized before reaching this method.
    */
   async ingest(trigger: WikiIngestTrigger): Promise<WikiIngestResult> {
+    // ── Rule I: Write to immutable raw/ source layer FIRST ─────────────────
+    // Raw events are ground truth. Wiki pages are the compiled view.
+    // Never modify raw/ after writing — append-only.
+    rawSourceWriter.write(
+      trigger.type,
+      trigger as unknown as Record<string, unknown>,
+      { targetWikiPage: this.resolveTargetPages(trigger)[0] }
+    );
+
     const startMs = Date.now();
     const result: WikiIngestResult = {
       pagesCreated: [],
@@ -528,14 +538,49 @@ _(To be populated as more events are ingested)_
     // Contradiction check — same metric with >10% delta across pages
     result.contradictions.push(...this.checkContradictions(allPages));
 
+    // ── Rule I: Lint raw/ source layer for orphan sources ───────────────────
+    const rawLint = rawSourceWriter.lint(180);
+    for (const orphanSrc of rawLint.orphanSources.slice(0, 20)) {
+      result.actions.push(`Orphan raw source (>180 days): ${orphanSrc}`);
+    }
+    for (const warn of rawLint.warnings) {
+      result.actions.push(`Raw source warning: ${warn}`);
+    }
+
+    // ── Rule VI: Check wikilink graph completeness ────────────────────────────
+    // Every page should have at least 3 outbound wikilinks
+    for (const page of allPages) {
+      const fullPath = path.join(this.wikiRoot, page.path);
+      const content = fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf-8') : '';
+      const outboundLinks = [...content.matchAll(/\[\[([^\]]+)\]\]/g)].map(m => m[1]);
+      if (outboundLinks.length < 3 && !['AGENTS.md','index.md','log.md'].includes(page.path)) {
+        result.actions.push(
+          `Sparse wikilinks: ${page.path} has only ${outboundLinks.length} outbound [[links]] (min 3 required — Rule VI)`
+        );
+      }
+      // Check for broken wikilinks (target file doesn't exist)
+      for (const link of outboundLinks) {
+        const linkPath = link.endsWith('.md') ? link : link + '.md';
+        const linkFull = path.join(this.wikiRoot, linkPath);
+        if (!fs.existsSync(linkFull) && !allPaths.has(link) && !allPaths.has(linkPath)) {
+          result.actions.push(`Broken wikilink in ${page.path}: [[${link}]] → file not found`);
+        }
+      }
+    }
+
     // Write lint log entry
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+    const rawCounts = Object.entries(rawLint.categoryCounts)
+      .map(([k, v]) => `${k}:${v}`).join(', ');
     const logEntry = `## [${timestamp}] lint | weekly | SelfCheckAgent
 - **Pages scanned:** ${allPages.length}
 - **Orphan pages found:** ${result.orphans.length}${result.orphans.length > 0 ? ' → ' + result.orphans.join(', ') : ''}
 - **Contradiction flags:** ${result.contradictions.length}
 - **Stale pages (>90 days):** ${result.stalePages.length}${result.stalePages.length > 0 ? ' → ' + result.stalePages.join(', ') : ''}
 - **Missing pages:** ${result.missingPages.length}${result.missingPages.length > 0 ? ' → ' + [...new Set(result.missingPages)].join(', ') : ''}
+- **Raw source files:** ${rawCounts}
+- **Orphan raw sources (>180d):** ${rawLint.orphanSources.length}
+- **Total actions:** ${result.actions.length}
 `;
     await this.appendToLog(logEntry);
 

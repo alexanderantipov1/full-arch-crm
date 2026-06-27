@@ -19,10 +19,14 @@ Patient in acute pain or dental emergency. Highest urgency, lowest tolerance for
 - **Lost when:** Told "first available is in 3 weeks," referred elsewhere, or only immediate issue treated without pathway to comprehensive care
 
 ## Emergency-to-Comprehensive Conversion Path
-1. Emergency visit → relieve pain → schedule follow-up within 5 days
-2. Follow-up → comprehensive exam → treatment plan presented
+1. Emergency visit → relieve pain → schedule follow-up within 5 days via [[agents/SchedulingAgent]]
+2. Follow-up → comprehensive exam → treatment plan presented by [[agents/TreatmentPlanAgent]]
 3. Treatment plan → financing offered day-of if large case
-4. Target: 68% of emergencies become comprehensive care patients within 90 days
+4. If exam reveals missing teeth, transition to [[patients/implant-consult]] workflow
+5. Target: 68% of emergencies become comprehensive care patients within 90 days
 
-## Cross-References
-- [[agents/SchedulingAgent.md]]
+## Related Pages
+
+- [[agents/SchedulingAgent]] — Manages same-day booking and follow-up scheduling for emergency-to-comprehensive conversion
+- [[agents/TreatmentPlanAgent]] — Presents comprehensive plan at follow-up exam after emergency pain resolution
+- [[patients/implant-consult]] — Downstream scenario when emergency exam reveals implant candidacy

@@ -19,7 +19,7 @@ tags: [implant, all-on-4, full-arch, high-value, d6010, d6056, d6114]
 All-on-4 is a full-arch dental implant technique using 4 strategically placed implants to support
 a fixed prosthesis for an edentulous or soon-to-be-edentulous arch. It is one of the highest-value
 procedures in implant dentistry, combining surgical and prosthetic components typically delivered
-over 6–12 months.
+over 6–12 months. Treatment plan presentation strategy for All-on-4 cases is handled by [[agents/TreatmentPlanAgent]]. Candidates arriving for consultation are profiled at [[patients/implant-consult]]. PPO insurance documentation requirements are detailed at [[insurance/ppo-general]].
 
 **Primary CDT codes:**
 - **D6010** — Surgical placement, endosteal implant body (× 4 per arch)
@@ -141,6 +141,8 @@ Procedures commonly treatment-planned alongside All-on-4:
 - **2026-06-27** — Seed entry from bootstrap. Based on Fusion Dental case reference (anonymized).
   Key learning: periapical X-ray inclusion is the single highest-impact documentation change for PPO approval.
 
-## Cross-References
-- [[insurance/delta-dental.md]]
-- [[patients/implant-consult.md]] (stub — not yet created)
+## Related Pages
+
+- [[agents/TreatmentPlanAgent]] — Agent that presents All-on-4 bundled pricing, anchoring strategy, and phasing decisions
+- [[patients/implant-consult]] — Patient profile for All-on-4 consultation candidates including insurance and financing patterns
+- [[insurance/ppo-general]] — PPO documentation requirements and approval rates directly applicable to D6010 and D6114

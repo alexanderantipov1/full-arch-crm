@@ -17,9 +17,13 @@ Patient referred from another location within the DSO network, or from an affili
 
 ## Conversion Intelligence
 - Convert at 71% vs 38% for cold leads — highest conversion scenario
-- Key: acknowledge the referring provider by name in first interaction
+- Managed by [[agents/PatientAcquisition]] with warm handoff script acknowledging the referring provider by name
 - Transfer records request before first appointment — patients who arrive "prepared" convert at 84%
+- If referral note includes surgical consultation, route to [[patients/implant-consult]] workflow immediately
+- Treatment plan at first visit presented by [[agents/TreatmentPlanAgent]]
 
-## Cross-References
-- [[dso/network-overview.md]]
-- [[agents/PatientAcquisition.md]]
+## Related Pages
+
+- [[agents/PatientAcquisition]] — Manages warm handoff, records transfer, and booking for DSO referrals
+- [[agents/TreatmentPlanAgent]] — Presents treatment plan at first visit; leverages records transferred from referring provider
+- [[patients/implant-consult]] — Escalation pathway when DSO referral includes surgical or implant consultation

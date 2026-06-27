@@ -32,6 +32,8 @@ RecallAgent manages patient recall and reactivation workflows, including hygiene
 
 ## Recall Segmentation by Time-Since-Visit
 
+RecallAgent's primary scenario is [[patients/recall-overdue]]. Once a patient is ready to book, RecallAgent hands off to [[agents/SchedulingAgent]]. For new lead generation beyond the existing patient base, RecallAgent collaborates with [[agents/PatientAcquisition]].
+
 Segmentation drives tone, urgency, and channel selection.
 
 ### Tier 1: 5–7 Months Since Last Visit (Standard Recall)
@@ -144,3 +146,10 @@ Once a lapsed patient books:
 - Agent initialized with low confidence; recall outcome data collection begins at first run
 - Priority learning targets: (1) which patient demographic responds best to which channel, (2) optimal number of touchpoints before marking lapsed, (3) impact of insurance benefit expiry messaging on booking rate
 - Future capability: predictive recall risk scoring (identify patients likely to lapse before they do, based on appointment gap trends and demographic signals)
+
+## Related Pages
+
+- [[patients/recall-overdue]] — Core scenario; overdue hygiene patients targeted by recall campaigns
+- [[agents/SchedulingAgent]] — Downstream agent that books appointments after RecallAgent generates interest
+- [[agents/PatientAcquisition]] — Parallel acquisition agent for new leads beyond the recall patient base
+- [[AGENTS]] — Index of all agents in this simulation

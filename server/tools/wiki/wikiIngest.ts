@@ -11,7 +11,7 @@
 
 import { z } from "zod";
 import { defineTool, ToolErrorCode } from "../types";
-import { wikiService } from "../../simulation/wiki/wiki-service";
+import { wikiService, type WikiIngestTrigger } from "../../simulation/wiki/wiki-service";
 
 const EventTypeSchema = z.enum([
   // Clinical
@@ -89,6 +89,8 @@ const EVENT_PAGE_MAP: Partial<Record<z.infer<typeof EventTypeSchema>, string>> =
 
 export const wikiIngestTool = defineTool<WikiIngestInput, WikiIngestOutput>({
   name: "wiki_ingest",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  inputSchema: inputSchema as any,
   description:
     "Push a new event or learning into the full-arch-crm Karpathy wiki. " +
     "Use this after any significant clinical event, agent decision, simulation result, " +
@@ -97,28 +99,36 @@ export const wikiIngestTool = defineTool<WikiIngestInput, WikiIngestOutput>({
     "to all agents in future sessions without re-explanation. " +
     "NEVER pass PHI (patient names, DOB, chart numbers). Anonymized patterns only.",
 
-  inputSchema,
-
   async handler(_ctx, input) {
     try {
       const targetPage = input.targetPage ??
         EVENT_PAGE_MAP[input.eventType] ??
         "AGENTS";
 
-      // Build the event payload for wikiService
-      const event: Record<string, unknown> = {
-        type:    input.eventType,
-        summary: input.summary,
-        ...(input.details  && { details:  input.details }),
-        ...(input.cdtCode  && { cdtCode:  input.cdtCode }),
-        ...(input.payer    && { payer:    input.payer }),
-        ...(input.outcome  && { outcome:  input.outcome }),
-        targetPage,
-        source: "mcp_tool",
-        timestamp: new Date().toISOString(),
+      // Map MCP event type to WikiIngestTrigger type
+      const triggerType: WikiIngestTrigger["type"] =
+        input.eventType.startsWith("EOB_") || input.eventType.startsWith("PRIOR_AUTH_")
+          ? "claim_resolved"
+          : input.eventType.startsWith("APPOINTMENT_") || input.eventType.startsWith("TREATMENT_")
+            ? "patient_visit"
+            : input.eventType.startsWith("SIMULATION_")
+              ? "simulation_batch"
+              : "orchestration_cycle";
+
+      const trigger: WikiIngestTrigger = {
+        type:      triggerType,
+        sourceId:  `mcp_${Date.now()}`,
+        agentName: "MCP_Tool",
+        ...(input.cdtCode && {
+          claimData: {
+            payerType: "ppo" as const,
+            cdtCode:   input.cdtCode,
+            outcome:   (input.outcome ?? "approved") as "approved" | "denied" | "appealed" | "paid",
+          },
+        }),
       };
 
-      await wikiService.ingest(event, "ops_safe");
+      await wikiService.ingest(trigger);
 
       return {
         ok: true,

@@ -34,6 +34,8 @@ FinancialCounselorAgent manages the financial consultation layer of case accepta
 
 ## Financing Option Sequencing
 
+FinancialCounselorAgent is the primary resource for [[patients/financial-barrier]] scenarios and re-engagement of [[patients/treatment-decline]] patients. It works downstream of [[agents/TreatmentPlanAgent]] once a plan has been presented. For insurance-gap cases, [[insurance/ppo-general]] coverage data informs the out-of-pocket estimate before financing is offered.
+
 The order in which financing products are offered materially affects approval rates and case acceptance. Lead with the highest-approval, lowest-friction product and work down.
 
 ### Recommended Sequence
@@ -170,3 +172,11 @@ Patients who declined treatment due to cost are among the highest-value re-engag
 - Confidence medium; one confirmed source (patients/financial-barrier.md and patients/treatment-decline.md) informing strategy
 - Pre-qualification timing advantage (2.3x) is the highest-leverage lever; validate with local patient population data
 - Learning targets: (1) track actual approval rates per financing product vs. benchmarks above, (2) measure re-engagement conversion rate by day-of-contact in sequence, (3) determine whether specific monthly payment anchors perform differently across age demographics
+
+## Related Pages
+
+- [[patients/financial-barrier]] — Core scenario; patients blocked from treatment acceptance by cost
+- [[patients/treatment-decline]] — Post-decline re-engagement where financing was the key objection
+- [[agents/TreatmentPlanAgent]] — Upstream agent that presents the plan before financial counseling begins
+- [[insurance/ppo-general]] — PPO coverage data that informs out-of-pocket estimates and insurance-gap financing needs
+- [[AGENTS]] — Index of all agents in this simulation

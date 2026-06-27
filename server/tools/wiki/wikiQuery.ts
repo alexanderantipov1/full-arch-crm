@@ -9,6 +9,7 @@
  */
 
 import { z } from "zod";
+import type { ZodType } from "zod";
 import { defineTool, ToolErrorCode } from "../types";
 import { wikiService } from "../../simulation/wiki/wiki-service";
 
@@ -43,6 +44,8 @@ export interface WikiQueryOutput {
 
 export const wikiQueryTool = defineTool<WikiQueryInput, WikiQueryOutput>({
   name: "wiki_query",
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  inputSchema: inputSchema as any,
   description:
     "Query the full-arch-crm Karpathy wiki with a natural-language question. " +
     "Returns a synthesized answer grounded in the persistent wiki knowledge base " +
@@ -51,14 +54,16 @@ export const wikiQueryTool = defineTool<WikiQueryInput, WikiQueryOutput>({
     "and whenever you need to recall established patterns without re-reading raw files. " +
     "Data class is always ops_safe — no PHI is ever stored in the wiki.",
 
-  inputSchema,
-
   async handler(_ctx, input) {
     try {
-      const result = await wikiService.query(input.question, "ops_safe");
+      const result = await wikiService.query({
+        category: "agents",
+        question: input.question,
+        topK: input.maxPages,
+      });
 
-      // result is a string answer from synthesizeAnswerAsync
-      const answer = typeof result === "string" ? result : JSON.stringify(result);
+      // result has .answer from WikiQueryResult
+      const answer = result?.answer ?? JSON.stringify(result);
 
       // Extract page slugs mentioned in the answer (heuristic: wiki page names)
       const wikiPageSlugs = [
@@ -74,8 +79,8 @@ export const wikiQueryTool = defineTool<WikiQueryInput, WikiQueryOutput>({
       );
 
       const confidence: WikiQueryOutput["confidence"] =
-        answer.length > 200 ? "high" :
-        answer.length > 80  ? "medium" : "low";
+        result.confidence === "high" ? "high" :
+        result.confidence === "medium" ? "medium" : "low";
 
       return {
         ok: true,

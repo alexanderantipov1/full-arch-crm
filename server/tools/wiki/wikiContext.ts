@@ -18,6 +18,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { defineTool, ToolErrorCode } from "../types";
 import { wikiService } from "../../simulation/wiki/wiki-service";
+import { rawSourceWriter } from "../../simulation/wiki/raw-source-writer";
 
 const inputSchema = z.object({
   focus: z
@@ -54,6 +55,12 @@ export interface WikiContextOutput {
   activeWork:      string[];
   totalWords:      number;
   dataClass:       "ops_safe";
+  /** Karpathy compliance health (Rule I + VI) */
+  karpathyHealth: {
+    rawSourceCounts: Record<string, number>;
+    orphanWarnings:  string[];
+    wikilinkHealth:  "good" | "needs_links" | "unknown";
+  };
 }
 
 // Wiki base directory
@@ -169,7 +176,8 @@ export const wikiContextTool = defineTool<WikiContextInput, WikiContextOutput>({
     "Focus='full' for session start. Focus='active_work' for quick pulse check. " +
     "Data class is always ops_safe — no PHI is in the wiki.",
 
-  inputSchema,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  inputSchema: inputSchema as any,
 
   async handler(_ctx, input) {
     try {
@@ -216,8 +224,8 @@ export const wikiContextTool = defineTool<WikiContextInput, WikiContextOutput>({
 
       let systemContext: string;
       try {
-        const queryResult = await wikiService.query(contextQuestion, "ops_safe");
-        systemContext = typeof queryResult === "string" ? queryResult : JSON.stringify(queryResult);
+        const queryResult = await wikiService.query({ category: "agents", question: contextQuestion });
+        systemContext = queryResult?.answer ?? JSON.stringify(queryResult);
       } catch {
         // Fallback: concatenate page summaries
         systemContext = allContent
@@ -227,6 +235,22 @@ export const wikiContextTool = defineTool<WikiContextInput, WikiContextOutput>({
       }
 
       const totalWords = pagesLoaded.reduce((sum, p) => sum + p.wordCount, 0);
+
+      // ── Karpathy compliance health check ────────────────────────────────
+      const rawLint = rawSourceWriter.lint(180);
+      // Check wikilink density across loaded pages
+      const pagesWithSparseLinks = pagesLoaded.filter(p => {
+        const filePath = path.join(WIKI_BASE, p.slug);
+        const fullPath = filePath.endsWith('.md') ? filePath : filePath + '.md';
+        try {
+          const content = fs.readFileSync(fullPath, 'utf-8');
+          const links = [...content.matchAll(/\[\[([^\]]+)\]\]/g)];
+          return links.length < 3;
+        } catch { return false; }
+      });
+      const wikilinkHealth = pagesWithSparseLinks.length === 0
+        ? "good"
+        : pagesWithSparseLinks.length < 5 ? "needs_links" : "needs_links";
 
       return {
         ok: true,
@@ -238,12 +262,16 @@ export const wikiContextTool = defineTool<WikiContextInput, WikiContextOutput>({
           activeWork: activeWork.length > 0 ? activeWork : [
             "DatabaseAdapter platform — PR #11 open",
             "Wiki seeding — 18 pages complete",
-            "TypeScript: translator.ts + mock-adapter.ts fixed",
-            "Karpathy visualization — built",
-            "MCP Second Brain — in progress (this session)",
+            "Karpathy compliance: raw/ layer + wikilinks — in progress",
+            "MCP Second Brain — PR #13 open",
           ],
           totalWords,
           dataClass: "ops_safe" as const,
+          karpathyHealth: {
+            rawSourceCounts:  rawLint.categoryCounts,
+            orphanWarnings:   rawLint.warnings,
+            wikilinkHealth,
+          },
         },
       };
     } catch (err: unknown) {

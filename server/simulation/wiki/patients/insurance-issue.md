@@ -23,11 +23,14 @@ Patient with active insurance who has encountered a claim denial, prior auth del
 
 ## Resolution Intelligence
 - Call payer same day denial is received — don't wait for patient to call first
-- Always have appeal template ready (see [[insurance/appeals/]])
+- Always have appeal template ready (see [[insurance/appeals/ppo-d6010]] for D6010-specific scripts)
+- Route all denial management through [[agents/InsuranceAgent]] for documentation strategy and payer-specific timing
 - For prior auth >14 days: escalate to "urgent/stat" with clinical notes from provider
 - Proactive communication wins: patients who are told proactively have 91% retention vs 54% when they discover the issue themselves
 
-## Cross-References
-- [[agents/InsuranceAgent.md]]
-- [[insurance/ppo-general.md]]
-- [[insurance/delta-dental.md]]
+## Related Pages
+
+- [[agents/InsuranceAgent]] — Primary agent for denial handling, prior auth, and appeal coordination
+- [[insurance/ppo-general]] — PPO denial patterns, appeal success rates, and documentation standards
+- [[insurance/delta-dental]] — Delta Dental-specific denial reasons and billing intelligence
+- [[insurance/appeals/ppo-d6010]] — Appeal script and documentation checklist for D6010 denials

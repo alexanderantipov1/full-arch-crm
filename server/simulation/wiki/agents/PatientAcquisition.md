@@ -32,6 +32,8 @@ PatientAcquisition manages inbound lead qualification, outbound outreach sequenc
 
 ## Lead Scoring Logic
 
+PatientAcquisition manages the top of funnel for [[patients/new-patient]] general inquiries and [[patients/dso-referral]] warm handoffs. Lapsed patients beyond the recall window are better served by [[agents/RecallAgent]], while PatientAcquisition focuses on cold and warm leads not yet in the CRM.
+
 ### Implant Consult Leads (High Priority)
 
 Implant consult leads are scored on a composite of intent signals and demographic proxies:
@@ -130,3 +132,10 @@ Conversion rate benchmarks:
 - Agent initialized with low confidence; no confirmed outcome data yet
 - First improvement cycle will trigger after 20 booked consultations with recorded show/no-show outcomes
 - Priority learning targets: (1) which lead source channels yield highest show rates, (2) whether same-day callback advantage holds across all insurance types, (3) optimal number of outreach attempts before lead is marked cold
+
+## Related Pages
+
+- [[patients/new-patient]] — New patient general inquiry profiles and first-visit conversion protocols
+- [[patients/dso-referral]] — Pre-qualified DSO referral leads with highest conversion rates (71%)
+- [[agents/RecallAgent]] — Handles lapsed existing patients; PatientAcquisition focuses on net-new leads
+- [[AGENTS]] — Index of all agents in this simulation

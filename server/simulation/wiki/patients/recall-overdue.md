@@ -28,9 +28,12 @@ Existing patient, 12–36+ months since last visit. Often lapsed due to cost, li
 
 ## Communication Intelligence
 - Segment by time-since-visit: 12–18 mo (warm), 19–36 mo (warm-cold), 36+ mo (re-acquisition)
-- 36+ month: treat as new patient acquisition, not recall
+- 36+ month: treat as [[patients/new-patient]] acquisition, not recall; hand off to [[agents/PatientAcquisition]] pipeline
 - Best channel: phone call → voicemail → text → email (in that order)
+- Booking is coordinated through [[agents/SchedulingAgent]] after initial outreach converts
 
-## Cross-References
-- [[agents/RecallAgent.md]]
-- [[insurance/ppo-general.md]]
+## Related Pages
+
+- [[agents/RecallAgent]] — Primary agent for recall outreach, segmentation, and re-engagement campaigns
+- [[agents/SchedulingAgent]] — Downstream agent that books appointments after recall outreach converts
+- [[patients/new-patient]] — Treatment path for 36+ month lapsed patients who re-enter as new patients

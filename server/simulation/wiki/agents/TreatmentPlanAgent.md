@@ -33,6 +33,8 @@ TreatmentPlanAgent optimizes the presentation and sequencing of treatment plans 
 
 ## Treatment Plan Presentation Sequencing
 
+TreatmentPlanAgent is most commonly invoked for [[patients/implant-consult]] scenarios and re-engagement of [[patients/treatment-decline]] patients. When financial barriers block acceptance, it hands off to [[agents/FinancialCounselorAgent]]. For surgical sequencing details, see [[clinical/all-on-4-protocol]].
+
 The sequence in which options are presented significantly affects acceptance. Presenting options in a randomized or cost-ascending order underperforms structured anchored presentation.
 
 ### Recommended Presentation Order
@@ -114,3 +116,12 @@ All-on-4 and All-on-6 bundled pricing outperforms itemized line pricing in accep
 - Confidence medium; one confirmed outcome data point referenced in patients/implant-consult.md
 - Learning targets: (1) validate anchoring vs. non-anchoring acceptance rate differential in this practice's patient population, (2) refine phasing thresholds by insurance type, (3) track whether pre-qualification timing (before vs. after plan presentation) affects acceptance
 - Next confidence upgrade threshold: 10 tracked treatment plan presentations with recorded accept/decline outcomes
+
+## Related Pages
+
+- [[patients/implant-consult]] — Core scenario for this agent; full-arch consultation conversion logic
+- [[patients/treatment-decline]] — Re-presentation strategies after initial plan rejection
+- [[patients/financial-barrier]] — Financial objection handling that triggers FinancialCounselorAgent handoff
+- [[agents/FinancialCounselorAgent]] — Partner agent for financing sequencing and payment anchoring
+- [[clinical/all-on-4-protocol]] — Clinical protocol details for All-on-4 cases this agent presents
+- [[AGENTS]] — Index of all agents in this simulation

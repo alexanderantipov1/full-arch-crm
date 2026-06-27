@@ -34,6 +34,8 @@ InsuranceAgent manages the full insurance workflow for high-value dental cases: 
 
 ## Prior Authorization Submission Strategy
 
+InsuranceAgent works in tandem with [[patients/insurance-issue]] patients to resolve denials quickly. For implant cases, refer to [[insurance/ppo-general]] for documentation standards and [[insurance/delta-dental]] for Delta-specific turnaround times. Appeal workflows are governed by [[insurance/appeals/ppo-d6010]].
+
 ### Documentation Package (Standard)
 
 A complete prior auth package for D6010 (implant body placement) includes:
@@ -142,3 +144,11 @@ D6010 (endosseous implant body, each) is the highest-frequency high-value prior 
 - Confidence medium; one confirmed source (insurance/ppo-general.md) informing approval rate data
 - Delta Dental and BCBS timing patterns are highest-confidence payer intelligence; other payers should be validated with actual submission outcomes
 - Learning targets: (1) track actual turnaround times vs. benchmarks by payer, (2) refine documentation lift estimates with outcome data, (3) identify whether CBCT scan inclusion materially improves approval rate for bone graft bundled cases
+
+## Related Pages
+
+- [[insurance/ppo-general]] — PPO denial patterns, approval rates, and documentation standards that drive InsuranceAgent logic
+- [[insurance/delta-dental]] — Delta Dental-specific approval patterns, turnaround times, and billing rules
+- [[insurance/appeals/ppo-d6010]] — Appeal letter template and success rate history for D6010 denials
+- [[patients/insurance-issue]] — Patient profile for insurance denials, prior auth delays, and eligibility confusion
+- [[AGENTS]] — Index of all agents in this simulation

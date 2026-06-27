@@ -22,8 +22,13 @@ First-time patient. No prior relationship. Often comes via Google search, referr
 1. Name recognition at front desk (pre-read chart before they arrive)
 2. Comprehensive exam same day (D0150)
 3. X-rays if not brought from prior dentist
-4. Treatment plan printed and walked through before patient leaves
-5. Next appointment booked before checkout
+4. Treatment plan printed and walked through before patient leaves — see [[agents/TreatmentPlanAgent]] for presentation sequencing
+5. Next appointment booked before checkout via [[agents/SchedulingAgent]]
+6. If implant candidacy identified at exam, transition to [[patients/implant-consult]] workflow
 
-## Cross-References
-- [[agents/PatientAcquisition.md]]
+## Related Pages
+
+- [[agents/PatientAcquisition]] — Agent responsible for lead scoring and first-contact conversion before the new patient visit
+- [[agents/SchedulingAgent]] — Handles appointment booking and confirmation sequencing for new patient visits
+- [[agents/TreatmentPlanAgent]] — Presents findings and treatment options at the first comprehensive exam
+- [[patients/implant-consult]] — Escalation pathway when implant candidacy is identified at new patient exam
