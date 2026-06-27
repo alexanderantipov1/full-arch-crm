@@ -12,6 +12,7 @@ import {
 import { registerMcpRoutes } from "./mcp/route";
 import { insuranceCallingRouter } from "./insurance-calling/routes";
 import { orchestrationRouter } from "./orchestration/orchestration-routes";
+import { analyticsRouter } from "./analytics/analytics-routes";
 import { generateMcpApiKey, sanitizeMcpApiKey } from "./mcp/keys";
 import { isAdmin } from "./middleware/admin";
 import { phiService, PhiAccessDeniedError } from "./services/phi";
@@ -139,6 +140,9 @@ export async function registerRoutes(
   // Agent Orchestration — nightly multi-agent loop + Slack morning briefing.
   // Secured by X-Admin-Key header (ADMIN_API_KEY env var) — no session required.
   app.use("/api/orchestration", orchestrationRouter);
+  // DSO Analytics API — public BI endpoints for DSO partner dashboards.
+  // All routes require X-Tenant-ID header; responses are cached 5 minutes.
+  app.use("/api/analytics", analyticsRouter);
 
   const getAuditUser = (req: any) => ({
     userId: req.user?.claims?.sub || req.user?.id || "unknown",
