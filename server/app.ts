@@ -6,6 +6,7 @@ import express, {
 } from "express";
 import { createServer, type Server } from "http";
 import { registerRoutes } from "./routes";
+import { bootstrapAdapters } from "./adapters";
 
 declare module "http" {
   interface IncomingMessage {
@@ -109,6 +110,10 @@ export async function createApp(): Promise<CreateAppResult> {
   });
 
   app.use(requestLogger);
+
+  // Bootstrap database adapters before routes are registered.
+  // This makes adapterRegistry.getDefaultAdapter() available to all route handlers.
+  await bootstrapAdapters();
 
   await registerRoutes(httpServer, app);
 

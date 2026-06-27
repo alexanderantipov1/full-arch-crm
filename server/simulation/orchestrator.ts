@@ -7,6 +7,7 @@
 import { randomUUID } from "crypto";
 import { askClaude } from "../services/ai";
 import { simulationEngine } from "./engine";
+import { wikiService } from "./wiki/wiki-service";
 import type { SimState } from "./types";
 
 export interface OrchestrationCycle {
@@ -39,8 +40,36 @@ export class OrchestrationAgent {
 
   async runCycle(patientCount = 20): Promise<OrchestrationCycle> {
     const startedAt = new Date();
+
+    // KARPATHY WIKI: Read compiled intelligence BEFORE running the batch.
+    // This means agents start each cycle with accumulated cross-clinic wisdom,
+    // not just raw state from the previous cycle.
+    const [insuranceIntel, patientIntel, agentIntel] = await Promise.allSettled([
+      wikiService.query({
+        category: 'insurance',
+        question: 'Which insurance types have the lowest approval rates and highest denial frequencies right now?',
+        topK: 2,
+      }),
+      wikiService.query({
+        category: 'patients',
+        question: 'Which patient scenarios convert best with high treatment values?',
+        topK: 2,
+      }),
+      wikiService.query({
+        category: 'agents',
+        question: 'Which hypotheses have already been tested and rejected? Which agents have the lowest scores?',
+        topK: 2,
+      }),
+    ]);
+    // Intelligence summaries are available to inform selfCheck and decide()
+    const wikiContext = [
+      insuranceIntel.status === 'fulfilled' ? insuranceIntel.value.answer : '',
+      patientIntel.status === 'fulfilled' ? patientIntel.value.answer : '',
+      agentIntel.status === 'fulfilled' ? agentIntel.value.answer : '',
+    ].filter(Boolean).join('\n\n');
+
     const state = await simulationEngine.runBatch(patientCount);
-    const selfCheck = await this.selfCheck(state);
+    const selfCheck = await this.selfCheck(state, wikiContext);
     const nextAction = this.decide(state, selfCheck);
 
     const cycle: OrchestrationCycle = {
@@ -57,6 +86,15 @@ export class OrchestrationAgent {
       reasoning: selfCheck.recommendedAction,
     };
     this.cycleHistory.push(cycle);
+
+    // Karpathy wiki: log orchestration cycle (fire-and-forget)
+    void wikiService.ingest({
+      type: 'orchestration_cycle',
+      sourceId: cycle.id,
+      cycleNumber: cycle.cycleNumber,
+      score: cycle.avgScoreThisCycle,
+      agentName: 'OrchestrationAgent',
+    }).catch((err: Error) => console.warn('[WikiService] orchestration ingest error:', err.message));
 
     // Auto-apply the next pending hypothesis each cycle (SimHypothesis has no
     // confidence field, so we take the most recently generated pending one).
@@ -112,7 +150,7 @@ export class OrchestrationAgent {
     return this.isLooping;
   }
 
-  private async selfCheck(state: SimState): Promise<SelfCheckResult> {
+  private async selfCheck(state: SimState, wikiContext = ''): Promise<SelfCheckResult> {
     const issues: string[] = [];
 
     const scoreImproving =
@@ -145,8 +183,8 @@ export class OrchestrationAgent {
     let recommendedAction = "Continue simulation loop";
     try {
       const raw = await askClaude(
-        "You are an orchestration self-check assistant for a dental AI CRM simulation. All data is synthetic. Respond with JSON only.",
-        prompt,
+        "You are an orchestration self-check assistant for a dental AI CRM simulation. All data is synthetic. Respond with JSON only. Incorporate wiki intelligence when available.",
+        wikiContext ? `${prompt}\n\nWiki intelligence context (use to avoid re-testing rejected hypotheses):\n${wikiContext.slice(0, 1500)}` : prompt,
         300,
         { dataClass: "ops_safe", purpose: "simulation_self_check" },
       );

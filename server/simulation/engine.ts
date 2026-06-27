@@ -14,6 +14,7 @@ import {
   scoreRun,
 } from "./learning";
 import type { SimEpisode, SimState } from "./types";
+import { wikiService } from "./wiki/wiki-service";
 
 const STATE_PATH = path.join(import.meta.dirname, "state.json");
 
@@ -75,6 +76,16 @@ export class SimulationEngine {
       this.state.totalRevenueSim += runRevenue;
       this.state.avgScore = runScore;
       this.state.lastRunAt = new Date().toISOString();
+
+      // Karpathy wiki: ingest simulation batch results (fire-and-forget, non-blocking)
+      const runState = this.state;
+      void wikiService.ingest({
+        type: 'simulation_batch',
+        sourceId: `sim-batch-${runState.runCount}`,
+        score: runState.avgScore,
+        agentName: 'SimulationEngine',
+        episodeIds: episodes.slice(0, 20).map((_, i) => `ep-${runState.runCount}-${i}`),
+      }).catch((err: Error) => console.warn('[WikiService] ingest error (non-fatal):', err.message));
 
       return this.state;
     } finally {

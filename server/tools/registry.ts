@@ -9,6 +9,10 @@ import { perioAssessmentTool } from "./perio/aiAssessment";
 import { specialtyRecommendationsTool } from "./onboarding/specialtyRecommendations";
 import { generateDocumentTool } from "./documents/generate";
 import { runWorkflowTool } from "./workflow/runWorkflow";
+import { wikiQueryTool }   from "./wiki/wikiQuery";
+import { wikiIngestTool }  from "./wiki/wikiIngest";
+import { wikiContextTool } from "./wiki/wikiContext";
+import { wikiLintTool }    from "./wiki/wikiLint";
 
 // Single source of truth for the tool catalog. Both the MCP server and the
 // agent workflow runner enumerate tools from here so adding a new tool
@@ -25,6 +29,11 @@ export const tools: Array<Tool<any, any>> = [
   specialtyRecommendationsTool,
   generateDocumentTool,
   runWorkflowTool,
+  // Karpathy Wiki — Second Brain tools (MCP session start + persistent memory)
+  wikiContextTool,   // CALL FIRST at session start — loads full system context
+  wikiQueryTool,     // ask the wiki any question before agent decisions
+  wikiIngestTool,    // push new events/learnings into the wiki
+  wikiLintTool,      // weekly maintenance pass
 ];
 
 const byName = new Map<string, Tool<any, any>>(tools.map((t) => [t.name, t]));
