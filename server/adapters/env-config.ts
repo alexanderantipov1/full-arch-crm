@@ -16,7 +16,8 @@ export type AdapterType =
   | "mock"
   | "western_dental"
   | "clearchoice"
-  | "generic_rest";
+  | "generic_rest"
+  | "carestack_direct";
 
 export interface EnvConfig {
   adapterType: AdapterType;
@@ -37,6 +38,16 @@ const REQUIRED_VARS_BY_ADAPTER: Record<AdapterType, string[]> = {
   western_dental: ["WESTERN_DENTAL_URL", "WESTERN_DENTAL_API_KEY", "ADAPTER_TENANT_ID"],
   clearchoice: ["CLEARCHOICE_URL", "CLEARCHOICE_API_KEY", "ADAPTER_TENANT_ID"],
   generic_rest: ["ADAPTER_URL", "ADAPTER_API_KEY", "ADAPTER_TENANT_ID"],
+  carestack_direct: [
+    "CARESTACK_IDP_BASE_URL",
+    "CARESTACK_API_BASE_URL",
+    "CARESTACK_CLIENT_ID",
+    "CARESTACK_CLIENT_SECRET",
+    "CARESTACK_VENDOR_KEY",
+    "CARESTACK_ACCOUNT_KEY",
+    "CARESTACK_ACCOUNT_ID",
+    "ADAPTER_TENANT_ID",
+  ],
   mock: [],
 };
 
@@ -58,6 +69,7 @@ export function loadEnvConfig(): EnvConfig {
     "western_dental",
     "clearchoice",
     "generic_rest",
+    "carestack_direct",
   ];
 
   let adapterType: AdapterType = validAdapterTypes.includes(rawAdapterType)
