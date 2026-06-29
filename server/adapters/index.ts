@@ -70,3 +70,8 @@ export { adapterRegistry, bootstrapAdapters, AdapterNotFoundError } from "./regi
 // ── Implementations (for bootstrapAdapters internal use — do not use directly) ──
 // These are resolved dynamically via bootstrapAdapters(). Direct imports are
 // intentionally not re-exported here to enforce registry-mediated access.
+//
+// Exception: CareStackDirectAdapter and careStackConfigFromEnv are exported
+// for use in validation scripts and one-off diagnostic tooling only.
+// Production AI modules must still go through adapterRegistry.getDefaultAdapter().
+export { CareStackDirectAdapter, careStackConfigFromEnv } from "./implementations/carestack-direct-adapter";

@@ -153,6 +153,14 @@ export async function bootstrapAdapters(): Promise<void> {
       break;
     }
 
+    case "carestack_direct": {
+      const { CareStackDirectAdapter, careStackConfigFromEnv } =
+        await import("./implementations/carestack-direct-adapter");
+      const csConfig = careStackConfigFromEnv();
+      adapter = new CareStackDirectAdapter(csConfig, tenantId);
+      break;
+    }
+
     case "mock":
     default: {
       const { MockAdapter } = await import("./implementations/mock-adapter");
